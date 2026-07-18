@@ -1,0 +1,56 @@
+# BRO73 Frontend
+
+Starter kit cho team frontend:
+
+- `React 19 + TypeScript + Vite`
+- `Tailwind CSS v4`
+- `React Router`
+- `TanStack Query`
+- `Axios`
+- alias `@/` tro vao `src`
+
+## Chay project
+
+```bash
+npm install
+npm run dev
+```
+
+## Cau truc thu muc
+
+```text
+src
+|- app           # router, providers, query client
+|- common        # config, constants, helpers dung chung toan app
+|- components    # UI/component dung lai nhieu noi
+|- layouts       # layout cap trang
+|- pages         # page theo route
+|- services      # axios client, service goi API
+|- hooks         # custom hooks khi project bat dau co logic lap lai
+|- types         # shared types khi nhieu module cung dung
+|- utils         # helper function khi can
+```
+
+## Quy uoc goi y cho team
+
+- `pages/`: component cap route, moi page 1 folder rieng
+- `common/`: de env, API endpoint, constants va helper dung chung
+- `components/`: chi de component tai su dung
+- `services/`: hien co `http/axios-client.ts`, sau nay moi module API them file rieng
+- `hooks/`: custom hook boc query/state dung lai
+- `types/`: type dung chung giua nhieu module
+
+## Env
+
+Tao file `.env` neu can:
+
+```bash
+VITE_API_URL=http://localhost:8080/api
+```
+
+## API endpoint pattern
+
+- `src/common/config/env.ts`: doc bien moi truong
+- `src/common/constants/api-endpoints.ts`: khai bao prefix va endpoint
+- `src/services/http/axios-client.ts`: dung `baseURL` tu env
+- `src/services/*`: import endpoint constant thay vi hardcode string
