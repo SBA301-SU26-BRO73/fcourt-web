@@ -72,6 +72,7 @@ export const API_ENDPOINTS = {
     update: (id: number) => joinEndpoint(API_PREFIXES.staff, id),
     delete: (id: number) => joinEndpoint(API_PREFIXES.staff, id),
     schedule: joinEndpoint(API_PREFIXES.staff, 'schedule'),
+    courtBoard: joinEndpoint(API_PREFIXES.staff, 'court-board'),
     checkin: joinEndpoint(API_PREFIXES.staff, 'checkin'),
     walkInBooking: joinEndpoint(API_PREFIXES.staff, 'walk-in-bookings'),
     checkout: joinEndpoint(API_PREFIXES.staff, 'checkout'),

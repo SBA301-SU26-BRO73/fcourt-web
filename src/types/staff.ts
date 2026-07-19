@@ -55,6 +55,21 @@ export interface StaffScheduleItem {
   slotCount: number
 }
 
+export type CourtBoardStatus = 'FREE' | 'PLAYING' | 'ENDING_SOON' | 'BOOKED_NOT_CHECKED_IN'
+
+/** GET /api/v1/staff/court-board — one court's current status. */
+export interface CourtBoardItem {
+  courtId: number
+  courtName: string
+  status: CourtBoardStatus
+  minutesRemaining: number | null
+  bookingId: number | null
+  checkinCode: string | null
+  customerName: string | null
+  slotStart: string | null // HH:mm:ss
+  slotEnd: string | null // HH:mm:ss
+}
+
 /** POST /api/v1/staff/checkin request body. */
 export interface StaffCheckinRequest {
   checkinCode: string

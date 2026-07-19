@@ -47,7 +47,7 @@ export function MainLayout() {
     navigate(isLoggedIn ? "/profile" : "/auth/login?role=customer");
   };
 
-  const accountLabel = isLoggedIn ? (user?.fullName || user?.email || "Tài khoản") : "Đăng nhập";
+  const accountLabel = isLoggedIn ? (user?.email || "Tài khoản") : "Đăng nhập";
 
   const isHomePage = location.pathname === "/";
 

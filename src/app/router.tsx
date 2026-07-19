@@ -32,6 +32,7 @@ import { StaffSchedulePage } from '@/pages/staff/staff-schedule-page'
 import { StaffCheckInPage } from '@/pages/staff/staff-check-in-page'
 import { StaffWalkInPage } from '@/pages/staff/staff-walk-in-page'
 import { StaffCheckoutPage } from '@/pages/staff/staff-checkout-page'
+import { StaffBoardPage } from '@/pages/staff/staff-board-page'
 import { StaffPosPage } from '@/pages/staff/staff-pos-page'
 import { ProfilePage } from '@/pages/profile/profile-page'
 import { PaymentPage } from '@/pages/payment/PaymentPage'
@@ -206,6 +207,10 @@ export const router = createBrowserRouter([
       {
         path: 'checkout/:bookingId',
         element: <StaffCheckoutPage />,
+      },
+      {
+        path: 'board',
+        element: <StaffBoardPage />,
       },
       {
         path: 'pos',

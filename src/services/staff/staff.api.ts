@@ -9,6 +9,7 @@ import type {
   StaffScheduleItem,
   StaffCheckinRequest,
   StaffCheckinResponse,
+  CourtBoardItem,
 } from '@/types/staff'
 import type {
   WalkInBookingRequest,
@@ -85,6 +86,14 @@ export async function getTodaySchedule(date?: string): Promise<StaffScheduleItem
   const { data } = await axiosClient.get<ApiResponse<StaffScheduleItem[]>>(
     API_ENDPOINTS.staff.schedule,
     { params: date ? { date } : {} },
+  )
+  return requireData(data)
+}
+
+/** Realtime status of every court in the acting staff's branch. */
+export async function getCourtBoard(): Promise<CourtBoardItem[]> {
+  const { data } = await axiosClient.get<ApiResponse<CourtBoardItem[]>>(
+    API_ENDPOINTS.staff.courtBoard,
   )
   return requireData(data)
 }
