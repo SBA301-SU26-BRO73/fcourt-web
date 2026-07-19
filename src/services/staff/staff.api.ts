@@ -16,6 +16,7 @@ import type {
   StaffCheckoutRequest,
   StaffCheckoutResponse,
 } from '@/types/booking'
+import type { PosProduct, CreateOrderRequest, OrderResponse } from '@/types/pos'
 
 function requireData<T>(response: ApiResponse<T>): T {
   if (response.data === undefined) {
@@ -39,6 +40,14 @@ export async function getStaffByBranch(
 export async function getStaffDetail(id: number): Promise<StaffResponse> {
   const { data } = await axiosClient.get<ApiResponse<StaffResponse>>(
     API_ENDPOINTS.staff.detail(id),
+  )
+  return requireData(data)
+}
+
+/** The logged-in staff's own profile (id, branchId, branchName), resolved from the JWT. */
+export async function getCurrentStaff(): Promise<StaffResponse> {
+  const { data } = await axiosClient.get<ApiResponse<StaffResponse>>(
+    API_ENDPOINTS.staff.me,
   )
   return requireData(data)
 }
@@ -69,16 +78,13 @@ export async function deleteStaff(id: number): Promise<void> {
 }
 
 /**
- * Today's court schedule for the given staff user.
+ * Today's court schedule for the acting staff, resolved from the JWT on the backend.
  * `date` is optional (ISO date, defaults to today UTC on the backend).
  */
-export async function getTodaySchedule(
-  staffUserId: number,
-  date?: string,
-): Promise<StaffScheduleItem[]> {
+export async function getTodaySchedule(date?: string): Promise<StaffScheduleItem[]> {
   const { data } = await axiosClient.get<ApiResponse<StaffScheduleItem[]>>(
     API_ENDPOINTS.staff.schedule,
-    { params: { staffUserId, ...(date ? { date } : {}) } },
+    { params: date ? { date } : {} },
   )
   return requireData(data)
 }
@@ -112,6 +118,40 @@ export async function staffCheckout(
   const { data } = await axiosClient.post<ApiResponse<StaffCheckoutResponse>>(
     API_ENDPOINTS.staff.checkout,
     payload,
+  )
+  return requireData(data)
+}
+
+/** Active retail products for the acting staff's branch. */
+export async function getPosProducts(): Promise<PosProduct[]> {
+  const { data } = await axiosClient.get<ApiResponse<PosProduct[]>>(
+    API_ENDPOINTS.staff.posProducts,
+  )
+  return requireData(data)
+}
+
+/** Create a retail order — merged into a booking, or a standalone bill. */
+export async function createPosOrder(payload: CreateOrderRequest): Promise<OrderResponse> {
+  const { data } = await axiosClient.post<ApiResponse<OrderResponse>>(
+    API_ENDPOINTS.staff.posOrders,
+    payload,
+  )
+  return requireData(data)
+}
+
+/** Mark a pending (bank-transfer) order as paid once the money has arrived. */
+export async function confirmPosOrder(orderId: number): Promise<OrderResponse> {
+  const { data } = await axiosClient.post<ApiResponse<OrderResponse>>(
+    API_ENDPOINTS.staff.posOrderConfirm(orderId),
+  )
+  return requireData(data)
+}
+
+/** Today's (or a given date's) retail orders for the branch. */
+export async function getPosOrders(date?: string): Promise<OrderResponse[]> {
+  const { data } = await axiosClient.get<ApiResponse<OrderResponse[]>>(
+    API_ENDPOINTS.staff.posOrders,
+    { params: date ? { date } : {} },
   )
   return requireData(data)
 }

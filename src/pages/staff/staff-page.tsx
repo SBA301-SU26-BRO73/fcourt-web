@@ -6,10 +6,8 @@ import { Button } from '@/components/ui/button'
 import { StaffTable } from './components/staff-table'
 import { StaffFormModal } from './components/staff-form-modal'
 import { getStaffByBranch, deleteStaff } from '@/services/staff/staff.api'
+import { getBranches } from '@/services/branch/branch.api'
 import type { StaffResponse, UserStatus } from '@/types/staff'
-
-// TODO: lấy branchId từ auth context khi có
-const BRANCH_ID = 1
 
 type StatusFilter = 'all' | UserStatus
 
@@ -28,15 +26,26 @@ export function StaffPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingStaff, setEditingStaff] = useState<StaffResponse | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null)
 
   const PAGE_SIZE = 20
   // Staff per branch is small; fetch the whole branch once so search,
   // status counts and pagination all stay consistent client-side.
   const FETCH_SIZE = 500
 
+  // Branches this admin owns — the picker replaces the old hardcoded branch id.
+  const { data: branchPage } = useQuery({
+    queryKey: ['admin-branches-for-staff-picker'],
+    queryFn: () => getBranches({ page: 0, size: 100, sortField: 'name', sortDirection: 'asc' }),
+  })
+  const branches = branchPage?.content ?? []
+  // Fall back to the first loaded branch until the admin picks one explicitly.
+  const branchId = selectedBranchId ?? branches[0]?.id ?? null
+
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['staff', BRANCH_ID],
-    queryFn: () => getStaffByBranch(BRANCH_ID, 0, FETCH_SIZE),
+    queryKey: ['staff', branchId],
+    queryFn: () => getStaffByBranch(branchId as number, 0, FETCH_SIZE),
+    enabled: branchId != null,
   })
 
   const allStaff = data?.content ?? []
@@ -45,7 +54,7 @@ export function StaffPage() {
   const deleteMutation = useMutation({
     mutationFn: deleteStaff,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['staff', BRANCH_ID] })
+      queryClient.invalidateQueries({ queryKey: ['staff', branchId] })
       setDeletingId(null)
     },
   })
@@ -105,6 +114,19 @@ export function StaffPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {branches.length > 0 && (
+            <select
+              value={branchId ?? ''}
+              onChange={(e) => setSelectedBranchId(Number(e.target.value))}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          )}
           <Button
             icon={<RefreshCw size={14} />}
             onClick={() => refetch()}
@@ -115,6 +137,7 @@ export function StaffPage() {
           <Button
             variant="primary"
             icon={<UserPlus size={15} />}
+            disabled={branchId == null}
             onClick={() => {
               setEditingStaff(null)
               setShowForm(true)
@@ -206,11 +229,11 @@ export function StaffPage() {
       </div>
 
       {/* Create / Edit modal */}
-      {showForm && (
+      {showForm && branchId != null && (
         <StaffFormModal
           mode={editingStaff ? 'edit' : 'create'}
           initial={editingStaff ?? undefined}
-          branchId={BRANCH_ID}
+          branchId={branchId}
           onClose={handleCloseForm}
         />
       )}

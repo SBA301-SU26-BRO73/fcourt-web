@@ -1,7 +1,6 @@
 ﻿import type { BookingStatus } from '@/types/staff'
 
 export interface WalkInBookingRequest {
-  staffUserId: number
   courtId: number
   guestPhone: string
   slotStarts: string[]
@@ -24,7 +23,6 @@ export interface WalkInBookingResponse {
 }
 
 export interface StaffCheckoutRequest {
-  staffUserId: number
   bookingId: number
 }
 

@@ -1,4 +1,4 @@
-﻿import { Upload, ImageIcon, X } from 'lucide-react';
+﻿import { Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { createPayment } from '@/services/booking/booking.api';

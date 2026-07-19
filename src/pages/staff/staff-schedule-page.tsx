@@ -1,8 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Calendar, Activity, LayoutGrid, ScanLine, PlusCircle } from 'lucide-react'
+import { Calendar, Activity, LayoutGrid, ScanLine, PlusCircle, ShoppingCart } from 'lucide-react'
 
-import { useStaffSession } from '@/context/staff-session'
 import { useTodaySchedule } from '@/hooks/staff/use-today-schedule'
 import { useBranchGrid } from '@/hooks/staff/use-branch-grid'
 import { KpiCard } from '@/pages/staff/components/kpi-card'
@@ -23,7 +22,6 @@ function isPlayingNow(item: StaffScheduleItem): boolean {
 
 export function StaffSchedulePage() {
   const navigate = useNavigate()
-  const { staffUserId, branchId } = useStaffSession()
   const scheduleQuery = useTodaySchedule()
   const { courts, branch, isLoading: gridLoading } = useBranchGrid()
 
@@ -37,16 +35,6 @@ export function StaffSchedulePage() {
   const freeCourts = Math.max(0, totalCourts - courtsInUse)
 
   const { openMin, rows } = buildTimeWindow(branch?.openTime, branch?.closeTime)
-
-  if (staffUserId == null || branchId == null) {
-    return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-        No staff session. Set <code className="font-mono">VITE_STAFF_USER_ID</code>{' '}
-        and <code className="font-mono">VITE_BRANCH_ID</code> in{' '}
-        <code className="font-mono">.env.local</code> and restart the dev server.
-      </div>
-    )
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -73,7 +61,18 @@ export function StaffSchedulePage() {
       </div>
 
       {/* CTAs */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Link
+          to="/staff/pos"
+          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
+        >
+          <ShoppingCart size={22} className="text-green-600" />
+          <div className="leading-tight">
+            <div className="text-base font-semibold">Bán hàng tại quầy</div>
+            <div className="text-sm text-slate-500">Thuê vợt, bán nước, cầu lông</div>
+          </div>
+          <span className="ml-auto text-xl text-slate-400">→</span>
+        </Link>
         <Link
           to="/staff/check-in"
           className="flex items-center gap-3 rounded-xl bg-green-600 px-5 py-4 text-white shadow-sm transition-colors hover:bg-green-700"

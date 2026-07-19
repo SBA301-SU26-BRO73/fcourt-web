@@ -9,15 +9,15 @@ export function scheduleQueryKey(staffUserId: number | null, date?: string) {
 }
 
 /**
- * Today's booking schedule for the acting staff's branch.
- * Polls so the grid and now-line stay roughly current.
+ * Today's booking schedule for the acting staff's branch (resolved server-side
+ * from the JWT). Polls so the grid and now-line stay roughly current.
  */
 export function useTodaySchedule(date?: string) {
   const { staffUserId } = useStaffSession()
 
   return useQuery({
     queryKey: scheduleQueryKey(staffUserId, date),
-    queryFn: () => getTodaySchedule(staffUserId as number, date),
+    queryFn: () => getTodaySchedule(date),
     enabled: staffUserId != null,
     refetchInterval: 60_000,
   })

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, CheckCircle, QrCode } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { useStaffSession } from '@/context/staff-session'
 import { useCheckin } from '@/hooks/staff/use-checkin'
 import { getApiErrorMessage } from '@/common/utils/api-error'
 import { QrScanner } from '@/pages/staff/components/qr-scanner'
@@ -15,7 +14,6 @@ const AUTO_RETURN_MS = 30_000
 
 export function StaffCheckInPage() {
   const navigate = useNavigate()
-  const { staffUserId, branchId } = useStaffSession()
   const checkin = useCheckin()
   const { isSuccess, isError, isPending, data, error, mutate, reset } = checkin
 
@@ -37,16 +35,6 @@ export function StaffCheckInPage() {
     }, AUTO_RETURN_MS)
     return () => clearTimeout(t)
   }, [isSuccess, reset])
-
-  if (staffUserId == null || branchId == null) {
-    return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-        No staff session. Set <code className="font-mono">VITE_STAFF_USER_ID</code>{' '}
-        and <code className="font-mono">VITE_BRANCH_ID</code> in{' '}
-        <code className="font-mono">.env.local</code> and restart the dev server.
-      </div>
-    )
-  }
 
   if (isSuccess && data) {
     return (

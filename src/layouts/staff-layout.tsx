@@ -1,23 +1,36 @@
-import { Outlet } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { Outlet, useNavigate } from 'react-router-dom'
 
 import { Avatar } from '@/components/ui/avatar'
-import { getBranchDetail } from '@/services/branch/branch.api'
+import { useAuth } from '@/hooks/use-auth-context'
 import { useStaffSession } from '@/context/staff-session'
+import { tokenStorage } from '@/utils/token'
 
 /**
  * Front-desk tablet chrome: compact header + single-task body.
  * Distinct from AdminLayout (sidebar) — this is the staff check-in station.
  */
 export function StaffLayout() {
-  const { staffUserId, branchId } = useStaffSession()
+  const navigate = useNavigate()
+  const { user, isLoggedIn, clearAuth } = useAuth()
+  const hasAccessToken = !!tokenStorage.getAccessToken()
+  const { branchName } = useStaffSession()
 
-  const { data: branch } = useQuery({
-    queryKey: ['branch-detail', branchId],
-    queryFn: () => getBranchDetail(branchId as number),
-    enabled: branchId != null,
-    staleTime: 5 * 60_000,
-  })
+  useEffect(() => {
+    if (!isLoggedIn || !hasAccessToken) {
+      if (isLoggedIn && !hasAccessToken) clearAuth()
+      navigate('/auth/login', { replace: true })
+      return
+    }
+
+    if (user?.role !== 'STAFF') {
+      navigate('/403', { replace: true })
+    }
+  }, [isLoggedIn, hasAccessToken, user, navigate, clearAuth])
+
+  if (!isLoggedIn || !hasAccessToken || user?.role !== 'STAFF') {
+    return null
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center bg-slate-50">
@@ -38,11 +51,11 @@ export function StaffLayout() {
 
         <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700">
           <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-          {branch?.name ?? (branchId != null ? `Branch #${branchId}` : 'No branch')}
+          {branchName ?? 'Loading branch…'}
         </div>
 
         <div className="flex items-center gap-2 text-sm text-slate-700">
-          <Avatar email={`staff-${staffUserId ?? 'unknown'}@bro73`} size={28} />
+          <Avatar email={user.email} size={28} />
         </div>
       </header>
 

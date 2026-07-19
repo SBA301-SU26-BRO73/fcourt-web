@@ -4,7 +4,6 @@ import { CheckCircle, ChevronLeft, Flag, LogOut } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useStaffSession } from '@/context/staff-session'
 import { useCheckout } from '@/hooks/staff/use-checkout'
 import { useTodaySchedule } from '@/hooks/staff/use-today-schedule'
 import { formatClock } from '@/pages/staff/schedule-utils'
@@ -17,7 +16,6 @@ export function StaffCheckoutPage() {
   const { bookingId: bookingIdStr } = useParams<{ bookingId: string }>()
   const bookingId = Number(bookingIdStr)
   const location = useLocation()
-  const { staffUserId } = useStaffSession()
   const checkoutMutation = useCheckout()
   const scheduleQuery = useTodaySchedule()
 
@@ -29,21 +27,11 @@ export function StaffCheckoutPage() {
   const [error, setError] = useState<string | null>(null)
 
   function handleCheckout() {
-    if (staffUserId == null) return
     setError(null)
     checkoutMutation.mutate(bookingId, {
       onSuccess: (data) => setResult(data),
       onError: (err) => setError(getApiErrorMessage(err)),
     })
-  }
-
-  if (staffUserId == null) {
-    return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-        No staff session. Set <code className="font-mono">VITE_STAFF_USER_ID</code> in{' '}
-        <code className="font-mono">.env.local</code>.
-      </div>
-    )
   }
 
   if (!item && scheduleQuery.isLoading) {

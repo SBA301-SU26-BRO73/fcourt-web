@@ -66,6 +66,7 @@ export const API_ENDPOINTS = {
   staff: {
     listByBranch: (branchId: number) =>
       joinEndpoint(API_PREFIXES.staffBranches, branchId, 'staff'),
+    me: joinEndpoint(API_PREFIXES.staff, 'me'),
     detail: (id: number) => joinEndpoint(API_PREFIXES.staff, id),
     create: joinEndpoint(API_PREFIXES.staff),
     update: (id: number) => joinEndpoint(API_PREFIXES.staff, id),
@@ -74,6 +75,9 @@ export const API_ENDPOINTS = {
     checkin: joinEndpoint(API_PREFIXES.staff, 'checkin'),
     walkInBooking: joinEndpoint(API_PREFIXES.staff, 'walk-in-bookings'),
     checkout: joinEndpoint(API_PREFIXES.staff, 'checkout'),
+    posProducts: joinEndpoint(API_PREFIXES.staff, 'products'),
+    posOrders: joinEndpoint(API_PREFIXES.staff, 'orders'),
+    posOrderConfirm: (id: number) => joinEndpoint(API_PREFIXES.staff, 'orders', id, 'confirm'),
   },
   branches: {
     list: joinEndpoint(API_PREFIXES.branches),

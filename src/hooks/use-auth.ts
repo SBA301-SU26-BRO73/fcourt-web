@@ -20,6 +20,8 @@ export function useLogin() {
           navigate('/super-admin')
         } else if (decoded.role === 'ADMIN') {
           navigate('/admin/branches')
+        } else if (decoded.role === 'STAFF') {
+          navigate('/staff')
         } else {
           navigate('/')
         }

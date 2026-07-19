@@ -5,7 +5,6 @@ import { ArrowRight, Check, CheckCircle, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Field } from '@/components/ui/field'
-import { useStaffSession } from '@/context/staff-session'
 import { useBranchGrid } from '@/hooks/staff/use-branch-grid'
 import { useTodaySchedule } from '@/hooks/staff/use-today-schedule'
 import { useCourtSlotTemplates } from '@/hooks/staff/use-court-slot-templates'
@@ -70,7 +69,6 @@ const STEPS = [
 
 export function StaffWalkInPage() {
   const navigate = useNavigate()
-  const { staffUserId, branchId } = useStaffSession()
   const { courts } = useBranchGrid()
   const scheduleQuery = useTodaySchedule()
   const walkInMutation = useWalkInBooking()
@@ -125,24 +123,14 @@ export function StaffWalkInPage() {
   }
 
   function handleSubmit() {
-    if (staffUserId == null || effectiveCourtId == null) return
+    if (effectiveCourtId == null) return
     setServerError(null)
     walkInMutation.mutate(
-      { staffUserId, courtId: effectiveCourtId, guestPhone: phone, slotStarts: selectedSorted },
+      { courtId: effectiveCourtId, guestPhone: phone, slotStarts: selectedSorted },
       {
         onSuccess: () => navigate('/staff'),
         onError: (err) => setServerError(getApiErrorMessage(err)),
       },
-    )
-  }
-
-  if (staffUserId == null || branchId == null) {
-    return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-        No staff session. Set <code className="font-mono">VITE_STAFF_USER_ID</code> and{' '}
-        <code className="font-mono">VITE_BRANCH_ID</code> in{' '}
-        <code className="font-mono">.env.local</code>.
-      </div>
     )
   }
 

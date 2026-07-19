@@ -57,7 +57,6 @@ export interface StaffScheduleItem {
 
 /** POST /api/v1/staff/checkin request body. */
 export interface StaffCheckinRequest {
-  staffUserId: number
   checkinCode: string
 }
 
