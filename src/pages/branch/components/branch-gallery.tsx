@@ -12,7 +12,7 @@ export default function BranchGallery() {
         </div>
         <div className="bento-sub-3 relative overflow-hidden rounded-xl group bg-surface-container-high flex flex-col items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors">
           <span className="material-symbols-outlined text-display-lg text-primary">collections</span>
-          <span className="font-label-md text-label-md mt-stack-xs">+12 Photos</span>
+          <span className="font-label-md text-label-md mt-stack-xs">Ảnh tham khảo</span>
         </div>
       </section>
     );

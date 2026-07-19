@@ -1,4 +1,11 @@
-export default function BranchInfo() {
+import type { Branch, CourtResponse } from '../../../services/branch/branch.api';
+
+interface BranchInfoProps {
+  branch: Branch;
+  courts: CourtResponse[];
+}
+
+export default function BranchInfo({ branch, courts }: BranchInfoProps) {
     const amenities = [
       { icon: "lock", label: "Locker rooms" },
       { icon: "local_cafe", label: "Cafe" },
@@ -13,23 +20,13 @@ export default function BranchInfo() {
         <div className="space-y-stack-md">
           <h2 className="font-headline-md text-headline-md">About the Hub</h2>
           <p className="font-body-md text-body-md text-on-surface-variant">
-            Our Westside location is the flagship of the Velocity network, featuring 12 professional-grade courts across three disciplines. Whether you're a seasoned pro or just picking up a racket, our climate-controlled indoor courts and scenic outdoor clay surfaces provide the ultimate environment for your game.
+            {branch.name} hiện có {courts.length} sân thể thao. Chọn sân và khung giờ phù hợp để bắt đầu đặt sân.
           </p>
           <div className="bg-surface-container rounded-xl p-stack-lg border border-outline-variant/30">
             <h3 className="font-label-md text-label-md mb-stack-md uppercase tracking-wider">Hours of Operation</h3>
-            <div className="space-y-unit">
-              <div className="flex justify-between font-body-sm text-body-sm">
-                <span>Monday – Friday</span>
-                <span className="font-medium">6:00 AM – 11:00 PM</span>
-              </div>
-              <div className="flex justify-between font-body-sm text-body-sm">
-                <span>Saturday</span>
-                <span className="font-medium">7:00 AM – 10:00 PM</span>
-              </div>
-              <div className="flex justify-between font-body-sm text-body-sm">
-                <span>Sunday</span>
-                <span className="font-medium">8:00 AM – 8:00 PM</span>
-              </div>
+            <div className="flex justify-between font-body-sm text-body-sm">
+              <span>Hằng ngày</span>
+              <span className="font-medium">{formatTime(branch.openTime)} – {formatTime(branch.closeTime)}</span>
             </div>
           </div>
         </div>
@@ -47,3 +44,7 @@ export default function BranchInfo() {
       </section>
     );
   }
+
+function formatTime(value: string) {
+  return value?.slice(0, 5) || '--:--';
+}

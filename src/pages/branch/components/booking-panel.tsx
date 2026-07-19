@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Branch, CourtResponse } from '../../../services/branch/branch.api';
+import { branchApi, type Branch, type CourtResponse, type DailySlotResponse } from '../../../services/branch/branch.api';
 import { findDistrictForWard } from '@/data/sample-locations';
 
 interface BookingPanelProps {
@@ -10,31 +10,66 @@ interface BookingPanelProps {
 
 export default function BookingPanel({ branch, courts }: BookingPanelProps) {
   const navigate = useNavigate();
-
-  // Get unique court types
-  const courtTypes = Array.from(new Set(courts.map(c => c.courtTypeName).filter(Boolean)));
-  
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [selectedType, setSelectedType] = useState<string>('');
+  const activeCourts = courts.filter((court) => court.status === 'ACTIVE');
+  const todayStr = formatLocalDate(new Date());
+  const [selectedCourtId, setSelectedCourtId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
-  const [selectedTime, setSelectedTime] = useState<string>('10:00 AM');
+  const [selectedTime, setSelectedTime] = useState<string>('');
+  const [schedule, setSchedule] = useState<DailySlotResponse[]>([]);
+  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
 
   useEffect(() => {
-    if (courtTypes.length > 0 && !selectedType) {
-      setSelectedType(courtTypes[0]);
+    if (activeCourts.length > 0 && !activeCourts.some((court) => court.id === selectedCourtId)) {
+      setSelectedCourtId(activeCourts[0].id);
     }
-  }, [courtTypes, selectedType]);
+  }, [activeCourts, selectedCourtId]);
+
+  useEffect(() => {
+    if (!selectedCourtId) {
+      setSchedule([]);
+      setSelectedTime('');
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingSchedule(true);
+    branchApi.getDailyCourtSchedule(selectedCourtId, selectedDate)
+      .then((slots) => {
+        if (cancelled) return;
+        setSchedule(slots);
+        setSelectedTime((current) => slots.some((slot) => slot.startTime === current && slot.status === 'AVAILABLE')
+          ? current
+          : slots.find((slot) => slot.status === 'AVAILABLE')?.startTime ?? '');
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSchedule([]);
+          setSelectedTime('');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingSchedule(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCourtId, selectedDate]);
 
   const handleBookNow = () => {
-    // Navigate to slot-booking with branchId and date query parameters
-    navigate(`/slot-booking?branchId=${branch.id}&date=${selectedDate}`);
+    if (!selectedCourtId || !selectedTime) return;
+    const params = new URLSearchParams({
+      branchId: branch.id.toString(),
+      courtId: selectedCourtId.toString(),
+      date: selectedDate,
+      startTime: selectedTime,
+    });
+    navigate(`/slot-booking?${params.toString()}`);
   };
 
-  // Pricing based on selected type
-  const isTennis = selectedType.toLowerCase().includes('tennis');
-  const basePrice = isTennis ? 60.00 : 45.00;
-  const serviceFee = 2.50;
-  const totalPrice = basePrice + serviceFee;
+  const availableSlots = schedule.filter((slot) => slot.status === 'AVAILABLE');
+  const selectedSlot = schedule.find((slot) => slot.startTime === selectedTime && slot.status === 'AVAILABLE');
+  const selectedCourt = activeCourts.find((court) => court.id === selectedCourtId);
   const district = findDistrictForWard(branch.city, branch.ward ?? '')?.name;
   const mapQuery = [branch.name, branch.address, branch.ward, district, branch.city]
     .filter(Boolean)
@@ -49,19 +84,19 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
             <h3 className="font-headline-md text-headline-md mb-stack-md text-on-surface">Quick Book</h3>
             <div className="space-y-stack-md">
               
-              {/* Court Type Select */}
+              {/* Court Select */}
               <div className="p-stack-sm bg-surface-container rounded-lg border border-outline-variant/20">
-                <label className="block font-label-sm text-label-sm text-on-surface-variant mb-unit uppercase tracking-wider">Court Type</label>
+                <label className="block font-label-sm text-label-sm text-on-surface-variant mb-unit uppercase tracking-wider">Court</label>
                 <select 
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
+                  value={selectedCourtId ?? ''}
+                  onChange={(e) => setSelectedCourtId(Number(e.target.value))}
                   className="w-full bg-transparent border-none focus:ring-0 font-body-md text-body-md p-0 outline-none text-on-surface cursor-pointer"
                 >
-                  {courtTypes.length === 0 ? (
+                  {activeCourts.length === 0 ? (
                     <option value="">No courts available</option>
                   ) : (
-                    courtTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
+                    activeCourts.map((court) => (
+                      <option key={court.id} value={court.id}>{court.name} · {court.courtTypeName}</option>
                     ))
                   )}
                 </select>
@@ -85,14 +120,11 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
                     value={selectedTime}
                     onChange={(e) => setSelectedTime(e.target.value)}
                     className="w-full bg-transparent border-none focus:ring-0 font-body-sm text-body-sm p-0 outline-none text-on-surface cursor-pointer"
+                    disabled={isLoadingSchedule || availableSlots.length === 0}
                   >
-                    <option value="08:00 AM">08:00 AM</option>
-                    <option value="09:00 AM">09:00 AM</option>
-                    <option value="10:00 AM">10:00 AM</option>
-                    <option value="11:00 AM">11:00 AM</option>
-                    <option value="02:00 PM">02:00 PM</option>
-                    <option value="03:00 PM">03:00 PM</option>
-                    <option value="04:00 PM">04:00 PM</option>
+                    {isLoadingSchedule ? <option value="">Đang tải...</option> : availableSlots.length === 0 ? <option value="">Không có slot trống</option> : availableSlots.map((slot) => (
+                      <option key={slot.startTime} value={slot.startTime}>{formatTime(slot.startTime)} - {formatTime(slot.endTime)}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -101,26 +133,22 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
               <div className="border-t border-outline-variant/30 pt-stack-md mt-stack-md space-y-stack-xs text-on-surface">
                 <div className="flex justify-between font-body-sm text-body-sm">
                   <span>1 Hour Court Hire</span>
-                  <span className="font-medium">${basePrice.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-body-sm text-body-sm">
-                  <span>Service Fee</span>
-                  <span className="font-medium">${serviceFee.toFixed(2)}</span>
+                  <span className="font-medium">{selectedSlot ? formatCurrency(selectedSlot.price) : '—'}</span>
                 </div>
                 <div className="flex justify-between font-headline-md text-headline-md pt-stack-sm border-t border-outline-variant/10">
                   <span>Total</span>
-                  <span className="text-primary font-bold">${totalPrice.toFixed(2)}</span>
+                  <span className="text-primary font-bold">{selectedSlot ? formatCurrency(selectedSlot.price) : '—'}</span>
                 </div>
               </div>
 
               <button 
                 onClick={handleBookNow}
-                disabled={!branch.id}
+                disabled={!branch.id || !selectedCourt || !selectedSlot || isLoadingSchedule}
                 className="w-full bg-primary text-on-primary py-4 rounded-xl font-headline-md text-headline-md hover:scale-[1.01] transition-transform shadow-lg shadow-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Book Now
               </button>
-              <p className="text-center font-label-sm text-label-sm text-on-surface-variant">Cancel up to 24h before for full refund</p>
+              <p className="text-center font-label-sm text-label-sm text-on-surface-variant">Có thể hủy trước tối thiểu 1 giờ</p>
             </div>
           </div>
   
@@ -152,4 +180,23 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
       </div>
     </>
   );
+}
+
+function formatLocalDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatTime(value: string) {
+  return value.slice(0, 5);
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(value);
 }

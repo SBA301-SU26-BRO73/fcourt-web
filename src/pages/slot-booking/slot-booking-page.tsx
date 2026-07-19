@@ -24,6 +24,7 @@ export default function SlotBookingPage() {
   const branchIdParam = searchParams.get('branchId');
   const courtIdParam = searchParams.get('courtId');
   const dateParam = searchParams.get('date');
+  const startTimeParam = searchParams.get('startTime');
 
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>(dateParam || todayStr);
@@ -123,6 +124,23 @@ export default function SlotBookingPage() {
 
     fetchSchedules();
   }, [courts, selectedDate]);
+
+  useEffect(() => {
+    if (!startTimeParam || !courtIdParam || selectedSlots.length > 0 || isLoading) return;
+    const courtId = Number(courtIdParam);
+    const slot = courtSchedules[courtId]?.find((item) => item.startTime === startTimeParam && item.status === 'AVAILABLE');
+    const court = courts.find((item) => item.id === courtId);
+    if (!slot || !court) return;
+
+    setSelectedSlots([{
+      courtId: court.id,
+      courtName: court.name,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      price: slot.price,
+      date: selectedDate,
+    }]);
+  }, [startTimeParam, courtIdParam, selectedDate, courtSchedules, courts, selectedSlots.length, isLoading]);
 
   // Scroll to specific court row if courtId is in query params
   useEffect(() => {

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { CourtResponse } from "../../../services/branch/branch.api";
+import { branchApi, type CourtResponse, type DailySlotResponse } from "../../../services/branch/branch.api";
 
 interface BranchCourtsProps {
   courts: CourtResponse[];
@@ -11,10 +11,29 @@ interface BranchCourtsProps {
 export default function BranchCourts({ courts, isLoading, branchId }: BranchCourtsProps) {
   const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState<string>("All");
+  const [todaySchedules, setTodaySchedules] = useState<Record<number, DailySlotResponse[]>>({});
 
   const handleViewAvailability = (courtId: number) => {
     navigate(`/slot-booking?branchId=${branchId}&courtId=${courtId}`);
   };
+
+  useEffect(() => {
+    const today = new Date();
+    const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    let cancelled = false;
+
+    Promise.all(courts.map(async (court) => [court.id, await branchApi.getDailyCourtSchedule(court.id, date)] as const))
+      .then((entries) => {
+        if (!cancelled) setTodaySchedules(Object.fromEntries(entries));
+      })
+      .catch(() => {
+        if (!cancelled) setTodaySchedules({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courts]);
 
   // Extract unique court types from the courts list
   const courtTypes = ["All", ...Array.from(new Set(courts.map(c => c.courtTypeName).filter(Boolean)))];
@@ -69,15 +88,17 @@ export default function BranchCourts({ courts, isLoading, branchId }: BranchCour
           </div>
         ) : (
           filteredCourts.map((court) => {
-            const isTennis = court.courtTypeName?.toLowerCase().includes("tennis");
-            const price = isTennis ? 60 : 45;
-            
             // Standard fallback images for different sport types
-            const defaultSportImage = isTennis 
+            const isTennis = court.courtTypeName?.toLowerCase().includes("tennis");
+            const defaultSportImage = isTennis
               ? "https://lh3.googleusercontent.com/aida-public/AB6AXuCixMWLwvgosiwYViy13L4fCQ7VFkcQXOODOJU_s1mkUAlElpUHrRvspI1ApBDtkkj1Alhpzkyi_nXa2g-xSCNOSZFUB8QjowFo517vq7t3w8pt2Ei9Nmoc5ZAWzNO9A0HQYTjLV-bCQfqxtkjdqoLO_AsZx9KLZRWrGKUIYHtJj3knvtfjAv44HncnbLf-ivyJkfSPsSuOrqO_ksbUUAxG8HHMkBf7YumW3mDpUHH_bv38vIIbgNLj-RrIR0AhwjVjVxNsqU7XuzA" 
               : "https://lh3.googleusercontent.com/aida-public/AB6AXuDkf1-dSdwtoABJkWeg8R_dEK6FxEDzKiL2xWYUVxhTLeiLg0TJOcxu0LTobNbkpWaPhhCFNcXwEtjckUaTiV9duWZVJnJIwqinb8kyiDyEBNy59ffqH4pY-MgnwHVwChqQi7dCGYoPV6NQ3x6jdZizWiifMKP-taxp_2DQyxSqWRj8eZ7KtIZVLqFULfyD4m_FYr18YJWSQBm3KtkEKJr7w2uKo7TLWBEy8HR9KVjjr_GTLewEHo-d6uJdI7vpUtHJuMwWKaS3m8Y";
             
             const imageUrl = court.imageUrl || defaultSportImage;
+            const availablePrices = (todaySchedules[court.id] ?? [])
+              .filter((slot) => slot.status === 'AVAILABLE')
+              .map((slot) => slot.price);
+            const lowestPrice = availablePrices.length > 0 ? Math.min(...availablePrices) : null;
 
             return (
               <div
@@ -113,8 +134,10 @@ export default function BranchCourts({ courts, isLoading, branchId }: BranchCour
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="font-headline-md text-primary text-headline-md font-bold">${price}</div>
-                      <div className="font-label-sm text-label-sm text-on-surface-variant">per hour</div>
+                      <div className="font-headline-md text-primary text-headline-md font-bold">
+                        {lowestPrice === null ? '—' : `Từ ${formatCurrency(lowestPrice)}`}
+                      </div>
+                      <div className="font-label-sm text-label-sm text-on-surface-variant">theo khung giờ</div>
                     </div>
                   </div>
                   <div className="mt-stack-lg flex gap-stack-md">
@@ -136,4 +159,12 @@ export default function BranchCourts({ courts, isLoading, branchId }: BranchCour
       </div>
     </section>
   );
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(value);
 }

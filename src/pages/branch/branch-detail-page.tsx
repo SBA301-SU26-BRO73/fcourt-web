@@ -87,7 +87,7 @@ export default function BranchDetailPage() {
 
         {/* Các component con có thể được pass prop branch vào sau này nếu cần */}
         <BranchGallery />
-        <BranchInfo />
+        <BranchInfo branch={branch} courts={courts} />
         <BranchCourts courts={courts} isLoading={isLoadingCourts} branchId={branch.id} />
         <BranchReviews />
         

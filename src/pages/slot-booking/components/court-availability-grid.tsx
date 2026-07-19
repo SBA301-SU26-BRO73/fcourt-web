@@ -184,15 +184,15 @@ export default function CourtAvailabilityGrid({
                       const apiSlot = schedule.find(s => s.startTime === timeWithSec);
                       
                       // Status and pricing details
-                      const status = apiSlot ? apiSlot.status : 'AVAILABLE';
-                      const price = apiSlot ? apiSlot.price : (isPeakHour(time) ? 22.50 : 18.75);
+                      const status = apiSlot?.status ?? 'UNAVAILABLE';
+                      const price = apiSlot?.price ?? 0;
                       const selected = isSelected(court.id, time);
 
                       let cellStyle = '';
                       let content = null;
                       let disabled = false;
 
-                      if (status === 'EXPIRED' || status === 'BOOKED') {
+                      if (status === 'UNAVAILABLE' || status === 'EXPIRED' || status === 'BOOKED') {
                         cellStyle = 'bg-gray-300 border-gray-300/50 text-on-surface-variant/30 cursor-not-allowed';
                         disabled = true;
                       } else if (status === 'HOLDING') {
