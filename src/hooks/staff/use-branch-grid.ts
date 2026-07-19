@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { getCourtsByBranch } from '@/services/court/court.api'
-import { getBranchDetail } from '@/services/branch/branch.api'
+import { branchApi, getBranchDetail } from '@/services/branch/branch.api'
 import { useStaffSession } from '@/context/staff-session'
 
 /**
@@ -15,7 +14,7 @@ export function useBranchGrid() {
 
   const courtsQuery = useQuery({
     queryKey: ['branch-courts', branchId],
-    queryFn: () => getCourtsByBranch(branchId as number),
+    queryFn: () => branchApi.getCourtsByBranch(branchId as number),
     enabled,
     staleTime: 5 * 60_000,
   })

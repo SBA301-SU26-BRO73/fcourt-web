@@ -61,7 +61,29 @@ export function StaffSchedulePage() {
       </div>
 
       {/* CTAs */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Link
+          to="/staff/board"
+          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
+        >
+          <Grid3x3 size={22} className="text-green-600" />
+          <div className="leading-tight">
+            <div className="text-base font-semibold">Bảng giám sát sân</div>
+            <div className="text-sm text-slate-500">Xem trạng thái sân thời gian thực</div>
+          </div>
+          <span className="ml-auto text-xl text-slate-400">→</span>
+        </Link>
+        <Link
+          to="/staff/pos"
+          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
+        >
+          <ShoppingCart size={22} className="text-green-600" />
+          <div className="leading-tight">
+            <div className="text-base font-semibold">Bán hàng tại quầy</div>
+            <div className="text-sm text-slate-500">Thuê vợt, bán nước, cầu lông</div>
+          </div>
+          <span className="ml-auto text-xl text-slate-400">→</span>
+        </Link>
         <Link
           to="/staff/board"
           className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
