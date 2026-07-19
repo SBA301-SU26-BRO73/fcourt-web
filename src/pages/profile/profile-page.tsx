@@ -1,10 +1,12 @@
-import { Calendar, Key, LogOut, Mail, Pencil, Phone, User } from 'lucide-react'
+import { LogOut, Mail, Pencil, Phone, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { Button, Field, Logo, PasswordInput, PwMeter, TextInput } from '@/components/auth/auth-ui'
+import { Button, Field, TextInput } from '@/components/auth/auth-ui'
 import { useAuth } from '@/hooks/use-auth-context'
 import type { UserRole } from '@/types/auth'
+import { getProfile, updateProfile } from '@/services/auth/auth.service'
+import { validators } from '@/utils/validators'
 
 const ROLE_LABEL: Record<UserRole, string> = {
   CUSTOMER: 'Khách hàng',
@@ -31,26 +33,22 @@ export function ProfilePage() {
   const { user, isLoggedIn, clearAuth } = useAuth()
 
   useEffect(() => {
-    if (!isLoggedIn) navigate('/auth/role-pick', { replace: true })
+    if (!isLoggedIn) navigate('/auth/login?role=customer', { replace: true })
   }, [isLoggedIn, navigate])
 
   const [editing, setEditing] = useState(false)
-  const [changingPw, setChangingPw] = useState(false)
   const [toast, setToast] = useState('')
 
   const [f, setF] = useState({
-    name: 'Người dùng',
+    name: '',
     phone: '',
     email: user?.email ?? '',
-    dob: '',
   })
-  const [pw, setPw] = useState({ cur: '', next: '', confirm: '' })
   const [errs, setErrs] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
-  const [savingPw, setSavingPw] = useState(false)
+  const [loadingProfile, setLoadingProfile] = useState(true)
 
   const setField = (k: string, v: string) => { setF((x) => ({ ...x, [k]: v })); setErrs((e) => ({ ...e, [k]: '' })) }
-  const setPwField = (k: string, v: string) => { setPw((x) => ({ ...x, [k]: v })); setErrs((e) => ({ ...e, [k]: '' })) }
 
   const initials = f.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
   const roleLabel = user ? (ROLE_LABEL[user.role] ?? user.role) : ''
@@ -60,32 +58,50 @@ export function ProfilePage() {
     setTimeout(() => setToast(''), 3200)
   }
 
+  useEffect(() => {
+    if (!isLoggedIn) return
+
+    let active = true
+    setLoadingProfile(true)
+    getProfile()
+      .then((response) => {
+        if (!active || !response.data) return
+        setF({
+          name: response.data.fullName ?? '',
+          phone: response.data.phone ?? '',
+          email: response.data.email,
+        })
+      })
+      .catch((error) => {
+        if (active) setErrs({ form: error instanceof Error ? error.message : 'Không thể tải thông tin cá nhân.' })
+      })
+      .finally(() => {
+        if (active) setLoadingProfile(false)
+      })
+
+    return () => { active = false }
+  }, [isLoggedIn])
+
   async function saveProfile(ev: React.FormEvent) {
     ev.preventDefault()
     const e: Record<string, string> = {}
     if (!f.name.trim()) e.name = 'Vui lòng nhập họ tên'
+    else if (!validators.phone(f.phone)) e.phone = 'Số điện thoại không hợp lệ'
     if (!f.phone.trim()) e.phone = 'Vui lòng nhập SĐT'
     if (Object.keys(e).length) { setErrs(e); return }
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 800))
-    setSaving(false)
-    setEditing(false)
-    showToast('Cập nhật thông tin thành công!')
-  }
-
-  async function savePw(ev: React.FormEvent) {
-    ev.preventDefault()
-    const e: Record<string, string> = {}
-    if (!pw.cur) e.cur = 'Nhập mật khẩu hiện tại'
-    if (!pw.next || pw.next.length < 6) e.next = 'Tối thiểu 6 ký tự'
-    if (pw.next !== pw.confirm) e.confirm = 'Mật khẩu không khớp'
-    if (Object.keys(e).length) { setErrs(e); return }
-    setSavingPw(true)
-    await new Promise((r) => setTimeout(r, 800))
-    setSavingPw(false)
-    setChangingPw(false)
-    setPw({ cur: '', next: '', confirm: '' })
-    showToast('Đổi mật khẩu thành công!')
+    try {
+      const response = await updateProfile({ fullName: f.name.trim(), phone: f.phone })
+      if (response.data) {
+        setF({ name: response.data.fullName ?? '', phone: response.data.phone ?? '', email: response.data.email })
+      }
+      setEditing(false)
+      showToast('Cập nhật thông tin thành công!')
+    } catch (error) {
+      setErrs({ form: error instanceof Error ? error.message : 'Không thể cập nhật thông tin.' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   function logout() {
@@ -99,35 +115,42 @@ export function ProfilePage() {
     { label: 'Họ và tên', val: f.name, icon: User },
     { label: 'Số điện thoại', val: f.phone || '—', icon: Phone },
     { label: 'Email', val: f.email, icon: Mail },
-    { label: 'Ngày sinh', val: f.dob || '—', icon: Calendar },
   ]
 
   return (
     <div className="min-h-screen bg-slate-50">
       {toast && <Toast msg={toast} />}
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 h-15 flex items-center justify-between">
-        <Logo />
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200">
-            <div className="w-7 h-7 rounded-full bg-green-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-              {initials}
+      <header className="border-b border-slate-200 bg-white px-6">
+        <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between">
+          <button type="button" onClick={() => navigate('/')} className="text-2xl font-bold tracking-tight text-green-700">
+            Velocity
+          </button>
+          <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-700 md:flex">
+            <span>Pickleball</span>
+            <span className="border-b-2 border-green-600 pb-2 text-slate-900">Tennis</span>
+            <span>Badminton</span>
+          </nav>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button type="button" aria-label="Notifications" className="rounded-lg p-2 text-slate-600 hover:bg-slate-100">
+              <span className="material-symbols-outlined">notifications</span>
+            </button>
+            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-1.5 sm:px-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white">{initials}</div>
+              <span className="hidden text-sm font-semibold text-slate-700 sm:inline">Tài khoản</span>
             </div>
-            <span className="text-[13px] font-semibold text-slate-700">{f.name}</span>
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-green-50 text-green-700">
-              {roleLabel}
-            </span>
+            <Button variant="ghost" onClick={logout}>
+              <LogOut size={15} /> <span className="hidden sm:inline">Đăng xuất</span>
+            </Button>
           </div>
-          <Button variant="ghost" onClick={logout}>
-            <LogOut size={15} /> Đăng xuất
-          </Button>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-6 py-10 pb-20 space-y-4">
+        {errs.form && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errs.form}</div>}
         {/* Profile card */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="h-24 bg-[linear-gradient(140deg,#1fae5f_0%,#0e9d57_55%,#0b8a4d_100%)] relative">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <div className="h-24 rounded-t-2xl bg-[linear-gradient(140deg,#1fae5f_0%,#0e9d57_55%,#0b8a4d_100%)] relative overflow-hidden">
             <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 680 90" preserveAspectRatio="xMidYMid slice">
               <g transform="translate(340,45) rotate(-4) scale(0.92)">
                 <rect x="-200" y="-38" width="400" height="76" fill="none" stroke="rgba(255,255,255,.6)" strokeWidth="1.5" />
@@ -137,15 +160,17 @@ export function ProfilePage() {
               </g>
             </svg>
           </div>
-          <div className="px-7 pb-6">
+          <div className="relative bg-white px-7 pb-6">
             <div className="flex items-end justify-between -mt-7 mb-4">
-              <div className="w-14 h-14 rounded-full bg-green-600 text-white flex items-center justify-center text-xl font-extrabold border-[3px] border-white shadow-sm">
+              <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-green-600 text-xl font-extrabold text-white shadow-md">
                 {initials}
               </div>
               {!editing && (
-                <Button variant="ghost" onClick={() => { setEditing(true); setErrs({}) }}>
+                <div className="relative z-10">
+                  <Button variant="ghost" onClick={() => { setEditing(true); setErrs({}) }}>
                   <Pencil size={14} /> Chỉnh sửa
-                </Button>
+                  </Button>
+                </div>
               )}
             </div>
             <div className="font-extrabold text-xl text-slate-900 mb-1">{f.name}</div>
@@ -168,7 +193,9 @@ export function ProfilePage() {
           <div className="flex items-center gap-2 font-bold text-[15px] text-slate-900 mb-5">
             <User size={17} className="text-green-600" /> Thông tin cá nhân
           </div>
-          {editing ? (
+          {loadingProfile ? (
+            <div className="py-8 text-center text-sm text-slate-500">Đang tải thông tin cá nhân...</div>
+          ) : editing ? (
             <form onSubmit={saveProfile} noValidate>
               <Field label="Họ và tên" error={errs.name}>
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
@@ -187,12 +214,6 @@ export function ProfilePage() {
                   <TextInput value={f.email} disabled className="opacity-60 cursor-not-allowed" />
                 </Field>
               </div>
-              <Field label="Ngày sinh" opt="Không bắt buộc">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                  <Calendar size={15} />
-                </span>
-                <TextInput hasIcon type="date" value={f.dob} onChange={(e) => setField('dob', e.target.value)} />
-              </Field>
               <div className="flex gap-2.5 justify-end">
                 <Button type="button" variant="ghost" onClick={() => { setEditing(false); setErrs({}) }}>Huỷ</Button>
                 <Button type="submit" loading={saving}>Lưu thay đổi</Button>
@@ -211,37 +232,6 @@ export function ProfilePage() {
           )}
         </div>
 
-        {/* Change password */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2 font-bold text-[15px] text-slate-900">
-              <Key size={17} className="text-green-600" /> Bảo mật tài khoản
-            </div>
-            {!changingPw && (
-              <Button variant="subtle" onClick={() => { setChangingPw(true); setErrs({}) }}>
-                Đổi mật khẩu
-              </Button>
-            )}
-          </div>
-          {changingPw && (
-            <form onSubmit={savePw} noValidate>
-              <Field label="Mật khẩu hiện tại" error={errs.cur}>
-                <PasswordInput value={pw.cur} onChange={(e) => setPwField('cur', e.target.value)} placeholder="Nhập mật khẩu hiện tại" error={errs.cur} />
-              </Field>
-              <Field label="Mật khẩu mới" error={errs.next}>
-                <PasswordInput value={pw.next} onChange={(e) => setPwField('next', e.target.value)} placeholder="Tối thiểu 6 ký tự" error={errs.next} autoComplete="new-password" />
-              </Field>
-              {pw.next && <PwMeter value={pw.next} />}
-              <Field label="Xác nhận mật khẩu mới" error={errs.confirm}>
-                <PasswordInput value={pw.confirm} onChange={(e) => setPwField('confirm', e.target.value)} placeholder="Nhập lại mật khẩu mới" error={errs.confirm} autoComplete="new-password" />
-              </Field>
-              <div className="flex gap-2.5 justify-end">
-                <Button type="button" variant="ghost" onClick={() => { setChangingPw(false); setPw({ cur: '', next: '', confirm: '' }); setErrs({}) }}>Huỷ</Button>
-                <Button type="submit" loading={savingPw}>Đổi mật khẩu</Button>
-              </div>
-            </form>
-          )}
-        </div>
       </main>
     </div>
   )

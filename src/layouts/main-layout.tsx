@@ -1,10 +1,12 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, type FormEvent } from "react";
 import type { BranchFilterRequest } from "@/services/branch/branch.api";
+import { useAuth } from "@/hooks/use-auth-context";
 
 export function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, isLoggedIn } = useAuth();
 
   const [searchInput, setSearchInput] = useState("");
   const [searchType, setSearchType] =
@@ -33,6 +35,12 @@ export function MainLayout() {
     setGlobalFilters({});
     navigate("/");
   };
+
+  const handleAccountClick = () => {
+    navigate(isLoggedIn ? "/profile" : "/auth/login?role=customer");
+  };
+
+  const accountLabel = isLoggedIn ? (user?.fullName || user?.email || "Tài khoản") : "Đăng nhập";
 
   const isHomePage = location.pathname === "/";
 
@@ -74,12 +82,14 @@ export function MainLayout() {
 
                 <button
                   type="button"
-                  aria-label="Account"
+                  aria-label={accountLabel}
+                  onClick={handleAccountClick}
                   className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container-high/50"
                 >
                   <span className="material-symbols-outlined">
                     account_circle
                   </span>
+                  <span className="hidden sm:inline text-xs font-semibold">{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
                 </button>
               </div>
             </div>
@@ -181,12 +191,14 @@ export function MainLayout() {
 
                 <button
                   type="button"
-                  aria-label="Account"
+                  aria-label={accountLabel}
+                  onClick={handleAccountClick}
                   className="rounded-full p-2 transition-colors hover:bg-surface-container-high"
                 >
                   <span className="material-symbols-outlined text-on-surface-variant">
                     account_circle
                   </span>
+                  <span className="hidden lg:inline text-sm font-semibold text-on-surface-variant">{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
                 </button>
               </div>
             </div>
@@ -250,12 +262,14 @@ export function MainLayout() {
 
                 <button
                   type="button"
-                  aria-label="Account"
+                  aria-label={accountLabel}
+                  onClick={handleAccountClick}
                   className="rounded-lg p-2 text-on-surface-variant transition-all hover:bg-surface-container-high/50 active:scale-95"
                 >
                   <span className="material-symbols-outlined">
                     account_circle
                   </span>
+                  <span className="hidden sm:inline text-xs font-semibold">{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
                 </button>
               </div>
             </div>

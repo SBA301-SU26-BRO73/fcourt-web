@@ -1,6 +1,6 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type { ApiResponse, LoginRequest, RegisterCustomerRequest, TokenResponse } from '@/types/auth'
+import type { ApiResponse, LoginRequest, RegisterCustomerRequest, TokenResponse, UpdateProfileRequest, UserProfile } from '@/types/auth'
 
 export async function login(data: LoginRequest): Promise<ApiResponse<TokenResponse>> {
   const response = await axiosClient.post(API_ENDPOINTS.auth.login, data)
@@ -23,5 +23,15 @@ export async function registerCourtOwner(data: FormData): Promise<ApiResponse<vo
 
 export async function refreshToken(token: string): Promise<ApiResponse<TokenResponse>> {
   const response = await axiosClient.post(API_ENDPOINTS.auth.refresh, { refreshToken: token })
+  return response.data
+}
+
+export async function getProfile(): Promise<ApiResponse<UserProfile>> {
+  const response = await axiosClient.get(API_ENDPOINTS.auth.profile)
+  return response.data
+}
+
+export async function updateProfile(data: UpdateProfileRequest): Promise<ApiResponse<UserProfile>> {
+  const response = await axiosClient.patch(API_ENDPOINTS.auth.profile, data)
   return response.data
 }

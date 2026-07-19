@@ -19,6 +19,19 @@ export interface AuthUser {
   role: UserRole
 }
 
+export type UserStatus = 'PENDING_APPROVAL' | 'ACTIVE' | 'INACTIVE' | 'LOCKED'
+
+export interface UserProfile extends AuthUser {
+  fullName: string | null
+  phone: string | null
+  status: UserStatus
+}
+
+export interface UpdateProfileRequest {
+  fullName: string
+  phone: string
+}
+
 export interface LoginRequest {
   email: string
   password: string
