@@ -1,6 +1,7 @@
 ﻿import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
 import type { ApiResponse } from '@/types/auth'
+import type { SpringPage } from '@/types/court'
 import type {
   BookingResponse,
   CreateBookingsRequest,
@@ -55,6 +56,24 @@ export async function getPaymentDetails(paymentId: number) {
 export async function getBookingDetails(bookingId: number) {
   const { data } = await axiosClient.get<ApiResponse<BookingResponse>>(
     `${API_ENDPOINTS.bookings.list}/${bookingId}`,
+  )
+  return requireData(data)
+}
+
+/** Booking history for the logged-in member. */
+export async function getMyBookings(page = 0, size = 20) {
+  const { data } = await axiosClient.get<ApiResponse<SpringPage<BookingResponse>>>(
+    API_ENDPOINTS.bookings.my,
+    { params: { page, size, sort: 'createdAt,desc' } },
+  )
+  return requireData(data)
+}
+
+/** Public guest lookup by booking code + the phone on the booking. */
+export async function lookupBooking(bookingCode: string, phone: string) {
+  const { data } = await axiosClient.get<ApiResponse<BookingResponse>>(
+    API_ENDPOINTS.bookings.lookup,
+    { params: { bookingCode, phone } },
   )
   return requireData(data)
 }

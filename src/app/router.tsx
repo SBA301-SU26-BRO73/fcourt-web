@@ -24,6 +24,8 @@ import { CourtDetailPage } from '@/pages/courts/court-detail-page'
 import { CourtFormPage } from '@/pages/courts/court-form-page'
 import { CourtListPage } from '@/pages/courts/court-list-page'
 import { NotFoundPage } from '@/pages/not-found/not-found-page'
+import { MyBookingsPage } from '@/pages/booking/my-bookings-page'
+import { BookingLookupPage } from '@/pages/booking/booking-lookup-page'
 import {AdminBookingPage} from "@/pages/admin/AdminBookingPage.tsx";
 import { StaffPage } from '@/pages/staff/staff-page'
 import { StaffSchedulePage } from '@/pages/staff/staff-schedule-page'
@@ -60,6 +62,8 @@ export const router = createBrowserRouter([
       },
       { path: 'payment', element: <PaymentPage /> },
       { path: 'confirmation', element: <ConfirmationPage /> },
+      { path: 'my-bookings', element: <MyBookingsPage /> },
+      { path: 'lookup', element: <BookingLookupPage /> },
     ],
   },
   {

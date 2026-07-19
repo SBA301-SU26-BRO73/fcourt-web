@@ -59,6 +59,9 @@ export interface BookingSlotResponse {
 
 export interface BookingResponse {
   id: number
+  bookingCode: string
+  /** Only present once the booking is CONFIRMED or CHECKED_IN. */
+  checkinCode: string | null
   courtId: number
   courtName: string
   customerId: number | null

@@ -288,6 +288,7 @@ export function MainLayout() {
             <button
               type="button"
               className="flex flex-col items-center justify-center text-on-surface-variant"
+              onClick={() => navigate("/my-bookings")}
             >
               <span className="material-symbols-outlined">
                 event_available

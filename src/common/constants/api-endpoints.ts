@@ -97,6 +97,8 @@ export const API_ENDPOINTS = {
   },
   bookings: {
     list: joinEndpoint(API_PREFIXES.bookings),
+    my: joinEndpoint(API_PREFIXES.bookings, 'my'),
+    lookup: joinEndpoint(API_PREFIXES.bookings, 'lookup'),
   },
   payments: {
     list: joinEndpoint(API_PREFIXES.payments),
