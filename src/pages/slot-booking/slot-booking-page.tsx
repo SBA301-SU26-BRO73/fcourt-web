@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import CourtAvailabilityGrid from './components/court-availability-grid';
 import type { Court } from './components/court-availability-grid';
 import BookingPanel from './components/booking-panel';
 import type { SelectedSlot } from './components/booking-panel';
 import { branchApi } from '@/services/branch/branch.api';
 import type { DailySlotResponse } from '@/services/branch/branch.api';
+import { createBookings } from '@/services/booking/booking.api';
+import { useAuth } from '@/hooks/use-auth-context';
 
 const EXTENDED_TIMESLOTS = [
   '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
@@ -15,6 +17,9 @@ const EXTENDED_TIMESLOTS = [
 ];
 
 export default function SlotBookingPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAuthenticatedCustomer = user?.role === 'CUSTOMER';
   const [searchParams, setSearchParams] = useSearchParams();
   const branchIdParam = searchParams.get('branchId');
   const courtIdParam = searchParams.get('courtId');
@@ -25,7 +30,9 @@ export default function SlotBookingPage() {
   const [courtSchedules, setCourtSchedules] = useState<Record<number, DailySlotResponse[]>>({});
   const [selectedSlots, setSelectedSlots] = useState<SelectedSlot[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [isBooking, setIsBooking] = useState<boolean>(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [courts, setCourts] = useState<Court[]>([]);
@@ -94,25 +101,21 @@ export default function SlotBookingPage() {
       const newSchedules: Record<number, DailySlotResponse[]> = {};
 
       try {
+        setScheduleError(null);
         await Promise.all(
           courts.map(async (court) => {
-            try {
-              // Try fetching from actual backend endpoint
-              const data = await branchApi.getDailyCourtSchedule(court.id, selectedDate);
-              if (data && Array.isArray(data)) {
-                newSchedules[court.id] = data;
-              } else {
-                newSchedules[court.id] = generateMockSchedule(court.id, selectedDate);
-              }
-            } catch (err) {
-              // Fallback to mock schedule if backend isn't running or endpoint doesn't exist
-              newSchedules[court.id] = generateMockSchedule(court.id, selectedDate);
+            const data = await branchApi.getDailyCourtSchedule(court.id, selectedDate);
+            if (!Array.isArray(data)) {
+              throw new Error('Invalid schedule response');
             }
+            newSchedules[court.id] = data;
           })
         );
         setCourtSchedules(newSchedules);
       } catch (err) {
         console.error('Error in fetching schedules:', err);
+        setCourtSchedules({});
+        setScheduleError('Không thể tải lịch sân. Vui lòng thử lại sau.');
       } finally {
         setIsLoading(false);
       }
@@ -186,13 +189,27 @@ export default function SlotBookingPage() {
     }
   };
 
-  const handleBook = () => {
-    setShowSuccessModal(true);
-  };
+  const handleBook = async (guestPhone?: string) => {
+    setBookingError(null);
+    const trimmedPhone = guestPhone?.trim() ?? '';
+    if (!isAuthenticatedCustomer && !/^[0-9]{9,11}$/.test(trimmedPhone)) {
+      setBookingError('Vui lòng nhập số điện thoại 9-11 chữ số.');
+      return;
+    }
 
-  const handleCloseModal = () => {
-    setShowSuccessModal(false);
-    setSelectedSlots([]); // Clear selection on booking success
+    try {
+      setIsBooking(true);
+      const response = await createBookings({
+        ...(isAuthenticatedCustomer ? {} : { guestPhone: trimmedPhone }),
+        bookings: buildBookingItems(selectedSlots),
+      });
+      navigate(`/payment?bookingId=${response.bookings[0].id}`, { state: { booking: response } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Không thể tạo booking.';
+      setBookingError(message);
+    } finally {
+      setIsBooking(false);
+    }
   };
 
   return (
@@ -223,132 +240,77 @@ export default function SlotBookingPage() {
           <h3 className="text-xl font-bold text-on-surface">No Courts Available</h3>
           <p className="text-on-surface-variant text-sm mt-1">There are no courts registered at this branch location.</p>
         </div>
-      ) : (
-        <CourtAvailabilityGrid
-          selectedDate={selectedDate}
-          onDateChange={handleDateChange}
-          selectedSlots={selectedSlots}
-          onSlotClick={handleSlotClick}
-          courtSchedules={courtSchedules}
-          courts={courts}
-          timeSlots={EXTENDED_TIMESLOTS}
-        />
-      )}
+      ) : scheduleError ? (
+          <div className="flex flex-col items-center justify-center py-24 border border-destructive/20 rounded-2xl bg-destructive/5">
+            <h3 className="text-xl font-bold text-destructive">Không thể tải lịch sân</h3>
+            <p className="text-sm text-muted-foreground mt-2">{scheduleError}</p>
+            <button
+              type="button"
+              onClick={() => setSelectedDate((date) => date)}
+              className="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+            >
+              Thử lại
+            </button>
+          </div>
+        ) : (
+          <CourtAvailabilityGrid
+            selectedDate={selectedDate}
+            onDateChange={handleDateChange}
+            selectedSlots={selectedSlots}
+            onSlotClick={handleSlotClick}
+            courtSchedules={courtSchedules}
+            courts={courts}
+            timeSlots={EXTENDED_TIMESLOTS}
+          />
+        )}
 
       <BookingPanel
         selectedSlots={selectedSlots}
         venueName={venueName}
         onBook={handleBook}
+        requiresGuestPhone={!isAuthenticatedCustomer}
+        isSubmitting={isBooking}
+        error={bookingError}
       />
-
-      {/* Success Modal */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-secondary-container/20 rounded-full flex items-center justify-center text-secondary mb-4">
-              <span className="material-symbols-outlined text-[40px] font-bold">check_circle</span>
-            </div>
-            <h3 className="text-2xl font-bold text-on-surface">Booking Confirmed!</h3>
-            <p className="text-on-surface-variant text-sm mt-2">
-              Your court reservation at <strong>{venueName}</strong> has been successfully booked.
-            </p>
-            
-            <div className="w-full bg-surface-container-low border border-outline-variant/30 rounded-2xl p-4 my-6 text-left space-y-2 text-sm">
-              <div className="flex justify-between border-b border-outline-variant/20 pb-2">
-                <span className="text-on-surface-variant font-medium">Selected Date:</span>
-                <span className="font-bold text-on-surface">{selectedDate}</span>
-              </div>
-              <div className="max-h-36 overflow-y-auto pr-1 space-y-1">
-                {selectedSlots.map((s, idx) => (
-                  <div key={idx} className="flex justify-between text-xs">
-                    <span className="text-on-surface-variant">{s.courtName} ({s.startTime} - {s.endTime})</span>
-                    <span className="font-bold text-on-surface">${s.price.toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between border-t border-outline-variant/20 pt-2 font-bold text-base">
-                <span>Total Paid:</span>
-                <span className="text-primary">${selectedSlots.reduce((sum, s) => sum + s.price, 0).toFixed(2)}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={handleCloseModal}
-              className="w-full py-3 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-primary/95 transition-all cursor-pointer"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// Mock Schedule generator
-const generateMockSchedule = (courtId: number, dateStr: string): DailySlotResponse[] => {
-  const slots: DailySlotResponse[] = [];
-  let currentHour = 7;
-  let currentMinute = 0;
-  
-  const todayStr = new Date().toISOString().split('T')[0];
-  const now = new Date();
-  const currentHH = now.getHours();
-  const currentMM = now.getMinutes();
+function normalizeTime(time: string) {
+  const [hour = '00', minute = '00'] = time.split(':');
+  return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:00`;
+}
 
-  while (currentHour < 22 || (currentHour === 22 && currentMinute === 0)) {
-    const hh = currentHour.toString().padStart(2, '0');
-    const mm = currentMinute.toString().padStart(2, '0');
-    const startTimeStr = `${hh}:${mm}:00`;
-    
-    let endHour = currentHour;
-    let endMinute = currentMinute + 30;
-    if (endMinute >= 60) {
-      endHour += 1;
-      endMinute = 0;
-    }
-    const endHH = endHour.toString().padStart(2, '0');
-    const endMM = endMinute.toString().padStart(2, '0');
-    const endTimeStr = `${endHH}:${endMM}:00`;
+function toMinutes(time: string) {
+  const [hour = '0', minute = '0'] = time.split(':');
+  return Number(hour) * 60 + Number(minute);
+}
 
-    const isPeak = ['09:00', '09:30', '10:00', '10:30'].includes(`${hh}:${mm}`);
-    const price = isPeak ? 22.50 : 18.75;
+function buildBookingItems(selectedSlots: SelectedSlot[]) {
+  const grouped = new Map<string, SelectedSlot[]>();
+  selectedSlots.forEach((slot) => {
+    const key = `${slot.courtId}|${slot.date}`;
+    grouped.set(key, [...(grouped.get(key) ?? []), slot]);
+  });
 
-    let status: 'AVAILABLE' | 'BOOKED' | 'HOLDING' | 'EXPIRED' = 'AVAILABLE';
-    
-    if (dateStr === todayStr) {
-      if (currentHour < currentHH || (currentHour === currentHH && currentMinute < currentMM)) {
-        status = 'EXPIRED';
+  return Array.from(grouped.values()).flatMap((slots) => {
+    const ordered = [...slots].sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
+    const runs: SelectedSlot[][] = [];
+    ordered.forEach((slot) => {
+      const lastRun = runs[runs.length - 1];
+      const previous = lastRun?.[lastRun.length - 1];
+      if (!previous || normalizeTime(previous.endTime) !== normalizeTime(slot.startTime)) {
+        runs.push([slot]);
+      } else {
+        lastRun.push(slot);
       }
-    }
-
-    const isMockBooked = (courtId % 3 === 0 && (startTimeStr === '11:30:00' || startTimeStr === '12:00:00' || startTimeStr === '15:00:00')) ||
-                         (courtId % 3 === 1 && (startTimeStr === '08:00:00' || startTimeStr === '10:30:00' || startTimeStr === '14:00:00')) ||
-                         (courtId % 3 === 2 && (startTimeStr === '09:30:00' || startTimeStr === '13:00:00' || startTimeStr === '16:30:00'));
-
-    const isMockHolding = (courtId % 3 === 0 && startTimeStr === '10:00:00') ||
-                          (courtId % 3 === 1 && startTimeStr === '16:00:00') ||
-                          (courtId % 3 === 2 && startTimeStr === '14:30:00');
-
-    if (isMockBooked) {
-      status = 'BOOKED';
-    } else if (isMockHolding) {
-      status = 'HOLDING';
-    }
-
-    slots.push({
-      startTime: startTimeStr,
-      endTime: endTimeStr,
-      price,
-      status,
     });
 
-    currentMinute += 30;
-    if (currentMinute >= 60) {
-      currentHour += 1;
-      currentMinute = 0;
-    }
-  }
+    return runs.map((run) => ({
+      courtId: run[0].courtId,
+      date: run[0].date,
+      slotStarts: run.map((slot) => normalizeTime(slot.startTime)),
+    }));
+  });
+}
 
-  return slots;
-};

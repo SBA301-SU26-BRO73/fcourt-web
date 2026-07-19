@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { useSearchParams } from 'react-router-dom';
 import {
   CheckCircle2,
   XCircle,
@@ -13,10 +14,15 @@ import {
 } from 'lucide-react';
 import { ProgressStepper } from '../../components/ProgressStepper';
 import { BookingSummary } from '../../components/BookingSummary';
+import type { CreateBookingsResponse, PaymentResponse } from '@/types/booking';
+import { getPaymentDetails } from '@/services/booking/booking.api';
 
 type PaymentStatus = 'uploading' | 'pending' | 'approved' | 'rejected' | 'error';
 
 interface LocationState {
+  booking?: CreateBookingsResponse;
+  payment?: PaymentResponse;
+  paymentCode?: string;
   file?: {
     name: string;
     size: number;
@@ -24,25 +30,29 @@ interface LocationState {
   };
 }
 
-// Mock polling — simulates backend status checks
-function useMockPolling(
+// Real polling — queries backend payment status
+function useRealPolling(
+  paymentId: number | undefined,
   active: boolean,
   onStatusChange: (status: PaymentStatus) => void
 ) {
-  const pollCount = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || !paymentId) return;
 
-    const poll = () => {
-      pollCount.current += 1;
-
-      // After ~5 polls (15s) simulate approval; randomise rejection ~20% of the time
-      if (pollCount.current >= 5) {
-        const approved = Math.random() > 0.2;
-        onStatusChange(approved ? 'approved' : 'rejected');
-        return;
+    const poll = async () => {
+      try {
+        const payment = await getPaymentDetails(paymentId);
+        if (payment.status === 'CONFIRMED') {
+          onStatusChange('approved');
+          return;
+        } else if (payment.status === 'REJECTED') {
+          onStatusChange('rejected');
+          return;
+        }
+      } catch (error) {
+        console.error('Error polling payment status:', error);
       }
 
       timerRef.current = setTimeout(poll, 3000);
@@ -53,37 +63,70 @@ function useMockPolling(
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [active, onStatusChange]);
-
-  const reset = () => {
-    pollCount.current = 0;
-    if (timerRef.current) clearTimeout(timerRef.current);
-  };
-
-  return { reset };
+  }, [active, paymentId, onStatusChange]);
 }
 
 export function ConfirmationPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const paymentIdParam = searchParams.get('paymentId');
   const state = (location.state as LocationState) ?? {};
+  const [paymentData, setPaymentData] = useState<PaymentResponse | null>(() => state.payment ?? null);
+  const [paymentLoading, setPaymentLoading] = useState(!state.payment && !!paymentIdParam);
+  const [paymentLoadError, setPaymentLoadError] = useState<string | null>(null);
+  const summaryData = paymentData ?? state.booking;
+  const paymentCode = state.paymentCode || (
+    summaryData ? `BOOK-${summaryData.bookings.map((booking) => booking.id).join('-')}` : 'BOOK'
+  );
 
-  const [status, setStatus] = useState<PaymentStatus>('uploading');
-  const [pollActive, setPollActive] = useState(false);
+  const [status, setStatus] = useState<PaymentStatus>(() => {
+    if (paymentData?.status === 'CONFIRMED') return 'approved';
+    if (paymentData?.status === 'REJECTED') return 'rejected';
+    return paymentData ? 'pending' : 'uploading';
+  });
+  const [pollActive, setPollActive] = useState(() => {
+    return !!paymentData && paymentData.status === 'PENDING';
+  });
   const [pollCount, setPollCount] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    if (paymentData || !paymentIdParam) return;
+
+    const paymentId = Number(paymentIdParam);
+    if (!Number.isInteger(paymentId) || paymentId <= 0) {
+      setPaymentLoadError('Mã thanh toán không hợp lệ.');
+      setPaymentLoading(false);
+      return;
+    }
+
+    getPaymentDetails(paymentId)
+      .then((payment) => {
+        setPaymentData(payment);
+        setPaymentLoadError(null);
+      })
+      .catch(() => setPaymentLoadError('Không thể tải trạng thái thanh toán.'))
+      .finally(() => setPaymentLoading(false));
+  }, [paymentData, paymentIdParam]);
 
   const previewUrl = state.file?.previewUrl;
   const fileName = state.file?.name ?? 'Biên lai thanh toán';
 
-  // Simulate upload delay then start polling
   useEffect(() => {
+    if (paymentData) {
+      if (paymentData.status === 'PENDING') {
+        setStatus('pending');
+        setPollActive(true);
+      }
+      return;
+    }
     const uploadTimer = setTimeout(() => {
       setStatus('pending');
       setPollActive(true);
     }, 2000);
     return () => clearTimeout(uploadTimer);
-  }, [retryCount]);
+  }, [retryCount, paymentData]);
 
   // Polling tick counter for UI feedback
   useEffect(() => {
@@ -97,18 +140,44 @@ export function ConfirmationPage() {
     setStatus(newStatus);
   };
 
-  const { reset } = useMockPolling(pollActive, handleStatusChange);
+  useRealPolling(paymentData?.id, pollActive, handleStatusChange);
 
   const handleRetry = () => {
-    reset();
     setRetryCount((c) => c + 1);
     setStatus('uploading');
     setPollActive(false);
     setPollCount(0);
   };
 
-  const handleNewBooking = () => navigate('/payment');
-  const handleUploadNew = () => navigate('/payment');
+  const handleNewBooking = () => navigate('/slot-booking');
+  const handleUploadNew = () => navigate('/payment', { state: { booking: state.booking } });
+
+  if (!summaryData && paymentLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-sm text-muted-foreground">Đang tải trạng thái thanh toán...</div>
+      </div>
+    );
+  }
+
+  if (!summaryData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="bg-card border border-border rounded-3xl p-8 max-w-md w-full text-center shadow-sm">
+          <h1 className="text-xl font-bold text-foreground mb-2">Không tìm thấy thông tin thanh toán</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            {paymentLoadError || 'Vui lòng chọn slot và gửi biên lai lại.'}
+          </p>
+          <button
+            onClick={() => navigate('/slot-booking')}
+            className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold"
+          >
+            Chọn sân
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -181,7 +250,7 @@ export function ConfirmationPage() {
 
                   <div>
                     <div className="text-xs text-muted-foreground mb-1">Mã đặt sân</div>
-                    <div className="text-sm font-semibold text-foreground">SC240529ABCD</div>
+                    <div className="text-sm font-semibold text-foreground">{paymentCode}</div>
                   </div>
 
                   <div>
@@ -220,12 +289,25 @@ export function ConfirmationPage() {
 
           {/* Right — booking summary */}
           <div className="lg:col-span-1">
-            <BookingSummary />
+            <BookingSummary
+              data={summaryData}
+              guestPhone={getGuestPhone(summaryData)}
+              paymentCode={paymentCode}
+            />
           </div>
         </div>
       </main>
     </div>
   );
+}
+
+function getGuestPhone(data: CreateBookingsResponse | PaymentResponse) {
+  for (const booking of data.bookings) {
+    if ('guestPhone' in booking && booking.guestPhone) {
+      return booking.guestPhone;
+    }
+  }
+  return null;
 }
 
 // ─── Status Card ────────────────────────────────────────────────────────────
@@ -473,3 +555,4 @@ function LogEntry({ time, message, type }: LogEntryProps) {
     </div>
   );
 }
+

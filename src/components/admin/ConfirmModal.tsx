@@ -1,6 +1,6 @@
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
-type Action = 'approve' | 'reject';
+type Action = 'approve' | 'reject' | 'reject_payment';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -41,6 +41,16 @@ const actionConfig: Record<
     confirmLabel: 'Hủy đơn',
     confirmClass:
       'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+  },
+  reject_payment: {
+    icon: <XCircle className="w-7 h-7 text-amber-600" />,
+    iconBg: 'bg-amber-50',
+    title: 'Từ chối biên lai thanh toán',
+    description:
+      'Bạn có chắc muốn từ chối biên lai thanh toán này? Trạng thái sẽ quay lại chờ thanh toán (Pending Payment) và khách hàng có thể nộp lại biên lai khác.',
+    confirmLabel: 'Từ chối bill',
+    confirmClass:
+      'bg-amber-600 text-white hover:bg-amber-700',
   },
 };
 

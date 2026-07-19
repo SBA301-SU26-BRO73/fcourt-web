@@ -11,6 +11,8 @@ export const API_PREFIXES = {
   branches: '/branches',         // BranchController: /api/branches
   courts: '/courts',             // CourtController: /api/courts
   timeSlotTemplates: '/time-slot-templates',
+  bookings: '/bookings',
+  payments: '/payments',
 } as const
 
 function joinEndpoint(...segments: Array<string | number>) {
@@ -88,5 +90,12 @@ export const API_ENDPOINTS = {
       joinEndpoint(API_PREFIXES.timeSlotTemplates, 'court', courtId),
     apply: (targetCourtId: string | number) =>
       joinEndpoint(API_PREFIXES.timeSlotTemplates, 'apply', targetCourtId),
+  },
+  bookings: {
+    list: joinEndpoint(API_PREFIXES.bookings),
+  },
+  payments: {
+    list: joinEndpoint(API_PREFIXES.payments),
+    detail: (id: string | number) => joinEndpoint(API_PREFIXES.payments, id),
   },
 } as const

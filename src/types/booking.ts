@@ -1,4 +1,4 @@
-import type { BookingStatus } from '@/types/staff'
+﻿import type { BookingStatus } from '@/types/staff'
 
 export interface WalkInBookingRequest {
   staffUserId: number
@@ -48,3 +48,86 @@ export interface TimeSlotTemplate {
   createdAt: string
   updatedAt: string
 }
+
+export interface BookingSlotResponse {
+  id: number
+  bookingId: number
+  courtId: number
+  bookingDate: string
+  slotStart: string
+  slotEnd: string
+  priceAtBooking: number
+}
+
+export interface BookingResponse {
+  id: number
+  courtId: number
+  courtName: string
+  customerId: number | null
+  customerEmail: string | null
+  guestPhone: string | null
+  date: string
+  status: BookingStatus
+  totalPrice: number
+  slots: BookingSlotResponse[]
+  branchId: number
+  branchName: string
+  branchAddress: string
+  bankAccountNumber: string | null
+  bankAccountName: string | null
+  bankName: string | null
+  bankQrImageUrl: string | null
+  expiredAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateBookingsRequest {
+  guestPhone?: string
+  bookings: Array<{
+    courtId: number
+    date: string
+    slotStarts: string[]
+  }>
+}
+
+export interface CreateBookingsResponse {
+  branchId: number
+  branchName: string
+  branchAddress: string
+  bankAccountNumber: string | null
+  bankAccountName: string | null
+  bankName: string | null
+  bankQrImageUrl: string | null
+  totalAmount: number
+  bookings: BookingResponse[]
+}
+
+export interface PaymentResponse {
+  id: number
+  branchId: number
+  branchName: string
+  branchAddress: string
+  bankAccountNumber: string | null
+  bankAccountName: string | null
+  bankName: string | null
+  bankQrImageUrl: string | null
+  amount: number
+  billImageUrl: string | null
+  status: 'PENDING' | 'CONFIRMED' | 'REJECTED'
+  confirmedAt: string | null
+  confirmedById: number | null
+  bookings: Array<{
+    id: number
+    courtId: number
+    courtName: string
+    date: string
+    status: BookingStatus
+    totalPrice: number
+    slots: BookingSlotResponse[]
+  }>
+  createdAt: string
+  updatedAt: string
+}
+
+

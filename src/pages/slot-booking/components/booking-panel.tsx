@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 export interface SelectedSlot {
   courtId: number;
   courtName: string;
@@ -10,10 +12,14 @@ export interface SelectedSlot {
 interface BookingPanelProps {
   selectedSlots: SelectedSlot[];
   venueName: string;
-  onBook: () => void;
+  onBook: (guestPhone?: string) => void | Promise<void>;
+  requiresGuestPhone?: boolean;
+  isSubmitting?: boolean;
+  error?: string | null;
 }
 
-export default function BookingPanel({ selectedSlots, venueName, onBook }: BookingPanelProps) {
+export default function BookingPanel({ selectedSlots, venueName, onBook, requiresGuestPhone = true, isSubmitting = false, error }: BookingPanelProps) {
+  const [guestPhone, setGuestPhone] = useState('');
   // calculate total amount
   const totalAmount = selectedSlots.reduce((sum, slot) => sum + slot.price, 0);
 
@@ -66,15 +72,30 @@ export default function BookingPanel({ selectedSlots, venueName, onBook }: Booki
           <div className="text-left md:text-right">
             <div className="text-on-surface-variant text-[12px] font-medium uppercase tracking-wider">Total Amount</div>
             <div className="text-primary font-bold text-2xl md:text-3xl">
-              ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatCurrency(totalAmount)}
             </div>
+            {error ? (
+              <div className="text-destructive text-xs font-medium mt-1 max-w-72">{error}</div>
+            ) : null}
           </div>
+          {requiresGuestPhone ? (
+            <input
+              value={guestPhone}
+              onChange={(event) => setGuestPhone(event.target.value)}
+              placeholder="Số điện thoại"
+              inputMode="numeric"
+              className="h-12 w-full md:w-44 rounded-xl border border-outline-variant/60 bg-white px-3 text-sm font-medium text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+            />
+          ) : (
+            <span className="text-sm font-medium text-on-surface-variant">Đặt bằng tài khoản</span>
+          )}
           
           <button 
-            onClick={onBook}
-            className="px-6 py-3 bg-secondary hover:bg-secondary/90 text-white font-bold rounded-xl shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-95 text-body-sm shrink-0 flex items-center gap-2 cursor-pointer"
+            disabled={isSubmitting}
+            onClick={() => onBook(requiresGuestPhone ? guestPhone : undefined)}
+            className="primary-gradient px-6 py-3 text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all duration-200 hover:scale-[1.02] active:scale-95 text-body-sm shrink-0 flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Book Selected Slot
+            {isSubmitting ? 'Đang giữ slot...' : 'Book Selected Slot'}
           </button>
         </div>
       </div>
@@ -91,4 +112,12 @@ function formatTimeAMPM(time24: string) {
   hour = hour ? hour : 12; 
   const hourStr = hour < 10 ? `0${hour}` : `${hour}`;
   return `${hourStr}:${minutes} ${ampm}`;
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(value);
 }

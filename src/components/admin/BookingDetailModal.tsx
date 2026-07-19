@@ -16,7 +16,7 @@ interface BookingDetailModalProps {
   booking: Booking;
   onClose: () => void;
   onApprove: () => void;
-  onReject: () => void;
+  onReject: (actionType: 'reject_payment' | 'cancel_booking') => void;
 }
 
 export function BookingDetailModal({
@@ -106,6 +106,27 @@ export function BookingDetailModal({
                     label="Ngày tạo"
                     value={formatDateTime(booking.createdAt)}
                   />
+                  {booking.slots && booking.slots.length > 0 && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Khung giờ đặt</div>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {booking.slots.map((slot) => {
+                            const start = slot.slotStart.slice(0, 5);
+                            const end = slot.slotEnd.slice(0, 5);
+                            return (
+                              <span key={slot.id} className="inline-flex items-center px-2 py-0.5 rounded bg-muted text-xs font-mono font-medium border border-border text-foreground">
+                                {start} - {end}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -137,12 +158,30 @@ export function BookingDetailModal({
                 </h4>
               </div>
 
-              <div className="flex-1 rounded-2xl border border-dashed border-border bg-muted/30 p-8 flex flex-col items-center justify-center text-center">
-                <p className="text-sm font-medium text-foreground">Chưa có dữ liệu biên lai</p>
-                <p className="mt-2 text-xs text-muted-foreground max-w-xs">
-                  API booking hiện tại chỉ trả về thông tin đặt sân, khách hàng, trạng thái và tổng tiền.
-                </p>
-              </div>
+              {booking.billImageUrl ? (
+                <div className="flex-1 rounded-2xl overflow-hidden border border-border bg-muted/30 flex items-center justify-center relative group min-h-[200px]">
+                  <img
+                    src={booking.billImageUrl}
+                    alt="Biên lai thanh toán"
+                    className="w-full h-full object-contain max-h-[350px] p-2"
+                  />
+                  <a
+                    href={booking.billImageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-medium transition-opacity text-sm duration-200"
+                  >
+                    Xem ảnh gốc
+                  </a>
+                </div>
+              ) : (
+                <div className="flex-1 rounded-2xl border border-dashed border-border bg-muted/30 p-8 flex flex-col items-center justify-center text-center">
+                  <p className="text-sm font-medium text-foreground">Chưa có dữ liệu biên lai</p>
+                  <p className="mt-2 text-xs text-muted-foreground max-w-xs">
+                    Khách hàng chưa tải ảnh biên lai hoặc giao dịch bằng tiền mặt/POS.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -158,16 +197,25 @@ export function BookingDetailModal({
           </p>
           {canEditDecision && (
             <div className="flex gap-3 flex-shrink-0">
+              {status === 'AWAITING_CONFIRMATION' && (
+                <button
+                  onClick={() => onReject('reject_payment')}
+                  className="flex items-center gap-2 bg-amber-50 text-amber-600 border border-amber-200 px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-amber-100 transition-colors"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Từ chối bill
+                </button>
+              )}
               {status !== 'CANCELLED' && (
                 <button
-                  onClick={onReject}
+                  onClick={() => onReject('cancel_booking')}
                   className="flex items-center gap-2 bg-red-50 text-red-600 border border-red-200 px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-red-100 transition-colors"
                 >
                   <XCircle className="w-4 h-4" />
                   Hủy đơn
                 </button>
               )}
-              {status !== 'CONFIRMED' && (
+              {status === 'AWAITING_CONFIRMATION' && (
                 <button
                   onClick={onApprove}
                   className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"

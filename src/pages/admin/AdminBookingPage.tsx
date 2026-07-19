@@ -27,7 +27,7 @@ import { BookingDetailModal } from '../../components/admin/BookingDetailModal';
 import { ConfirmModal } from '../../components/admin/ConfirmModal';
 
 type TabFilter = 'all' | 'PENDING' | 'CONFIRMED' | 'CANCELLED';
-type ConfirmAction = 'approve' | 'reject';
+type ConfirmAction = 'approve' | 'reject' | 'reject_payment';
 
 const PAGE_SIZE = 5;
 
@@ -46,6 +46,7 @@ export function AdminBookingPage() {
     action: ConfirmAction;
     bookingId: number;
     bookingCode: string;
+    paymentId?: number;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -119,6 +120,7 @@ export function AdminBookingPage() {
       action,
       bookingId: booking.id,
       bookingCode: getBookingCode(booking),
+      paymentId: booking.paymentId,
     });
   };
 
@@ -126,10 +128,38 @@ export function AdminBookingPage() {
     if (!confirmState) return;
     setActionLoading(true);
 
-    const newStatus: BookingStatus =
-      confirmState.action === 'approve' ? 'CONFIRMED' : 'CANCELLED';
+    let newStatus: BookingStatus;
+    if (confirmState.action === 'approve') {
+      newStatus = 'CONFIRMED';
+    } else if (confirmState.action === 'reject_payment') {
+      newStatus = 'PENDING_PAYMENT';
+    } else {
+      newStatus = 'CANCELLED';
+    }
 
     try {
+      if (confirmState.action === 'approve' || confirmState.action === 'reject_payment') {
+        if (!confirmState.paymentId) {
+          throw new Error('Booking does not have a submitted payment');
+        }
+
+        if (confirmState.action === 'approve') {
+          await bookingService.approvePayment(confirmState.paymentId);
+        } else {
+          await bookingService.rejectPayment(confirmState.paymentId);
+        }
+
+        await fetchBookings();
+        setDetailBooking(null);
+        setConfirmState(null);
+        toast.success(
+          confirmState.action === 'approve'
+            ? 'Đã xác nhận thanh toán và booking'
+            : 'Đã từ chối bill, booking được mở lại để thanh toán',
+        );
+        return;
+      }
+
       const updatedBooking = await bookingService.updateStatus(confirmState.bookingId, {
         status: newStatus,
       });
@@ -159,6 +189,11 @@ export function AdminBookingPage() {
         toast.success('Đã xác nhận đặt sân thành công', {
           description: `Mã đơn: ${confirmState.bookingCode}`,
           icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
+        });
+      } else if (newStatus === 'PENDING_PAYMENT') {
+        toast.warning('Đã từ chối biên lai thanh toán', {
+          description: `Mã đơn: ${confirmState.bookingCode}. Đơn hàng chuyển lại chờ thanh toán.`,
+          icon: <XCircle className="w-4 h-4 text-amber-500" />,
         });
       } else {
         toast.error('Đã hủy đặt sân', {
@@ -437,7 +472,13 @@ export function AdminBookingPage() {
           booking={detailBooking}
           onClose={() => setDetailBooking(null)}
           onApprove={() => openConfirm('approve', detailBooking)}
-          onReject={() => openConfirm('reject', detailBooking)}
+          onReject={(actionType) => {
+            if (actionType === 'reject_payment') {
+              openConfirm('reject_payment', detailBooking);
+            } else {
+              openConfirm('reject', detailBooking);
+            }
+          }}
         />
       )}
 
