@@ -124,7 +124,7 @@ export function ProfilePage() {
       <header className="border-b border-slate-200 bg-white px-6">
         <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between">
           <button type="button" onClick={() => navigate('/')} className="text-2xl font-bold tracking-tight text-green-700">
-            Velocity
+            FCourt
           </button>
           <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-700 md:flex">
             <span>Pickleball</span>

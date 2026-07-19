@@ -52,6 +52,23 @@ export interface PageContent<T> {
   totalElements: number;
   size: number;
   number: number; 
+  page?: {
+    size: number;
+    number: number;
+    totalElements: number;
+    totalPages: number;
+  };
+}
+
+function normalizePage<T>(page: PageContent<T>): PageContent<T> {
+  const metadata = page.page ?? page;
+  return {
+    content: page.content,
+    size: metadata.size,
+    number: metadata.number,
+    totalElements: metadata.totalElements,
+    totalPages: metadata.totalPages,
+  };
 }
 
 export interface CourtResponse {
@@ -81,18 +98,18 @@ export const branchApi = {
     const response = await axiosClient.get<ApiResponse<PageContent<Branch>>>('/branches', {
       params: { page, size }
     });
-    return response.data.data;
+    return normalizePage(response.data.data);
   },
 
   search: async (filters: BranchFilterRequest, page: number = 0, size: number = 6): Promise<PageContent<Branch>> => {
     const response = await axiosClient.get<ApiResponse<PageContent<Branch>>>('/branches/search', {
       params: { 
         ...filters,
-        page: page + 1, 
+        page: page + 1,
         size: size 
       }
     });
-    return response.data.data;
+    return normalizePage(response.data.data);
   },
 
   getById: async (id: string | number): Promise<Branch> => {

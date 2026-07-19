@@ -13,6 +13,9 @@ export default function BranchList() {
   const sidebarWard = searchParams.get("ward");
   const sidebarAddress = searchParams.get("address");
   const sidebarStatus = searchParams.get("status");
+  const urlName = searchParams.get("name");
+  const urlCity = searchParams.get("city");
+  const urlWard = searchParams.get("ward");
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -35,8 +38,9 @@ export default function BranchList() {
         const combinedFilters: BranchFilterRequest = { 
           ...globalFilters, 
           courtTypeName: courtTypeName || undefined,
-          city: sidebarCity || globalFilters.city || undefined,
-          ward: sidebarWard || globalFilters.ward || undefined,
+          name: urlName || globalFilters.name || undefined,
+          city: sidebarCity || urlCity || globalFilters.city || undefined,
+          ward: sidebarWard || urlWard || globalFilters.ward || undefined,
           address: sidebarAddress || globalFilters.address || undefined,
           status: sidebarStatus || globalFilters.status || undefined
         };
@@ -60,7 +64,7 @@ export default function BranchList() {
     };
 
     fetchBranches();
-  }, [currentPage, globalFilters, courtTypeName, sidebarCity, sidebarWard, sidebarAddress, sidebarStatus]); 
+  }, [currentPage, globalFilters, courtTypeName, sidebarCity, sidebarWard, sidebarAddress, sidebarStatus, urlName, urlCity, urlWard]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages) {
@@ -93,17 +97,10 @@ export default function BranchList() {
     <section className="flex-1 pb-24">
       <div className="flex justify-between items-end mb-stack-lg">
         <div className="flex flex-col gap-1">
-          <h1 className="font-headline-lg text-headline-lg">Featured Branches</h1>
+          <h1 className="font-headline-lg text-headline-lg">Tìm sân gần bạn</h1>
           <p className="text-body-md text-on-surface-variant">
             Showing {totalElements} locations
           </p>
-        </div>
-        <div className="hidden md:flex items-center gap-2 bg-surface-container-low border border-outline-variant px-3 py-1.5 rounded-lg">
-          <span className="text-label-sm text-on-surface-variant">Sort by:</span>
-          <select className="bg-transparent text-label-sm font-bold text-on-surface outline-none cursor-pointer border-none focus:ring-0">
-            <option>Recommended</option>
-            <option>Name: A to Z</option>
-          </select>
         </div>
       </div>
 
@@ -124,10 +121,6 @@ export default function BranchList() {
               id={branch.id.toString()}
               title={branch.name}
               address={[branch.address, branch.ward, branch.city].filter(Boolean).join(", ")}
-              imageSrc="https://lh3.googleusercontent.com/aida-public/AB6AXuCixMWLwvgosiwYViy13L4fCQ7VFkcQXOODOJU_s1mkUAlElpUHrRvspI1ApBDtkkj1Alhpzkyi_nXa2g-xSCNOSZFUB8QjowFo517vq7t3w8pt2Ei9Nmoc5ZAWzNO9A0HQYTjLV-bCQfqxtkjdqoLO_AsZx9KLZRWrGKUIYHtJj3knvtfjAv44HncnbLf-ivyJkfSPsSuOrqO_ksbUUAxG8HHMkBf7YumW3mDpUHH_bv38vIIbgNLj-RrIR0AhwjVjVxNsqU7XuzA"
-              price="50" 
-              rating="4.8"
-              distance="1.5 km"
               tags={[
                 { 
                   label: branch.status === "ACTIVE" ? "Open" : "Closed", 

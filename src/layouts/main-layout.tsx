@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, type FormEvent } from "react";
 import type { BranchFilterRequest } from "@/services/branch/branch.api";
 import { useAuth } from "@/hooks/use-auth-context";
@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth-context";
 export function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [urlSearchParams, setUrlSearchParams] = useSearchParams();
   const { user, isLoggedIn } = useAuth();
 
   const [searchInput, setSearchInput] = useState("");
@@ -24,15 +25,21 @@ export function MainLayout() {
     }
 
     setGlobalFilters(newFilters);
-
+    const nextParams = new URLSearchParams(urlSearchParams);
+    ["name", "city", "address", "ward"].forEach((key) => nextParams.delete(key));
+    if (searchInput.trim()) nextParams.set(searchType, searchInput.trim());
+    nextParams.delete("page");
     if (location.pathname !== "/branches") {
-      navigate("/branches");
+      navigate(`/branches?${nextParams.toString()}`);
+    } else {
+      setUrlSearchParams(nextParams);
     }
   };
 
   const handleGoHome = () => {
     setSearchInput("");
     setGlobalFilters({});
+    setUrlSearchParams({});
     navigate("/");
   };
 
@@ -65,21 +72,11 @@ export function MainLayout() {
                 onClick={handleGoHome}
               >
                 <span className="text-headline-md font-bold tracking-tight text-primary">
-                  Velocity
+                  FCourt
                 </span>
               </button>
 
               <div className="flex items-center gap-2 md:hidden">
-                <button
-                  type="button"
-                  aria-label="Notifications"
-                  className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container-high/50"
-                >
-                  <span className="material-symbols-outlined">
-                    notifications
-                  </span>
-                </button>
-
                 <button
                   type="button"
                   aria-label={accountLabel}
@@ -131,64 +128,10 @@ export function MainLayout() {
                 </select>
               </form>
 
-              <div className="hidden shrink-0 rounded-xl bg-surface-container-high p-1 sm:flex">
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-lg bg-surface-container-lowest px-4 py-1.5 text-label-md font-bold text-primary shadow-sm"
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    format_list_bulleted
-                  </span>
-                  List
-                </button>
-
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-lg px-4 py-1.5 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-highest"
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    map
-                  </span>
-                  Map
-                </button>
-              </div>
             </div>
 
-            <div className="hidden items-center gap-gutter md:flex">
-              <nav className="hidden items-center gap-stack-lg xl:flex">
-                <a
-                  className="border-b-2 border-primary pb-1 font-label-md text-primary"
-                  href="#"
-                >
-                  All Courts
-                </a>
-
-                <a
-                  className="font-label-md text-on-surface-variant transition-colors hover:text-on-surface"
-                  href="#"
-                >
-                  Pickleball
-                </a>
-
-                <a
-                  className="font-label-md text-on-surface-variant transition-colors hover:text-on-surface"
-                  href="#"
-                >
-                  Tennis
-                </a>
-              </nav>
-
+            <div className="hidden items-center md:flex">
               <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  aria-label="Notifications"
-                  className="rounded-full p-2 transition-colors hover:bg-surface-container-high"
-                >
-                  <span className="material-symbols-outlined text-on-surface-variant">
-                    notifications
-                  </span>
-                </button>
-
                 <button
                   type="button"
                   aria-label={accountLabel}
@@ -222,44 +165,11 @@ export function MainLayout() {
                 onClick={handleGoHome}
               >
                 <span className="text-headline-md font-bold tracking-tight text-primary">
-                  Velocity
+                  FCourt
                 </span>
               </button>
 
-              <nav className="hidden items-center gap-gutter md:flex">
-                <a
-                  className="font-label-md text-label-md text-on-surface-variant transition-colors hover:text-on-surface"
-                  href="#"
-                >
-                  Pickleball
-                </a>
-
-                <a
-                  className="border-b-2 border-primary pb-1 font-label-md text-label-md text-primary"
-                  href="#"
-                >
-                  Tennis
-                </a>
-
-                <a
-                  className="font-label-md text-label-md text-on-surface-variant transition-colors hover:text-on-surface"
-                  href="#"
-                >
-                  Badminton
-                </a>
-              </nav>
-
               <div className="flex items-center gap-stack-md">
-                <button
-                  type="button"
-                  aria-label="Notifications"
-                  className="rounded-lg p-2 text-on-surface-variant transition-all hover:bg-surface-container-high/50 active:scale-95"
-                >
-                  <span className="material-symbols-outlined">
-                    notifications
-                  </span>
-                </button>
-
                 <button
                   type="button"
                   aria-label={accountLabel}
@@ -295,7 +205,7 @@ export function MainLayout() {
               <div className="max-w-xs space-y-4">
                 <div className="flex items-center gap-2">
                   <span className="font-headline-md font-bold text-on-surface">
-                    Velocity Sports
+                    FCourt
                   </span>
                 </div>
 
@@ -311,7 +221,7 @@ export function MainLayout() {
                     className="font-label-md text-on-surface-variant transition-colors hover:text-primary"
                     href="#"
                   >
-                    About Velocity
+                    About FCourt
                   </a>
 
                   <a
@@ -351,7 +261,7 @@ export function MainLayout() {
 
             <div className="mx-auto max-w-container-max border-t border-outline-variant/30 pt-stack-md">
               <p className="text-center font-label-sm text-on-surface-variant opacity-80 md:text-left">
-                © 2024 Velocity Sports. All rights reserved.
+                © 2024 FCourt. All rights reserved.
               </p>
             </div>
           </footer>
