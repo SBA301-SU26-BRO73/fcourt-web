@@ -3,11 +3,13 @@ import type {
   CreateBranchRequest,
   UpdateBranchRequest,
 } from '@/types/branch'
+import { findDistrictForWard } from '@/data/sample-locations'
 
 export interface BranchFormValues {
   name: string
   address: string
   ward: string
+  district: string
   city: string
   phone: string
   openTime: string
@@ -24,6 +26,7 @@ export const emptyBranchFormValues: BranchFormValues = {
   name: '',
   address: '',
   ward: '',
+  district: '',
   city: '',
   phone: '',
   openTime: '06:00',
@@ -38,6 +41,7 @@ const maxLengths: Partial<Record<keyof BranchFormValues, number>> = {
   name: 150,
   address: 255,
   ward: 100,
+  district: 100,
   city: 100,
   phone: 20,
   bankAccountNumber: 50,
@@ -50,6 +54,7 @@ export function branchToFormValues(branch: Branch): BranchFormValues {
     name: branch.name,
     address: branch.address,
     ward: branch.ward ?? '',
+    district: findDistrictForWard(branch.city, branch.ward ?? '')?.name ?? '',
     city: branch.city,
     phone: branch.phone ?? '',
     openTime: branch.openTime.slice(0, 5),
@@ -64,7 +69,7 @@ export function branchToFormValues(branch: Branch): BranchFormValues {
 export function validateBranchForm(values: BranchFormValues): BranchFormErrors {
   const errors: BranchFormErrors = {}
 
-  for (const field of ['name', 'address', 'city'] as const) {
+  for (const field of ['name', 'address', 'city', 'district', 'ward'] as const) {
     if (!values[field].trim()) {
       errors[field] = `${field[0].toUpperCase()}${field.slice(1)} is required.`
     }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Branch, CourtResponse } from '../../../services/branch/branch.api';
+import { findDistrictForWard } from '@/data/sample-locations';
 
 interface BookingPanelProps {
   branch: Branch;
@@ -34,6 +35,10 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
   const basePrice = isTennis ? 60.00 : 45.00;
   const serviceFee = 2.50;
   const totalPrice = basePrice + serviceFee;
+  const district = findDistrictForWard(branch.city, branch.ward ?? '')?.name;
+  const mapQuery = [branch.name, branch.address, branch.ward, district, branch.city]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <>
@@ -124,7 +129,7 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
             <img alt="Location Map" className="w-full h-full object-cover grayscale opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMkrvVby7kQYEJp5pWMsPOmygwCErh6VUhvJ5MVZaY7CGn6hFWIZOeQ21xkTtoMJWkphNjKR9spdruuA7rVRB9nZk8Zy5HwkC6pKS4Z4Tf-BmV44ce-iEOCS23IEdEpRDiY_3dd9fz1v1Gh7Um74d0KTUem9CLYMkZS7UySoYaz_yot32zbzgbg3ocpGBXohiVqzC71jna5FQ5f6N1zQhopPdK5HxEnP41OaSu4RwjIcnOSMQAxbCuXTVWSFbW4jfAv-yHHTlreGg" />
             <div className="absolute inset-0 bg-gradient-to-t from-surface/60 to-transparent flex items-end p-stack-md">
               <button 
-                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(branch.address + ', ' + branch.city)}`, '_blank')}
+                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`, '_blank')}
                 className="w-full bg-surface-container-lowest text-on-surface py-2 rounded-lg font-label-md text-label-md flex items-center justify-center gap-unit shadow-sm hover:bg-surface-container-highest transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-primary">directions</span>

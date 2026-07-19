@@ -68,7 +68,7 @@ export default function BranchDetailPage() {
               <h1 className="font-headline-lg text-headline-lg text-on-surface">{branch.name}</h1>
               <p className="font-body-md text-body-md text-on-surface-variant flex items-center gap-unit mt-unit">
                 <span className="material-symbols-outlined text-primary text-lg">location_on</span>
-                {branch.address}, {branch.city}
+                {[branch.address, branch.ward, branch.city].filter(Boolean).join(', ')}
               </p>
             </div>
             <div className="flex items-center gap-stack-sm">

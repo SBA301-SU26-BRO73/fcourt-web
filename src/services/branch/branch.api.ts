@@ -31,6 +31,7 @@ export interface Branch {
 }
 
 export interface BranchFilterRequest {
+  keyword?: string;
   name?: string;
   address?: string;
   ward?: string;

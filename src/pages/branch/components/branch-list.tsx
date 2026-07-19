@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useOutletContext } from "react-router-dom";
 import DetailedBranchCard from "../../../components/ui/detailed-branch-card";
 import SkeletonCard from "../../../components/ui/skeleton-card";
 import { branchApi, type Branch, type BranchFilterRequest } from "../../../services/branch/branch.api";
+import { findLocationDistrict } from "@/data/sample-locations";
 
 export default function BranchList() {
   const { globalFilters } = useOutletContext<{ globalFilters: BranchFilterRequest }>(); 
@@ -13,6 +14,8 @@ export default function BranchList() {
   const sidebarWard = searchParams.get("ward");
   const sidebarAddress = searchParams.get("address");
   const sidebarStatus = searchParams.get("status");
+  const selectedDistrict = searchParams.get("district");
+  const urlKeyword = searchParams.get("keyword");
   const urlName = searchParams.get("name");
   const urlCity = searchParams.get("city");
   const urlWard = searchParams.get("ward");
@@ -21,16 +24,23 @@ export default function BranchList() {
   const [branches, setBranches] = useState<Branch[]>([]);
   
   const [currentPage, setCurrentPage] = useState<number>(0); 
-  const [totalPages, setTotalPages] = useState<number>(0);
   const [totalElements, setTotalElements] = useState<number>(0);
+  const [hasMore, setHasMore] = useState(true);
   const pageSize = 6; 
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const isFetchingRef = useRef(false);
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [globalFilters, courtTypeName, sidebarCity, sidebarWard, sidebarAddress, sidebarStatus]);
+    setBranches([]);
+    setHasMore(true);
+  }, [globalFilters, courtTypeName, sidebarCity, sidebarWard, sidebarAddress, sidebarStatus, selectedDistrict, urlKeyword]);
 
   useEffect(() => {
     const fetchBranches = async () => {
+      if (isFetchingRef.current) return;
+
+      isFetchingRef.current = true;
       try {
         setIsLoading(true);
         let data;
@@ -38,6 +48,7 @@ export default function BranchList() {
         const combinedFilters: BranchFilterRequest = { 
           ...globalFilters, 
           courtTypeName: courtTypeName || undefined,
+          keyword: urlKeyword || globalFilters.keyword || undefined,
           name: urlName || globalFilters.name || undefined,
           city: sidebarCity || urlCity || globalFilters.city || undefined,
           ward: sidebarWard || urlWard || globalFilters.ward || undefined,
@@ -45,53 +56,54 @@ export default function BranchList() {
           status: sidebarStatus || globalFilters.status || undefined
         };
         
-        const hasFilter = Object.values(combinedFilters).some(value => value !== undefined);
+        const hasFilter = Object.values(combinedFilters).some((value) =>
+          typeof value === "string" ? value.trim().length > 0 : value !== undefined,
+        );
+
+        const districtWards = selectedDistrict
+          ? findLocationDistrict(sidebarCity ?? "", selectedDistrict)?.wards.map((item) => item.name) ?? []
+          : [];
+        const requestSize = selectedDistrict && !sidebarWard ? 100 : pageSize;
 
         if (hasFilter) {
-          data = await branchApi.search(combinedFilters, currentPage, pageSize);
+          data = await branchApi.search(combinedFilters, currentPage, requestSize);
         } else {
-          data = await branchApi.getAll(currentPage, pageSize);
+          data = await branchApi.getAll(currentPage, requestSize);
         }
-        
-        setBranches(data.content);
-        setTotalPages(data.totalPages);
+
+        const content = selectedDistrict && !sidebarWard
+          ? data.content.filter((branch) => districtWards.includes(branch.ward ?? ""))
+          : data.content;
+        setBranches((current) => currentPage === 0
+          ? content
+          : [...current, ...content.filter((branch) => !current.some((item) => item.id === branch.id))]);
         setTotalElements(data.totalElements);
+        setHasMore(
+          data.content.length > 0 &&
+            currentPage + 1 < data.totalPages,
+        );
       } catch (error) {
         console.error("Lỗi khi tải danh sách Branch:", error);
       } finally {
+        isFetchingRef.current = false;
         setIsLoading(false);
       }
     };
 
     fetchBranches();
-  }, [currentPage, globalFilters, courtTypeName, sidebarCity, sidebarWard, sidebarAddress, sidebarStatus, urlName, urlCity, urlWard]);
+  }, [currentPage, globalFilters, courtTypeName, sidebarCity, sidebarWard, sidebarAddress, sidebarStatus, selectedDistrict, urlKeyword, urlName, urlCity, urlWard]);
 
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 0 && newPage < totalPages) {
-      setCurrentPage(newPage);
-      window.scrollTo({ top: 0, behavior: 'smooth' }); 
-    }
-  };
-
-  const renderPaginationButtons = () => {
-    const pages = [];
-    for (let i = 0; i < totalPages; i++) {
-      pages.push(
-        <button
-          key={i}
-          onClick={() => handlePageChange(i)}
-          className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-colors ${
-            currentPage === i
-              ? "bg-primary text-white font-bold border-primary shadow-md"
-              : "border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
-          }`}
-        >
-          {i + 1}
-        </button>
-      );
-    }
-    return pages;
-  };
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore || isLoading) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !isFetchingRef.current) {
+        setCurrentPage((page) => page + 1);
+      }
+    }, { rootMargin: "320px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isLoading]);
 
   return (
     <section className="flex-1 pb-24">
@@ -105,7 +117,7 @@ export default function BranchList() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-gutter">
-        {isLoading ? (
+        {isLoading && branches.length === 0 ? (
           <>
             <SkeletonCard />
             <SkeletonCard />
@@ -139,27 +151,10 @@ export default function BranchList() {
         )}
       </div>
 
-      {!isLoading && totalPages > 1 && (
-        <div className="mt-stack-xl flex justify-center items-center gap-2">
-          <button 
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 0}
-            className="w-10 h-10 flex items-center justify-center rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span className="material-symbols-outlined">chevron_left</span>
-          </button>
-          
-          {renderPaginationButtons()}
-
-          <button 
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages - 1}
-            className="w-10 h-10 flex items-center justify-center rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span className="material-symbols-outlined">chevron_right</span>
-          </button>
-        </div>
-      )}
+      <div ref={sentinelRef} className="mt-stack-xl flex min-h-10 items-center justify-center text-sm text-on-surface-variant">
+        {isLoading && branches.length > 0 && "Đang tải thêm sân..."}
+        {!isLoading && !hasMore && branches.length > 0 && "Đã hiển thị hết sân phù hợp."}
+      </div>
     </section>
   );
 }

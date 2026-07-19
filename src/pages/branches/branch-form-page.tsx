@@ -24,6 +24,7 @@ import {
   type BranchFormErrors,
   type BranchFormValues,
 } from './branch-form.utils'
+import { findLocationCity, findLocationDistrict, sampleLocations } from '@/data/sample-locations'
 
 type BranchFormPageProps = {
   mode: 'create' | 'edit'
@@ -93,6 +94,22 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
   const [errors, setErrors] = useState<BranchFormErrors>({})
   const [submitError, setSubmitError] = useState('')
 
+  const locationCity = findLocationCity(values.city)
+  const locationDistricts = locationCity?.districts ?? []
+  const locationDistrict = findLocationDistrict(values.city, values.district)
+  const cityOptions = Array.from(new Set([
+    ...sampleLocations.map((location) => location.city),
+    ...(values.city ? [values.city] : []),
+  ]))
+  const districtOptions = Array.from(new Set([
+    ...locationDistricts.map((district) => district.name),
+    ...(values.district ? [values.district] : []),
+  ]))
+  const wardOptions = Array.from(new Set([
+    ...(locationDistrict?.wards.map((ward) => ward.name) ?? []),
+    ...(values.ward ? [values.ward] : []),
+  ]))
+
   const mutation = useMutation({
     mutationFn: () => {
       if (!user || !Number.isInteger(user.id) || user.id <= 0) {
@@ -124,7 +141,12 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
   })
 
   function handleChange(field: keyof BranchFormValues, value: string) {
-    setValues((current) => ({ ...current, [field]: value }))
+    setValues((current) => ({
+      ...current,
+      [field]: value,
+      ...(field === 'city' ? { district: '', ward: '' } : {}),
+      ...(field === 'district' ? { ward: '' } : {}),
+    }))
     setErrors((current) => ({ ...current, [field]: undefined }))
     setSubmitError('')
   }
@@ -181,6 +203,9 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
         submitLabel={isEdit ? 'Update branch' : 'Create branch'}
         onChange={handleChange}
         onSubmit={handleSubmit}
+        cities={cityOptions}
+        districts={districtOptions}
+        wards={wardOptions}
       />
     </div>
   )

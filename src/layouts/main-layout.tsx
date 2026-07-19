@@ -10,8 +10,6 @@ export function MainLayout() {
   const { user, isLoggedIn } = useAuth();
 
   const [searchInput, setSearchInput] = useState("");
-  const [searchType, setSearchType] =
-    useState<keyof BranchFilterRequest>("name");
   const [globalFilters, setGlobalFilters] =
     useState<BranchFilterRequest>({});
 
@@ -21,13 +19,13 @@ export function MainLayout() {
     const newFilters: BranchFilterRequest = {};
 
     if (searchInput.trim()) {
-      newFilters[searchType] = searchInput.trim();
+      newFilters.keyword = searchInput.trim();
     }
 
     setGlobalFilters(newFilters);
     const nextParams = new URLSearchParams(urlSearchParams);
-    ["name", "city", "address", "ward"].forEach((key) => nextParams.delete(key));
-    if (searchInput.trim()) nextParams.set(searchType, searchInput.trim());
+    ["keyword", "name", "city", "address", "ward"].forEach((key) => nextParams.delete(key));
+    if (searchInput.trim()) nextParams.set("keyword", searchInput.trim());
     nextParams.delete("page");
     if (location.pathname !== "/branches") {
       navigate(`/branches?${nextParams.toString()}`);
@@ -81,12 +79,12 @@ export function MainLayout() {
                   type="button"
                   aria-label={accountLabel}
                   onClick={handleAccountClick}
-                  className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container-high/50"
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-primary transition-colors hover:bg-primary/10"
                 >
-                  <span className="material-symbols-outlined">
+                  <span className="material-symbols-outlined text-[22px]">
                     account_circle
                   </span>
-                  <span className="hidden sm:inline text-xs font-semibold">{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
+                  <span className="hidden text-xs font-semibold sm:inline">{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
                 </button>
               </div>
             </div>
@@ -106,26 +104,11 @@ export function MainLayout() {
 
                 <input
                   className="w-full border-none bg-transparent py-2 pl-2 pr-2 text-body-sm outline-none focus:outline-none focus:ring-0"
-                  placeholder={`Search by ${searchType}...`}
+                  placeholder="Tìm sân, thành phố, quận, phường..."
                   type="text"
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
                 />
-
-                <select
-                  value={searchType}
-                  onChange={(event) =>
-                    setSearchType(
-                      event.target.value as keyof BranchFilterRequest,
-                    )
-                  }
-                  className="cursor-pointer rounded-lg border-none bg-surface-container-high px-2 py-1 text-label-sm font-bold text-on-surface outline-none focus:ring-0"
-                >
-                  <option value="name">Name</option>
-                  <option value="city">City</option>
-                  <option value="address">Address</option>
-                  <option value="ward">Ward</option>
-                </select>
               </form>
 
             </div>
@@ -136,12 +119,12 @@ export function MainLayout() {
                   type="button"
                   aria-label={accountLabel}
                   onClick={handleAccountClick}
-                  className="rounded-full p-2 transition-colors hover:bg-surface-container-high"
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-primary transition-colors hover:bg-primary/10"
                 >
-                  <span className="material-symbols-outlined text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[22px]">
                     account_circle
                   </span>
-                  <span className="hidden lg:inline text-sm font-semibold text-on-surface-variant">{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
+                  <span className="hidden text-sm font-semibold lg:inline">{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
                 </button>
               </div>
             </div>
@@ -174,12 +157,12 @@ export function MainLayout() {
                   type="button"
                   aria-label={accountLabel}
                   onClick={handleAccountClick}
-                  className="rounded-lg p-2 text-on-surface-variant transition-all hover:bg-surface-container-high/50 active:scale-95"
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-primary transition-all hover:bg-primary/10 active:scale-95"
                 >
-                  <span className="material-symbols-outlined">
+                  <span className="material-symbols-outlined text-[22px]">
                     account_circle
                   </span>
-                  <span className="hidden sm:inline text-xs font-semibold">{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
+                  <span className="hidden text-xs font-semibold sm:inline">{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
                 </button>
               </div>
             </div>

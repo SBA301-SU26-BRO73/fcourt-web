@@ -12,6 +12,53 @@ type BranchFormProps = {
   submitLabel: string
   onChange: (field: keyof BranchFormValues, value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  cities: string[]
+  districts: string[]
+  wards: string[]
+}
+
+function SelectField({
+  label,
+  name,
+  value,
+  options,
+  error,
+  required,
+  disabled,
+  onChange,
+}: {
+  label: string
+  name: keyof BranchFormValues
+  value: string
+  options: string[]
+  error?: string
+  required?: boolean
+  disabled?: boolean
+  onChange: BranchFormProps['onChange']
+}) {
+  return (
+    <label className="block space-y-2">
+      <span className="text-sm font-semibold text-slate-700">
+        {label} {required && <span className="text-red-600">*</span>}
+      </span>
+      <select
+        name={name}
+        value={value}
+        disabled={disabled}
+        aria-invalid={Boolean(error)}
+        onChange={(event) => onChange(name, event.target.value)}
+        className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm outline-none focus:ring-2 disabled:bg-slate-100 ${
+          error
+            ? 'border-red-400 focus:border-red-500 focus:ring-red-100'
+            : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-100'
+        }`}
+      >
+        <option value="">Select {label.toLowerCase()}</option>
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+      {error && <span className="block text-sm text-red-600">{error}</span>}
+    </label>
+  )
 }
 
 type FieldProps = {
@@ -73,6 +120,9 @@ export function BranchForm({
   submitLabel,
   onChange,
   onSubmit,
+  cities,
+  districts,
+  wards,
 }: BranchFormProps) {
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-8">
@@ -105,20 +155,32 @@ export function BranchForm({
               onChange={onChange}
             />
           </div>
-          <Field
-            label="Ward"
-            name="ward"
-            value={values.ward}
-            error={errors.ward}
-            maxLength={100}
-            onChange={onChange}
-          />
-          <Field
+          <SelectField
             label="City"
             name="city"
             value={values.city}
             error={errors.city}
-            maxLength={100}
+            options={cities}
+            required
+            onChange={onChange}
+          />
+          <SelectField
+            label="District"
+            name="district"
+            value={values.district}
+            error={errors.district}
+            options={districts}
+            disabled={!values.city}
+            required
+            onChange={onChange}
+          />
+          <SelectField
+            label="Ward"
+            name="ward"
+            value={values.ward}
+            error={errors.ward}
+            options={wards}
+            disabled={!values.district}
             required
             onChange={onChange}
           />
