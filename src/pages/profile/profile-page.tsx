@@ -1,11 +1,15 @@
-import { LogOut, Mail, Pencil, Phone, User } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Building2, ChevronRight, LogOut, Mail, Pencil, Phone, Trophy, User, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Button, Field, TextInput } from '@/components/auth/auth-ui'
+import { useAdminDashboard } from '@/hooks/use-admin-dashboard'
 import { useAuth } from '@/hooks/use-auth-context'
 import type { UserRole } from '@/types/auth'
 import { getProfile, updateProfile } from '@/services/auth/auth.service'
+import { getCourts } from '@/services/court/court.api'
+import type { Court, CourtStatus } from '@/types/court'
 import { validators } from '@/utils/validators'
 
 const ROLE_LABEL: Record<UserRole, string> = {
@@ -13,6 +17,18 @@ const ROLE_LABEL: Record<UserRole, string> = {
   ADMIN: 'Chủ sân',
   SUPER_ADMIN: 'Super Admin',
   STAFF: 'Nhân viên',
+}
+
+const COURT_STATUS_LABEL: Record<CourtStatus, string> = {
+  ACTIVE: 'Đang hoạt động',
+  INACTIVE: 'Ngừng hoạt động',
+  MAINTENANCE: 'Bảo trì',
+}
+
+const COURT_STATUS_CLASS: Record<CourtStatus, string> = {
+  ACTIVE: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+  INACTIVE: 'bg-slate-100 text-slate-600 ring-slate-200',
+  MAINTENANCE: 'bg-amber-50 text-amber-700 ring-amber-100',
 }
 
 function Toast({ msg }: { msg: string }) {
@@ -47,11 +63,27 @@ export function ProfilePage() {
   const [errs, setErrs] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [loadingProfile, setLoadingProfile] = useState(true)
+  const [showCourts, setShowCourts] = useState(false)
 
   const setField = (k: string, v: string) => { setF((x) => ({ ...x, [k]: v })); setErrs((e) => ({ ...e, [k]: '' })) }
 
   const initials = f.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
   const roleLabel = user ? (ROLE_LABEL[user.role] ?? user.role) : ''
+  const isAdmin = user?.role === 'ADMIN'
+  const adminDashboard = useAdminDashboard(isAdmin)
+  const topCourt = adminDashboard.data?.topCourts[0] ?? null
+  const courtListQuery = useQuery({
+    queryKey: ['profile-admin-courts'],
+    queryFn: () =>
+      getCourts({
+        page: 0,
+        size: 200,
+        sortField: 'name',
+        sortDirection: 'asc',
+      }),
+    enabled: isAdmin && showCourts,
+  })
+  const ownerCourts = courtListQuery.data?.content ?? []
 
   function showToast(msg: string) {
     setToast(msg)
@@ -180,6 +212,15 @@ export function ProfilePage() {
           </div>
         </div>
 
+        {isAdmin && (
+          <FeaturedCourtCard
+            topCourt={topCourt}
+            isLoading={adminDashboard.isLoading}
+            isError={adminDashboard.isError}
+            onOpen={() => setShowCourts(true)}
+          />
+        )}
+
         {/* Info / Edit */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7">
           <div className="flex items-center gap-2 font-bold text-[15px] text-slate-900 mb-5">
@@ -225,6 +266,166 @@ export function ProfilePage() {
         </div>
 
       </main>
+      {showCourts && (
+        <CourtListModal
+          courts={ownerCourts}
+          topCourtId={topCourt?.courtId ?? null}
+          isLoading={courtListQuery.isLoading}
+          isError={courtListQuery.isError}
+          onClose={() => setShowCourts(false)}
+          onManage={() => navigate('/admin/courts')}
+        />
+      )}
     </div>
   )
+}
+
+function FeaturedCourtCard({
+  topCourt,
+  isLoading,
+  isError,
+  onOpen,
+}: {
+  topCourt: { courtId: number; courtName: string; branchName: string; bookingCount: number; bookedSlots: number; revenue: number } | null
+  isLoading: boolean
+  isError: boolean
+  onOpen: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group w-full rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-100">
+            <Trophy size={22} />
+          </div>
+          <div>
+            <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">Sân nổi bật</div>
+            {isLoading ? (
+              <div className="mt-2 h-5 w-44 animate-pulse rounded bg-slate-100" />
+            ) : isError ? (
+              <div className="mt-2 text-sm font-bold text-red-600">Không thể tải thông tin sân nổi bật</div>
+            ) : topCourt ? (
+              <>
+                <div className="mt-1 text-lg font-extrabold text-slate-900">{topCourt.courtName}</div>
+                <div className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+                  <Building2 size={14} />
+                  {topCourt.branchName}
+                </div>
+              </>
+            ) : (
+              <div className="mt-2 text-sm font-bold text-slate-600">Chưa có sân nổi bật</div>
+            )}
+          </div>
+        </div>
+        <ChevronRight size={20} className="mt-2 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-emerald-600" />
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <MiniStat label="Bookings" value={topCourt ? String(topCourt.bookingCount) : '-'} />
+        <MiniStat label="Slots" value={topCourt ? String(topCourt.bookedSlots) : '-'} />
+        <MiniStat label="Revenue" value={topCourt ? formatVnd(topCourt.revenue) : '-'} />
+      </div>
+    </button>
+  )
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-slate-50 px-3 py-2">
+      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</div>
+      <div className="mt-1 truncate text-sm font-extrabold text-slate-900">{value}</div>
+    </div>
+  )
+}
+
+function CourtListModal({
+  courts,
+  topCourtId,
+  isLoading,
+  isError,
+  onClose,
+  onManage,
+}: {
+  courts: Court[]
+  topCourtId: number | null
+  isLoading: boolean
+  isError: boolean
+  onClose: () => void
+  onManage: () => void
+}) {
+  return (
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8">
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-950">Danh sách sân của chủ sân</h2>
+            <p className="mt-1 text-sm text-slate-500">Sân nổi bật được đánh dấu dựa trên lượt đặt cao nhất.</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Đóng popup">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="max-h-[60vh] overflow-y-auto px-6 py-4">
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="h-20 animate-pulse rounded-xl bg-slate-100" />
+              ))}
+            </div>
+          ) : isError ? (
+            <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-6 text-center text-sm font-bold text-red-700">
+              Không thể tải danh sách sân.
+            </div>
+          ) : courts.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+              <div className="text-sm font-bold text-slate-700">Chủ sân này chưa có sân nào.</div>
+              <div className="mt-1 text-xs text-slate-500">Tạo sân trong khu vực Admin để hiển thị tại đây.</div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {courts.map((court) => {
+                const highlighted = court.id === topCourtId
+                return (
+                  <div key={court.id} className={`rounded-xl border px-4 py-3 ${highlighted ? 'border-amber-200 bg-amber-50/60' : 'border-slate-100 bg-white'}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="truncate text-sm font-extrabold text-slate-900">{court.name}</h3>
+                          {highlighted && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-amber-700">Nổi bật</span>}
+                        </div>
+                        <div className="mt-1 text-xs font-medium text-slate-500">{court.branchName} · {court.courtTypeName}</div>
+                      </div>
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${COURT_STATUS_CLASS[court.status]}`}>
+                        {COURT_STATUS_LABEL[court.status]}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 bg-slate-50 px-6 py-4">
+          <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100">
+            Đóng
+          </button>
+          <button type="button" onClick={onManage} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700">
+            Quản lý sân
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function formatVnd(value: number) {
+  if (!value) return '0đ'
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}tr`
+  if (value >= 1_000) return `${Math.round(value / 1_000)}k`
+  return `${value.toLocaleString('vi-VN')}đ`
 }
