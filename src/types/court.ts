@@ -51,6 +51,16 @@ export interface SpringPage<T> {
   empty: boolean
 }
 
+export interface SpringPagedPayload<T> extends Partial<SpringPage<T>> {
+  content: T[]
+  page?: {
+    size: number
+    number: number
+    totalElements: number
+    totalPages: number
+  }
+}
+
 export type CourtSortField = 'id' | 'name' | 'status' | 'createdAt' | 'updatedAt'
 export type SortDirection = 'asc' | 'desc'
 
