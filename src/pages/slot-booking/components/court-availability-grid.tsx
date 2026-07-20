@@ -280,7 +280,7 @@ function getNext8Days() {
     d.setDate(d.getDate() + i);
     const dayName = daysOfWeek[d.getDay()];
     const dayNum = d.getDate();
-    const formattedDate = d.toISOString().split('T')[0]; // YYYY-MM-DD
+    const formattedDate = formatLocalDate(d);
     dates.push({
       dateStr: formattedDate,
       dayName,
