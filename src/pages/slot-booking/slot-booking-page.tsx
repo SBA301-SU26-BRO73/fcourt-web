@@ -31,7 +31,7 @@ export default function SlotBookingPage() {
   
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [courts, setCourts] = useState<Court[]>([]);
-  const [venueName, setVenueName] = useState<string>('Loading Branch...');
+  const [venueName, setVenueName] = useState<string>('Đang tải cơ sở...');
 
   // Sync date selection with URL dateParam if it changes
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function SlotBookingPage() {
             const mappedCourts = apiCourts.map(c => ({
               id: c.id,
               name: c.name,
-              type: c.courtTypeName || 'Indoor • Hard'
+              type: c.courtTypeName || 'Trong nhà • Mặt sân cứng'
             }));
             setCourts(mappedCourts);
           }
@@ -101,7 +101,7 @@ export default function SlotBookingPage() {
           courts.map(async (court) => {
             const data = await branchApi.getDailyCourtSchedule(court.id, selectedDate);
             if (!Array.isArray(data)) {
-              throw new Error('Invalid schedule response');
+            throw new Error('Dữ liệu lịch sân không hợp lệ');
             }
             newSchedules[court.id] = data;
           })
@@ -217,18 +217,18 @@ export default function SlotBookingPage() {
   };
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-4 py-8 md:px-8 pb-32">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+    <div className="w-full max-w-[1600px] mx-auto px-3 py-5 pb-40 sm:px-4 sm:py-8 md:px-8 md:pb-32">
+      <div className="mb-5 flex flex-col gap-4 sm:mb-8 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-headline-lg font-bold text-on-surface">Court Availability</h1>
-          <p className="text-on-surface-variant mt-1 text-body-md">Find and book your perfect match time.</p>
+          <h1 className="text-2xl font-headline-lg font-bold text-on-surface sm:text-3xl">Lịch sân trống</h1>
+          <p className="mt-1 text-sm text-on-surface-variant sm:text-body-md">Chọn ngày và khung giờ phù hợp để đặt sân.</p>
         </div>
         
         {/* Branch Name Static Label */}
         <div className="relative shrink-0">
-          <div className="flex items-center gap-2 px-4 py-2.5 border border-outline-variant/60 rounded-xl bg-white text-on-surface text-label-md font-bold shadow-sm select-none">
+          <div className="flex max-w-full items-center gap-2 truncate rounded-xl border border-outline-variant/60 bg-white px-3 py-2.5 text-sm font-bold text-on-surface shadow-sm select-none sm:px-4 sm:text-label-md">
             <span className="material-symbols-outlined text-primary text-[20px]">location_on</span>
-            <span>{venueName}</span>
+            <span className="truncate">{venueName}</span>
           </div>
         </div>
       </div>
@@ -236,13 +236,13 @@ export default function SlotBookingPage() {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-24 space-y-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-on-surface-variant font-medium text-body-md">Loading schedules...</span>
+          <span className="text-on-surface-variant font-medium text-body-md">Đang tải lịch sân...</span>
         </div>
       ) : courts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 border border-outline-variant/30 rounded-2xl bg-white shadow-sm">
           <span className="material-symbols-outlined text-on-surface-variant/40 text-5xl mb-4">sports_tennis</span>
-          <h3 className="text-xl font-bold text-on-surface">No Courts Available</h3>
-          <p className="text-on-surface-variant text-sm mt-1">There are no courts registered at this branch location.</p>
+          <h3 className="text-xl font-bold text-on-surface">Không có sân trống</h3>
+          <p className="text-on-surface-variant text-sm mt-1">Cơ sở này chưa đăng ký sân nào.</p>
         </div>
       ) : scheduleError ? (
           <div className="flex flex-col items-center justify-center py-24 border border-destructive/20 rounded-2xl bg-destructive/5">
@@ -259,8 +259,8 @@ export default function SlotBookingPage() {
         ) : getScheduleStartTimes(courtSchedules).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 border border-outline-variant/30 rounded-2xl bg-white shadow-sm">
             <span className="material-symbols-outlined text-on-surface-variant/40 text-5xl mb-4">schedule</span>
-            <h3 className="text-xl font-bold text-on-surface">No Time Slots Available</h3>
-            <p className="text-on-surface-variant text-sm mt-1">Branch này chưa có khung giờ hoạt động cho ngày đã chọn.</p>
+            <h3 className="text-xl font-bold text-on-surface">Không có khung giờ trống</h3>
+            <p className="text-on-surface-variant text-sm mt-1">Cơ sở này chưa có khung giờ hoạt động trong ngày đã chọn.</p>
           </div>
         ) : (
           <CourtAvailabilityGrid

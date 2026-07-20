@@ -81,19 +81,19 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
         <div className="sticky top-24 space-y-stack-lg">
           {/* Booking Panel */}
           <div className="bg-surface-container-lowest border border-outline-variant shadow-xl rounded-2xl p-stack-lg">
-            <h3 className="font-headline-md text-headline-md mb-stack-md text-on-surface">Quick Book</h3>
+            <h3 className="font-headline-md text-headline-md mb-stack-md text-on-surface">Đặt sân nhanh</h3>
             <div className="space-y-stack-md">
               
               {/* Court Select */}
               <div className="p-stack-sm bg-surface-container rounded-lg border border-outline-variant/20">
-                <label className="block font-label-sm text-label-sm text-on-surface-variant mb-unit uppercase tracking-wider">Court</label>
+                <label className="block font-label-sm text-label-sm text-on-surface-variant mb-unit uppercase tracking-wider">Sân</label>
                 <select 
                   value={selectedCourtId ?? ''}
                   onChange={(e) => setSelectedCourtId(Number(e.target.value))}
                   className="w-full bg-transparent border-none focus:ring-0 font-body-md text-body-md p-0 outline-none text-on-surface cursor-pointer"
                 >
                   {activeCourts.length === 0 ? (
-                    <option value="">No courts available</option>
+                    <option value="">Không có sân trống</option>
                   ) : (
                     activeCourts.map((court) => (
                       <option key={court.id} value={court.id}>{court.name} · {court.courtTypeName}</option>
@@ -105,7 +105,7 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
               {/* Date & Time Row */}
               <div className="grid grid-cols-2 gap-stack-sm">
                 <div className="p-stack-sm bg-surface-container rounded-lg border border-outline-variant/20">
-                  <label className="block font-label-sm text-label-sm text-on-surface-variant mb-unit uppercase tracking-wider">Date</label>
+                  <label className="block font-label-sm text-label-sm text-on-surface-variant mb-unit uppercase tracking-wider">Ngày</label>
                   <input 
                     className="w-full bg-transparent border-none focus:ring-0 font-body-sm text-body-sm p-0 outline-none text-on-surface cursor-pointer" 
                     type="date" 
@@ -115,7 +115,7 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
                   />
                 </div>
                 <div className="p-stack-sm bg-surface-container rounded-lg border border-outline-variant/20">
-                  <label className="block font-label-sm text-label-sm text-on-surface-variant mb-unit uppercase tracking-wider">Time</label>
+                  <label className="block font-label-sm text-label-sm text-on-surface-variant mb-unit uppercase tracking-wider">Giờ</label>
                   <select 
                     value={selectedTime}
                     onChange={(e) => setSelectedTime(e.target.value)}
@@ -132,11 +132,11 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
               {/* Checkout details */}
               <div className="border-t border-outline-variant/30 pt-stack-md mt-stack-md space-y-stack-xs text-on-surface">
                 <div className="flex justify-between font-body-sm text-body-sm">
-                  <span>1 Hour Court Hire</span>
+                  <span>Thuê sân 1 giờ</span>
                   <span className="font-medium">{selectedSlot ? formatCurrency(selectedSlot.price) : '—'}</span>
                 </div>
                 <div className="flex justify-between font-headline-md text-headline-md pt-stack-sm border-t border-outline-variant/10">
-                  <span>Total</span>
+                  <span>Tổng cộng</span>
                   <span className="text-primary font-bold">{selectedSlot ? formatCurrency(selectedSlot.price) : '—'}</span>
                 </div>
               </div>
@@ -146,7 +146,7 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
                 disabled={!branch.id || !selectedCourt || !selectedSlot || isLoadingSchedule}
                 className="w-full bg-primary text-on-primary py-4 rounded-xl font-headline-md text-headline-md hover:scale-[1.01] transition-transform shadow-lg shadow-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Book Now
+                Đặt sân
               </button>
               <p className="text-center font-label-sm text-label-sm text-on-surface-variant">Có thể hủy trước tối thiểu 1 giờ</p>
             </div>
@@ -161,7 +161,7 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
                 className="w-full bg-surface-container-lowest text-on-surface py-2 rounded-lg font-label-md text-label-md flex items-center justify-center gap-unit shadow-sm hover:bg-surface-container-highest transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-primary">directions</span>
-                Get Directions
+                Chỉ đường
               </button>
             </div>
           </div>
@@ -175,7 +175,7 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
           className="primary-gradient text-white flex items-center justify-center rounded-full shadow-2xl hover:scale-[1.05] transition-all p-4 px-6 gap-2 font-bold cursor-pointer"
         >
           <span className="material-symbols-outlined">bolt</span>
-          <span>Book Now</span>
+          <span>Đặt sân</span>
         </button>
       </div>
     </>

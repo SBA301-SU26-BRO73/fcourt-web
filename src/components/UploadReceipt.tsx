@@ -103,11 +103,11 @@ export function UploadReceipt({
   };
 
   return (
-    <div className="mt-3">
+    <div className="mb-4 rounded-2xl border border-[#d8e8dc] bg-white p-5 shadow-[0_6px_20px_rgba(46,125,50,0.05)]">
       <div className="mb-2 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Xac nhan thanh toan</h3>
-          <p className="text-[11px] text-muted-foreground">Anh bien lai PNG/JPG, toi da 5MB</p>
+          <h3 className="text-sm font-bold text-[#191c1d]">Xác nhận thanh toán</h3>
+          <p className="text-[11px] text-[#667267]">Ảnh biên lai PNG/JPG, tối đa 5MB</p>
         </div>
         {error && <p className="text-xs font-medium text-destructive">{error}</p>}
       </div>
@@ -117,7 +117,7 @@ export function UploadReceipt({
           htmlFor={isExpired ? undefined : 'receipt-upload'}
           onDrop={isExpired ? undefined : handleDrop}
           onDragOver={(e) => e.preventDefault()}
-          className={`flex h-16 w-48 shrink-0 items-center justify-center gap-2 overflow-hidden rounded-xl border px-3 transition-colors ${
+          className={`flex h-16 min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden rounded-xl border px-3 transition-colors ${
             isExpired
               ? 'border-destructive/30 bg-destructive/5 cursor-not-allowed opacity-60'
               : error
@@ -140,24 +140,15 @@ export function UploadReceipt({
           {selectedFile && previewUrl ? (
             <>
               <img src={previewUrl} alt="Bien lai xem truoc" className="h-10 w-10 shrink-0 rounded-md object-cover" />
-              <span className="truncate text-xs font-semibold text-foreground">Doi anh</span>
+              <span className="truncate text-xs font-semibold text-[#191c1d]">Đổi ảnh</span>
             </>
           ) : (
             <>
               <Upload className="h-5 w-5 text-muted-foreground" />
-              <span className="text-xs font-semibold text-foreground">Chon anh bien lai</span>
+              <span className="text-xs font-semibold text-[#191c1d]">Chọn ảnh biên lai</span>
             </>
           )}
         </label>
-
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-semibold text-foreground">
-            {selectedFile?.name ?? (isExpired ? 'Da het thoi gian giu san' : 'Chua chon anh bien lai')}
-          </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            {selectedFile ? `${(selectedFile.size / 1024).toFixed(0)} KB - San sang gui` : 'Nhan o vuong de tai anh'}
-          </p>
-        </div>
 
         {selectedFile && !isExpired && (
           <button type="button" onClick={clearFile} className="rounded-lg p-1.5 hover:bg-muted" title="Xoa file">
@@ -168,9 +159,9 @@ export function UploadReceipt({
         <button
           disabled={!selectedFile || submitting || isExpired}
           onClick={handleSubmit}
-          className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="shrink-0 rounded-xl bg-[#2e7d32] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#256b29] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {submitting ? 'Dang gui...' : 'Xac nhan'}
+          {submitting ? 'Đang gửi...' : 'Xác nhận'}
         </button>
       </div>
 

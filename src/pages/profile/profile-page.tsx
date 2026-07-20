@@ -70,6 +70,7 @@ export function ProfilePage() {
 
   const initials = f.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
   const roleLabel = user ? (ROLE_LABEL[user.role] ?? user.role) : ''
+  const isCustomer = user?.role === 'CUSTOMER'
   const isAdmin = user?.role === 'ADMIN'
   const adminDashboard = useAdminDashboard(isAdmin)
   const topCourt = adminDashboard.data?.topCourts[0] ?? null
@@ -154,6 +155,25 @@ export function ProfilePage() {
     <div className="min-h-screen bg-slate-50">
       {toast && <Toast msg={toast} />}
       {/* Header */}
+      {isCustomer ? (
+        <header className="border-b border-[#e1e3e4] bg-white px-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] md:px-12">
+          <div className="mx-auto flex h-20 items-center justify-between">
+            <div className="flex items-center gap-8">
+              <button type="button" onClick={() => navigate('/')} className="text-2xl font-bold tracking-tight text-[#2e7d32]">FCourt</button>
+            </div>
+            <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 md:flex">
+              <button type="button" onClick={() => navigate('/branches')} className="text-base font-semibold text-[#41493e] transition-colors hover:text-[#2e7d32]">Địa điểm</button>
+              <button type="button" onClick={() => navigate('/my-bookings')} className="text-base font-semibold text-[#41493e] transition-colors hover:text-[#2e7d32]">Lịch sử đặt sân</button>
+            </nav>
+            <div className="flex items-center gap-3 md:gap-4">
+              <button type="button" className="flex items-center gap-2 rounded-full border border-[#c0c9bb] bg-[#f3f4f5] px-4 py-2 text-sm font-semibold text-[#2e7d32]">
+                <span className="material-symbols-outlined">account_circle</span><span>Tài khoản</span>
+              </button>
+              <button type="button" onClick={logout} className="hidden text-sm font-semibold text-[#667267] transition-colors hover:text-[#2e7d32] sm:block">Đăng xuất</button>
+            </div>
+          </div>
+        </header>
+      ) : (
       <header className="border-b border-slate-200 bg-white px-6">
         <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between">
           <div className="flex items-center gap-3">
@@ -180,6 +200,7 @@ export function ProfilePage() {
           </div>
         </div>
       </header>
+      )}
 
       <main className="max-w-2xl mx-auto px-6 py-10 pb-20 space-y-4">
         {errs.form && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errs.form}</div>}

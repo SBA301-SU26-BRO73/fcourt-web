@@ -1,8 +1,7 @@
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
 import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ProgressStepper } from '../../components/ProgressStepper';
 import { QRPaymentCard } from '../../components/QRPaymentCard';
 import { UploadReceipt } from '../../components/UploadReceipt';
 import { BookingSummary } from '../../components/BookingSummary';
@@ -135,40 +134,17 @@ export function PaymentPage() {
   };
 
   const paymentCode = `BOOK-${bookingData.bookings.map((booking) => booking.id).join('-')}`;
-  const guestPhone = bookingData.bookings.find((booking) => booking.guestPhone)?.guestPhone ?? null;
   const finalAmount = Math.max(0, bookingData.totalAmount - discountAmount);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto px-6 py-3">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Quay lại</span>
-            </button>
-            <span className="absolute left-1/2 -translate-x-1/2 text-sm font-semibold text-foreground">
-              Thanh toán đặt sân
-            </span>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 py-2">
-        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mb-2">
-          <h1 className="text-xl font-bold text-foreground">Hoàn tất đặt sân</h1>
-          <p className="text-xs text-muted-foreground">
-            Thanh toán qua QR để hoàn tất đặt sân
-          </p>
+    <div className="min-h-screen bg-[#f5faf6] text-[#191c1d]" style={{ zoom: 0.9 }}>
+      <main className="mx-auto max-w-[1320px] px-4 py-8 md:px-8 md:py-10">
+        <div className="mb-7">
+          <h1 className="text-3xl font-bold tracking-tight text-[#191c1d]">Hoàn tất thanh toán</h1>
         </div>
 
-        <ProgressStepper currentStep={2} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(340px,0.82fr)]">
+          <div>
             <QRPaymentCard
               branchName={bookingData.branchName}
               bankName={bookingData.bankName}
@@ -179,6 +155,13 @@ export function PaymentPage() {
               content={paymentCode}
               timeLeft={timeLeft}
             />
+          </div>
+          <div>
+            <BookingSummary
+              data={bookingData}
+              paymentCode={paymentCode}
+              onVoucherChange={handleVoucherChange}
+            />
             <UploadReceipt
               bookingData={bookingData}
               paymentCode={paymentCode}
@@ -187,18 +170,10 @@ export function PaymentPage() {
               voucherCode={appliedVoucher?.code}
             />
           </div>
-          <div className="lg:col-span-1">
-            <BookingSummary
-              data={bookingData}
-              guestPhone={guestPhone}
-              paymentCode={paymentCode}
-              onVoucherChange={handleVoucherChange}
-            />
-          </div>
         </div>
 
-        <div className="mt-4 text-center">
-          <p className="text-xs text-muted-foreground">
+        <div className="mt-7 text-center">
+          <p className="text-xs text-[#667267]">
             Bằng việc thanh toán, bạn đồng ý với{' '}
             <a href="#" className="text-primary hover:underline">
               Điều khoản dịch vụ

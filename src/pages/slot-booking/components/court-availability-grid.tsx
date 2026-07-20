@@ -55,7 +55,7 @@ export default function CourtAvailabilityGrid({
       };
     }
     return {
-      dayName: 'Custom',
+      dayName: 'Chọn ngày',
       dayNum: null,
       active: false
     };
@@ -141,7 +141,7 @@ export default function CourtAvailabilityGrid({
             <div className="flex border-b border-outline-variant/30">
               {/* Sticky Top-Left Corner */}
               <div className="sticky left-0 z-30 bg-white border-r border-outline-variant/30 w-[180px] h-16 flex items-center px-4">
-                <span className="font-bold text-on-surface text-body-md">Courts</span>
+                <span className="font-bold text-on-surface text-body-md">Sân</span>
               </div>
 
               {/* Time Headers */}
@@ -155,7 +155,7 @@ export default function CourtAvailabilityGrid({
                     <span className="font-bold text-on-surface text-body-sm">{time}</span>
                     {peak && (
                       <span className="text-[10px] font-bold text-[#008096] tracking-widest mt-0.5 uppercase">
-                        PEAK
+                        CAO ĐIỂM
                       </span>
                     )}
                   </div>
@@ -201,7 +201,7 @@ export default function CourtAvailabilityGrid({
                         disabled = true;
                         content = (
                           <span className="text-[10px] font-bold text-[#C2410C]/70 tracking-wider">
-                            HOLD
+                            ĐANG GIỮ
                           </span>
                         );
                       } else {
@@ -244,27 +244,27 @@ export default function CourtAvailabilityGrid({
         <div className="bg-surface-container-lowest border-t border-outline-variant/30 px-6 py-4 flex flex-wrap gap-x-6 gap-y-2 text-[13px] font-medium text-on-surface-variant">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded border border-outline-variant/40 bg-white"></div>
-            <span>Available (30m)</span>
+            <span>Còn trống (30 phút)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded primary-gradient"></div>
-            <span>Selected</span>
+            <span>Đã chọn</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-gray-300 border border-gray-300/50"></div>
-            <span>Not Available</span>
+            <span>Không trống</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-[#FFF7ED] border border-[#FED7AA] flex items-center justify-center">
-              <span className="text-[8px] font-bold text-[#C2410C]">HOLD</span>
+              <span className="text-[8px] font-bold text-[#C2410C]">GIỮ</span>
             </div>
-            <span>Holding</span>
+            <span>Đang giữ</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded border border-[#008096]/30 bg-[#008096]/10 flex items-center justify-center">
-              <span className="text-[9px] font-bold text-[#008096]">Peak</span>
+              <span className="text-[9px] font-bold text-[#008096]">Cao điểm</span>
             </div>
-            <span>Peak Hour (+20%)</span>
+            <span>Giờ cao điểm (+20%)</span>
           </div>
         </div>
       </div>
@@ -274,7 +274,7 @@ export default function CourtAvailabilityGrid({
 
 function getNext8Days() {
   const dates = [];
-  const daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const daysOfWeek = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
   for (let i = 0; i < 8; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);

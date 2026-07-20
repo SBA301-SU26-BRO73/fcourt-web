@@ -10,7 +10,7 @@ interface BranchCourtsProps {
 
 export default function BranchCourts({ courts, isLoading, branchId }: BranchCourtsProps) {
   const navigate = useNavigate();
-  const [selectedType, setSelectedType] = useState<string>("All");
+  const [selectedType, setSelectedType] = useState<string>("Tất cả");
   const [todaySchedules, setTodaySchedules] = useState<Record<number, DailySlotResponse[]>>({});
 
   const handleViewAvailability = (courtId: number) => {
@@ -36,9 +36,9 @@ export default function BranchCourts({ courts, isLoading, branchId }: BranchCour
   }, [courts]);
 
   // Extract unique court types from the courts list
-  const courtTypes = ["All", ...Array.from(new Set(courts.map(c => c.courtTypeName).filter(Boolean)))];
+  const courtTypes = ["Tất cả", ...Array.from(new Set(courts.map(c => c.courtTypeName).filter(Boolean)))];
 
-  const filteredCourts = selectedType === "All"
+  const filteredCourts = selectedType === "Tất cả"
     ? courts
     : courts.filter(c => c.courtTypeName === selectedType);
 
@@ -63,7 +63,7 @@ export default function BranchCourts({ courts, isLoading, branchId }: BranchCour
   return (
     <section className="space-y-stack-lg">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-stack-md">
-        <h2 className="font-headline-md text-headline-md text-on-surface">Available Courts</h2>
+        <h2 className="font-headline-md text-headline-md text-on-surface">Danh sách sân</h2>
         <div className="flex flex-wrap gap-unit">
           {courtTypes.map(type => (
             <button
@@ -116,20 +116,20 @@ export default function BranchCourts({ courts, isLoading, branchId }: BranchCour
                   <div className="flex justify-between items-start gap-4">
                     <div>
                       <span className="text-secondary font-label-sm text-label-sm uppercase tracking-widest">
-                        {court.courtTypeName || "Sports Court"}
+                        {court.courtTypeName || "Sân thể thao"}
                       </span>
                       <h3 className="font-headline-md text-headline-md mt-unit text-on-surface">
                         {court.name}
                       </h3>
                       <p className="text-body-sm text-on-surface-variant mt-2 line-clamp-2">
-                        {court.description || "No description available for this court."}
+                        {court.description || "Chưa có mô tả cho sân này."}
                       </p>
                       <div className="flex items-center gap-stack-sm mt-3">
                         <span className="bg-surface-container text-on-surface-variant px-stack-sm py-xs rounded font-label-sm text-label-sm">
-                          {isTennis ? "Outdoor" : "Indoor"}
+                          {isTennis ? "Ngoài trời" : "Trong nhà"}
                         </span>
                         <span className="bg-surface-container text-on-surface-variant px-stack-sm py-xs rounded font-label-sm text-label-sm">
-                          {isTennis ? "Clay" : "Hard Surface"}
+                          {isTennis ? "Sân đất nện" : "Mặt sân cứng"}
                         </span>
                       </div>
                     </div>
@@ -145,7 +145,7 @@ export default function BranchCourts({ courts, isLoading, branchId }: BranchCour
                       onClick={() => handleViewAvailability(court.id)}
                       className="flex-1 bg-primary text-on-primary py-3 rounded-lg font-label-md text-label-md hover:scale-[1.02] transition-transform cursor-pointer"
                     >
-                      View Availability
+                      Xem lịch trống
                     </button>
                     <button className="p-3 border border-outline-variant rounded-lg hover:bg-surface-container transition-colors cursor-pointer">
                       <span className="material-symbols-outlined text-on-surface-variant">favorite</span>

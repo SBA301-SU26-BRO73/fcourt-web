@@ -1,4 +1,4 @@
-import { Calendar, Clock, MapPin, User, Ticket, Tag, X, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, Ticket, Tag, X, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import type { CreateBookingsResponse, PaymentResponse } from '@/types/booking';
 import { getVoucherByCode } from '@/services/voucher/voucher.api';
@@ -13,7 +13,7 @@ interface BookingSummaryProps {
   onVoucherChange?: (voucher: Voucher | null, discountAmount: number) => void;
 }
 
-export function BookingSummary({ data, guestPhone, paymentCode, onVoucherChange }: BookingSummaryProps) {
+export function BookingSummary({ data, paymentCode, onVoucherChange }: BookingSummaryProps) {
   const bookings = data.bookings;
   const originalTotalAmount = 'totalAmount' in data ? data.totalAmount : data.amount;
   const displayCode = paymentCode || `BOOK-${bookings.map((booking) => booking.id).join('-')}`;
@@ -108,25 +108,25 @@ export function BookingSummary({ data, guestPhone, paymentCode, onVoucherChange 
   const finalAmount = Math.max(0, originalTotalAmount - discountAmount);
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-5 shadow-sm sticky top-4 max-h-[calc(100vh-180px)] overflow-y-auto">
-      <h3 className="text-lg font-semibold text-foreground mb-3">
+    <div className="rounded-2xl border border-[#d8e8dc] bg-white p-5 shadow-[0_6px_20px_rgba(46,125,50,0.05)]">
+      <h3 className="mb-4 text-lg font-bold text-[#191c1d]">
         Chi tiết đặt sân
       </h3>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3 pb-3 border-b border-border">
-          <div className="text-xs text-muted-foreground mb-1">Mã thanh toán</div>
-          <div className="text-sm font-bold text-foreground break-words">
+          <div className="text-xs text-[#667267]">Mã thanh toán</div>
+          <div className="break-words text-sm font-bold text-[#191c1d]">
             {displayCode}
           </div>
         </div>
 
         <div className="pb-3 border-b border-border">
           <div>
-            <div className="text-sm font-bold text-foreground">
+              <div className="text-sm font-bold text-[#191c1d]">
               {data.branchName}
             </div>
-            <div className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+            <div className="mt-1 flex items-start gap-1.5 text-xs text-[#667267]">
               <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               <span className="leading-relaxed">{data.branchAddress}</span>
             </div>
@@ -144,16 +144,15 @@ export function BookingSummary({ data, guestPhone, paymentCode, onVoucherChange 
               <div key={booking.id} className="space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-sm font-bold text-foreground">
+                    <div className="text-sm font-bold text-[#191c1d]">
                     {booking.courtName}
                     </div>
-                    <div className="text-xs text-muted-foreground">Booking #{booking.id}</div>
                   </div>
-                  <span className="text-sm font-bold text-foreground whitespace-nowrap">
+                  <span className="whitespace-nowrap text-sm font-bold text-[#191c1d]">
                     {formatCurrency(booking.totalPrice)}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-[#667267]">
                   <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>{formatDate(booking.date)}</span>
                   <span className="text-border">•</span>
@@ -164,29 +163,10 @@ export function BookingSummary({ data, guestPhone, paymentCode, onVoucherChange 
                       : 'Chưa có slot'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{booking.slots.length} khung giờ</span>
-                  <span>{formatCurrency(booking.totalPrice)}/booking</span>
-                </div>
               </div>
             );
           })}
         </div>
-
-        {guestPhone ? (
-          <div className="pb-3 border-b border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <User className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs font-semibold text-foreground">
-                Thông tin khách hàng
-              </span>
-            </div>
-            <div className="flex justify-between ml-7">
-              <span className="text-xs text-muted-foreground">Số điện thoại</span>
-              <span className="text-xs font-medium text-foreground">{guestPhone}</span>
-            </div>
-          </div>
-        ) : null}
 
         {/* Voucher Input Section */}
         <div className="pb-3 border-b border-border space-y-2">

@@ -56,7 +56,7 @@ export default function BranchDetailPage() {
       <div className="lg:col-span-8 space-y-stack-xl">
         <header className="space-y-stack-sm">
           <nav className="flex items-center gap-unit text-on-surface-variant font-label-sm text-label-sm">
-            <Link to="/branches" className="hover:text-primary">Locations</Link>
+            <Link to="/branches" className="hover:text-primary">Địa điểm</Link>
             <span className="material-symbols-outlined text-sm">chevron_right</span>
             <span className="hover:text-primary cursor-pointer">{branch.city}</span>
             <span className="material-symbols-outlined text-sm">chevron_right</span>
@@ -74,12 +74,12 @@ export default function BranchDetailPage() {
             <div className="flex items-center gap-stack-sm">
               {branch.status === "ACTIVE" && (
                  <span className="bg-secondary-container text-on-secondary-container px-stack-md py-unit rounded-full font-label-sm text-label-sm flex items-center gap-unit">
-                   <span className="w-2 h-2 rounded-full bg-secondary"></span> Open Now
+                   <span className="w-2 h-2 rounded-full bg-secondary"></span> Đang mở cửa
                  </span>
               )}
               <div className="flex items-center gap-unit text-on-surface">
                 <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                <span className="font-label-md text-label-md">4.9 (124 reviews)</span>
+                <span className="font-label-md text-label-md">4.9 (124 đánh giá)</span>
               </div>
             </div>
           </div>
