@@ -1,6 +1,6 @@
 import { Grid2X2, Inbox, Layers, LogOut, ShieldCheck, Tag, Users } from 'lucide-react'
 import { useEffect } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/hooks/use-auth-context'
 import { useUsers } from '@/hooks/use-users'
@@ -96,14 +96,20 @@ export function DashboardLayout() {
 
         <div className="border-t border-slate-100 px-4 pb-5 pt-4">
           <div className="flex items-center gap-2.5 rounded-2xl bg-slate-50 px-3 py-3">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-extrabold text-white">
-              SA
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] font-bold text-slate-800">Super Admin</div>
-              <div className="truncate text-[11.5px] font-medium text-slate-400">{user?.email}</div>
-            </div>
+            <Link
+              to="/profile"
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl transition hover:bg-white hover:shadow-sm"
+            >
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-extrabold text-white">
+                SA
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13px] font-bold text-slate-800">Super Admin</div>
+                <div className="truncate text-[11.5px] font-medium text-slate-400">{user?.email}</div>
+              </div>
+            </Link>
             <button
+              type="button"
               onClick={logout}
               className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white hover:text-slate-700 hover:shadow-sm"
               title="Đăng xuất"
