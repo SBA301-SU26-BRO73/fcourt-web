@@ -101,7 +101,7 @@ export const API_ENDPOINTS = {
     list: joinEndpoint(API_PREFIXES.vouchers),
     detail: (id: string | number) => joinEndpoint(API_PREFIXES.vouchers, id),
     code: (code: string) => joinEndpoint(API_PREFIXES.vouchers, 'code', code),
-  }
+  },
   bookings: {
     list: joinEndpoint(API_PREFIXES.bookings),
     my: joinEndpoint(API_PREFIXES.bookings, 'my'),
