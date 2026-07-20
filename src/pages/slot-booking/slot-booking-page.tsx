@@ -8,6 +8,7 @@ import { branchApi } from '@/services/branch/branch.api';
 import type { DailySlotResponse } from '@/services/branch/branch.api';
 import { createBookings } from '@/services/booking/booking.api';
 import { useAuth } from '@/hooks/use-auth-context';
+import { formatLocalDate } from '@/common/utils/local-date';
 
 export default function SlotBookingPage() {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ export default function SlotBookingPage() {
   const dateParam = searchParams.get('date');
   const startTimeParam = searchParams.get('startTime');
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = formatLocalDate(new Date());
   const [selectedDate, setSelectedDate] = useState<string>(dateParam || todayStr);
   const [courtSchedules, setCourtSchedules] = useState<Record<number, DailySlotResponse[]>>({});
   const [selectedSlots, setSelectedSlots] = useState<SelectedSlot[]>([]);
