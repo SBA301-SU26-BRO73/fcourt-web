@@ -121,7 +121,7 @@ export function DashboardLayout() {
       </aside>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-[#F8FAFC] p-6 sm:p-8">
           <Outlet />
         </div>
       </div>

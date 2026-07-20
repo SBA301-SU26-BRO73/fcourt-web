@@ -1,61 +1,82 @@
+import { useNavigate } from "react-router-dom";
+
 export default function HeroSection() {
-    return (
-      <section className="relative w-full min-h-[85vh] flex flex-col items-center justify-center px-margin-mobile md:px-margin-desktop overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <img
-            alt="Modern Sports Arena"
-            className="w-full h-full object-cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkf1-dSdwtoABJkWeg8R_dEK6FxEDzKiL2xWYUVxhTLeiLg0TJOcxu0LTobNbkpWaPhhCFNcXwEtjckUaTiV9duWZVJnJIwqinb8kyiDyEBNy59ffqH4pY-MgnwHVwChqQi7dCGYoPV6NQ3x6jdZizWiifMKP-taxp_2DQyxSqWRj8eZ7KtIZVLqFULfyD4m_FYr18YJWSQBm3KtkEKJr7w2uKo7TLWBEy8HR9KVjjr_GTLewEHo-d6uJdI7vpUtHJuMwWKaS3m8Y"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-surface/20 via-surface/60 to-surface"></div>
-        </div>
-        <div className="relative z-10 max-w-4xl text-center space-y-stack-lg">
-          <h1 className="font-display-lg text-display-lg md:text-[64px] tracking-tighter text-on-surface">
-            Find your <span className="primary-gradient-text italic">court.</span>
-            <br />
-            Play your game.
+  const navigate = useNavigate();
+
+  const scrollToFeatures = () => {
+    const el = document.getElementById("features");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  return (
+    <section className="relative w-full min-h-[750px] flex items-center overflow-hidden">
+      {/* Background Image with Brightness Overlay */}
+      <div className="absolute inset-0 z-0">
+        <div
+          className="w-full h-full bg-cover bg-center brightness-[0.85] transition-all duration-700"
+          style={{
+            backgroundImage: `url('https://lh3.googleusercontent.com/aida-public/AB6AXuA073iprHSsyxCne_4Kpq3Oiw-leOG3cDshOZvaTYZDN0D7NG3AdtJDqf2gCFxj1oDZqEy0bhHRTS4n8_R2vozEZ0Nc0_LBQwM8bPtM2sFdLzyzbcwBQ7rvu1iizB0sYQMjqfunVLrHvb5HpYKl8K2CF3dIEOvr7F42Uw--Eq6L_lD0kT06uHkoPwa_UFIN2MA1ccAHV6thUa78ySsWZxvS0qmwx_u8XW8rzMZILwQ1yFsa8RYot5vs4SKY4w0YG1pgCNZoVDJiGrU')`,
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
+      </div>
+
+      <div className="relative z-10 w-full px-4 md:px-16 py-20">
+        <div className="max-w-2xl bg-white/10 backdrop-blur-md p-6 sm:p-10 rounded-[32px] border border-white/20 shadow-2xl">
+          <div className="flex items-center gap-2 mb-3">
+            <span
+              className="material-symbols-outlined text-[#77fca3]"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              stars
+            </span>
+            <span className="text-white font-bold text-xs tracking-widest uppercase">
+              Nền tảng #1 Việt Nam
+            </span>
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-6 leading-tight tracking-tight">
+            Đặt sân thể thao <br />
+            <span className="text-[#59df89] drop-shadow-sm">
+              nhanh chóng &amp; tiện lợi
+            </span>{" "}
+            nhất
           </h1>
-          <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">
-            The premium sports-tech ecosystem for active professionals. Book
-            high-performance venues in seconds.
+
+          <p className="text-base sm:text-lg text-white/90 mb-8 max-w-lg leading-relaxed">
+            Hơn 500 sân thể thao trên toàn quốc. Đặt sân trong 30 giây, hủy miễn
+            phí, thanh toán bảo mật.
           </p>
-  
-          {/* Search Bar */}
-          <div className="mt-stack-xl glass-card border border-white/40 p-2 rounded-2xl shadow-xl flex flex-col md:flex-row items-stretch gap-2 max-w-3xl mx-auto">
-            <div className="flex-1 flex items-center px-4 gap-3 border-r border-outline-variant/30">
-              <span className="material-symbols-outlined text-primary">
-                sports_tennis
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={() => navigate("/branches")}
+              className="bg-[#006d38] hover:bg-[#00a859] active:scale-95 text-white px-8 py-4 rounded-xl font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2"
+            >
+              Đặt ngay
+              <span className="material-symbols-outlined text-xl">
+                arrow_forward
               </span>
-              <select className="bg-transparent border-none focus:ring-0 text-on-surface font-label-md w-full">
-                <option>Pickleball</option>
-                <option>Tennis</option>
-                <option>Badminton</option>
-              </select>
-            </div>
-            <div className="flex-1 flex items-center px-4 gap-3 border-r border-outline-variant/30">
-              <span className="material-symbols-outlined text-primary">
-                location_on
-              </span>
-              <input
-                className="bg-transparent border-none focus:ring-0 text-on-surface font-label-md w-full"
-                placeholder="Location"
-                type="text"
-              />
-            </div>
-            <div className="flex-1 flex items-center px-4 gap-3 border-r border-outline-variant/30">
-              <span className="material-symbols-outlined text-primary">
-                calendar_today
-              </span>
-              <input
-                className="bg-transparent border-none focus:ring-0 text-on-surface font-label-md w-full"
-                type="date"
-              />
-            </div>
-            <button className="primary-gradient text-white px-8 py-4 rounded-xl font-label-md shadow-lg shadow-primary/20 hover:scale-105 transition-transform active:scale-95">
-              Search
+            </button>
+
+            <button
+              onClick={scrollToFeatures}
+              className="bg-white/20 hover:bg-white/30 active:scale-95 text-white border border-white/30 backdrop-blur px-8 py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center"
+            >
+              Tìm hiểu thêm
             </button>
           </div>
         </div>
-      </section>
-    );
-  }
+      </div>
+
+      {/* Scroll Down Indicator */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 animate-bounce cursor-pointer" onClick={scrollToFeatures}>
+        <span className="material-symbols-outlined text-white/60 text-4xl hover:text-white transition-colors">
+          keyboard_double_arrow_down
+        </span>
+      </div>
+    </section>
+  );
+}

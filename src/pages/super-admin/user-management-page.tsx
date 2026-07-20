@@ -199,7 +199,7 @@ export function UserManagementPage() {
   const totalElements = pageData?.totalElements ?? 0
 
   return (
-    <div className="min-h-full bg-[#F8F9FB] px-6 py-7 text-slate-900">
+    <div className="max-w-7xl mx-auto space-y-6">
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-xl">
           <Check className="h-4 w-4 text-emerald-400" />
@@ -207,8 +207,7 @@ export function UserManagementPage() {
         </div>
       )}
 
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-slate-400">
               Account Management
@@ -369,7 +368,6 @@ export function UserManagementPage() {
             </button>
           </div>
         </div>
-      </div>
 
       {lockingUser && (
         <LockDialog

@@ -65,90 +65,90 @@ export function CourtListPage() {
   const data = courtQuery.data
 
   return (
-    <div className="min-h-screen bg-[#F5F6F8] text-[#111827]">
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#10B981]">Court management</p>
-            <h1 className="mt-2 text-[32px] font-bold tracking-tight">Quản lý sân</h1>
-            <p className="mt-2 text-sm text-[#6B7280]">Quản lý sân ở tất cả branch, loại sân và trạng thái vận hành.</p>
-          </div>
-          <div className="flex gap-3">
-            <Link to="/admin/time-slots" className="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-[#059669] hover:bg-emerald-50">Khung giờ</Link>
-            <Link to="/admin/branches" className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm font-bold text-[#374151] hover:border-[#10B981] hover:text-[#059669]">Quản lý branch</Link>
-            <Link to="/admin/courts/new" className="inline-flex items-center gap-2 rounded-xl bg-[#10B981] px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#059669]">
-              <Plus className="size-5" aria-hidden="true" /> Thêm sân
-            </Link>
-          </div>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Quản lý danh sách sân</h1>
+          <p className="mt-1 text-sm text-slate-500">Quản lý tất cả sân ở các chi nhánh, loại sân và trạng thái vận hành.</p>
         </div>
+        <div>
+          <Link
+            to="/admin/courts/new"
+            style={{ backgroundColor: '#006d38' }}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:opacity-90 active:scale-95 transition-all"
+          >
+            <Plus className="size-5 text-white stroke-[3]" aria-hidden="true" />
+            <span className="text-white">Thêm sân</span>
+          </Link>
+        </div>
+      </div>
 
-        {successMessage && <div role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{successMessage}</div>}
-        {deleteMutation.isError && <div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{getCourtErrorMessage(deleteMutation.error)}</div>}
+      {successMessage && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{successMessage}</div>}
+      {deleteMutation.isError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{getCourtErrorMessage(deleteMutation.error)}</div>}
 
-        <section className="mt-6 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm" aria-label="Sắp xếp danh sách sân">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <FilterSelect label="Sắp xếp theo" value={sortField} onChange={(value) => { setSortField(value as CourtSortField); setPage(0) }} options={[
-              { value: 'name', label: 'Tên sân' },
-              { value: 'status', label: 'Trạng thái' },
-              { value: 'createdAt', label: 'Ngày tạo' },
-              { value: 'updatedAt', label: 'Ngày cập nhật' },
-              { value: 'id', label: 'ID' },
-            ]} />
-            <FilterSelect label="Thứ tự" value={sortDirection} onChange={(value) => { setSortDirection(value as SortDirection); setPage(0) }} options={[
-              { value: 'asc', label: 'Tăng dần' },
-              { value: 'desc', label: 'Giảm dần' },
-            ]} />
-            <FilterSelect label="Số sân mỗi trang" value={String(size)} onChange={(value) => { setSize(Number(value)); setPage(0) }} options={[5, 10, 20, 50].map((value) => ({ value: String(value), label: String(value) }))} />
-          </div>
-        </section>
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs" aria-label="Sắp xếp danh sách sân">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <FilterSelect label="Sắp xếp theo" value={sortField} onChange={(value) => { setSortField(value as CourtSortField); setPage(0) }} options={[
+            { value: 'name', label: 'Tên sân' },
+            { value: 'status', label: 'Trạng thái' },
+            { value: 'createdAt', label: 'Ngày tạo' },
+            { value: 'updatedAt', label: 'Ngày cập nhật' },
+            { value: 'id', label: 'ID' },
+          ]} />
+          <FilterSelect label="Thứ tự" value={sortDirection} onChange={(value) => { setSortDirection(value as SortDirection); setPage(0) }} options={[
+            { value: 'asc', label: 'Tăng dần' },
+            { value: 'desc', label: 'Giảm dần' },
+          ]} />
+          <FilterSelect label="Số sân mỗi trang" value={String(size)} onChange={(value) => { setSize(Number(value)); setPage(0) }} options={[5, 10, 20, 50].map((value) => ({ value: String(value), label: String(value) }))} />
+        </div>
+      </section>
 
-        {courtQuery.isPending ? (
-          <StatePanel title="Đang tải danh sách sân..." />
-        ) : courtQuery.isError ? (
-          <StatePanel title="Không thể tải danh sách sân" description={getCourtErrorMessage(courtQuery.error)} actionLabel="Thử lại" onAction={() => void courtQuery.refetch()} />
-        ) : !data || data.content.length === 0 ? (
-          <StatePanel title="Chưa có dữ liệu sân" description="Tạo sân đầu tiên để bắt đầu quản lý." />
-        ) : (
-          <>
-            <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {data.content.map((court) => (
-                <article key={court.id} className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#10B981] hover:shadow-md">
-                  <CourtImage court={court} />
-                  <div className="p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h2 className="truncate text-xl font-bold">{court.name}</h2>
-                        <p className="mt-1 flex items-center gap-1.5 text-sm text-[#6B7280]"><MapPin className="size-4 text-[#10B981]" aria-hidden="true" />{court.branchName}</p>
-                      </div>
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusStyles[court.status]}`}>{statusLabels[court.status]}</span>
+      {courtQuery.isPending ? (
+        <StatePanel title="Đang tải danh sách sân..." />
+      ) : courtQuery.isError ? (
+        <StatePanel title="Không thể tải danh sách sân" description={getCourtErrorMessage(courtQuery.error)} actionLabel="Thử lại" onAction={() => void courtQuery.refetch()} />
+      ) : !data || data.content.length === 0 ? (
+        <StatePanel title="Chưa có dữ liệu sân" description="Tạo sân đầu tiên để bắt đầu quản lý." />
+      ) : (
+        <>
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {data.content.map((court) => (
+              <article key={court.id} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs transition duration-200 hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-md">
+                <CourtImage court={court} />
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="truncate text-xl font-bold text-slate-900">{court.name}</h2>
+                      <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500"><MapPin className="size-4 text-emerald-600" aria-hidden="true" />{court.branchName}</p>
                     </div>
-                    <div className="mt-4 rounded-xl bg-[#F5F6F8] px-3 py-2.5 text-sm"><span className="text-[#6B7280]">Court type: </span><span className="font-semibold">{court.courtTypeName}</span></div>
-                    <p className="mt-4 line-clamp-2 min-h-10 text-sm leading-5 text-[#6B7280]">{court.description || 'Chưa có mô tả.'}</p>
-                    <div className="mt-4 space-y-1 text-xs text-[#6B7280]">
-                      <p className="flex items-center gap-2"><CalendarDays className="size-3.5" aria-hidden="true" />Tạo: {formatDateTime(court.createdAt)}</p>
-                      <p className="pl-[22px]">Cập nhật: {formatDateTime(court.updatedAt)}</p>
-                    </div>
-                    <div className="mt-5 flex gap-2 border-t border-[#E5E7EB] pt-4">
-                      <ActionLink to={`/admin/courts/${court.id}`} label="Chi tiết" icon={Eye} />
-                      <ActionLink to={`/admin/courts/${court.id}/edit`} label="Sửa" icon={Pencil} />
-                      <button type="button" disabled={deleteMutation.isPending} onClick={() => handleDelete(court)} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"><Trash2 className="size-4" aria-hidden="true" />Xóa</button>
-                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusStyles[court.status]}`}>{statusLabels[court.status]}</span>
                   </div>
-                </article>
-              ))}
-            </div>
+                  <div className="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-sm"><span className="text-slate-500">Loại sân: </span><span className="font-semibold text-slate-800">{court.courtTypeName}</span></div>
+                  <p className="mt-3 line-clamp-2 min-h-10 text-sm leading-5 text-slate-600">{court.description || 'Chưa có mô tả.'}</p>
+                  <div className="mt-4 space-y-1 text-xs text-slate-400">
+                    <p className="flex items-center gap-2"><CalendarDays className="size-3.5" aria-hidden="true" />Tạo: {formatDateTime(court.createdAt)}</p>
+                    <p className="pl-[22px]">Cập nhật: {formatDateTime(court.updatedAt)}</p>
+                  </div>
+                  <div className="mt-5 flex gap-2 border-t border-slate-100 pt-4">
+                    <ActionLink to={`/admin/courts/${court.id}`} label="Chi tiết" icon={Eye} />
+                    <ActionLink to={`/admin/courts/${court.id}/edit`} label="Sửa" icon={Pencil} />
+                    <button type="button" disabled={deleteMutation.isPending} onClick={() => handleDelete(court)} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"><Trash2 className="size-4" aria-hidden="true" />Xóa</button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
 
-            <div className="mt-8 flex flex-wrap items-center justify-between gap-3 text-sm text-[#6B7280]">
-              <span>Tổng {data.totalElements} sân</span>
-              <div className="flex items-center gap-3">
-                <button type="button" disabled={data.first || courtQuery.isFetching} onClick={() => setPage((current) => Math.max(0, current - 1))} className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 font-semibold text-[#111827] hover:border-[#10B981] disabled:opacity-40">Trang trước</button>
-                <span className="font-medium">Trang {data.number + 1}/{Math.max(data.totalPages, 1)}</span>
-                <button type="button" disabled={data.last || courtQuery.isFetching} onClick={() => setPage((current) => current + 1)} className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 font-semibold text-[#111827] hover:border-[#10B981] disabled:opacity-40">Trang sau</button>
-              </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500 pt-2">
+            <span>Tổng {data.totalElements} sân</span>
+            <div className="flex items-center gap-3">
+              <button type="button" disabled={data.first || courtQuery.isFetching} onClick={() => setPage((current) => Math.max(0, current - 1))} className="rounded-xl border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700 hover:border-emerald-500 disabled:opacity-40">Trang trước</button>
+              <span className="font-medium">Trang {data.number + 1}/{Math.max(data.totalPages, 1)}</span>
+              <button type="button" disabled={data.last || courtQuery.isFetching} onClick={() => setPage((current) => current + 1)} className="rounded-xl border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700 hover:border-emerald-500 disabled:opacity-40">Trang sau</button>
             </div>
-          </>
-        )}
-      </main>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -154,227 +154,232 @@ export function BranchListPage() {
     : []
 
   return (
-    <div className="min-h-screen bg-[#F5F6F8] text-[#111827]">
-      <main className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-[32px] font-bold tracking-tight">Quản lý cơ sở</h1>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Quản lý cơ sở chi nhánh</h1>
+          <p className="text-sm text-slate-500 mt-1">Danh sách tất cả chi nhánh và sân đấu trực thuộc</p>
+        </div>
+        <div>
           <Link
-            to="/admin/courts"
-            className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-bold text-[#059669] hover:border-[#10B981] hover:bg-emerald-50"
+            to="/admin/branches/new"
+            style={{ backgroundColor: '#006d38' }}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-95"
           >
-            Quản lý sân
+            <Plus className="size-5 text-white stroke-[3]" />
+            <span className="text-white">Thêm cơ sở</span>
+          </Link>
+        </div>
+      </div>
+
+      {successMessage && (
+        <div
+          role="status"
+          className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"
+        >
+          {successMessage}
+        </div>
+      )}
+
+      {deleteMutation.isError && (
+        <div
+          role="alert"
+          className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800"
+        >
+          {getBranchErrorMessage(deleteMutation.error)}
+        </div>
+      )}
+
+      {courtDeleteMutation.isError && (
+        <div
+          role="alert"
+          className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800"
+        >
+          {getCourtErrorMessage(courtDeleteMutation.error)}
+        </div>
+      )}
+
+      <section aria-label="Tìm kiếm và chọn cơ sở" className="mt-6">
+        <div className="flex items-center gap-3">
+          <label className="relative min-w-0 flex-1">
+            <span className="sr-only">Tìm kiếm cơ sở</span>
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#6B7280]"
+            />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Tìm kiếm cơ sở..."
+              className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-12 pr-4 text-sm outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-[#10B981] focus:ring-4 focus:ring-emerald-100"
+            />
+          </label>
+          <button
+            type="button"
+            aria-label="Mở bộ lọc"
+            aria-expanded={showFilters}
+            onClick={() => setShowFilters((current) => !current)}
+            className={`grid size-12 shrink-0 place-items-center rounded-xl border bg-white transition duration-200 hover:border-emerald-500 hover:text-emerald-600 ${showFilters
+                ? 'border-emerald-500 text-emerald-600 shadow-sm'
+                : 'border-slate-200 text-slate-500'
+              }`}
+          >
+            <SlidersHorizontal aria-hidden="true" className="size-5" />
+          </button>
+          <Link
+            to="/admin/branches/new"
+            aria-label="Thêm cơ sở"
+            title="Thêm cơ sở"
+            style={{ backgroundColor: '#006d38' }}
+            className="grid size-12 shrink-0 place-items-center rounded-xl text-white shadow-sm transition duration-200 hover:opacity-90 active:scale-95"
+          >
+            <Plus aria-hidden="true" className="size-6 text-white stroke-[3]" />
           </Link>
         </div>
 
-        {successMessage && (
-          <div
-            role="status"
-            className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"
-          >
-            {successMessage}
+        {showFilters && (
+          <div className="mt-3 grid gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:grid-cols-3">
+            <FilterSelect
+              label="Sắp xếp theo"
+              value={sortField}
+              onChange={(value) => {
+                setSortField(value as BranchSortField)
+                setPage(0)
+              }}
+              options={sortOptions}
+            />
+            <FilterSelect
+              label="Thứ tự"
+              value={sortDirection}
+              onChange={(value) => {
+                setSortDirection(value as SortDirection)
+                setPage(0)
+              }}
+              options={[
+                { value: 'asc', label: 'Tăng dần' },
+                { value: 'desc', label: 'Giảm dần' },
+              ]}
+            />
+            <FilterSelect
+              label="Số cơ sở mỗi trang"
+              value={String(size)}
+              onChange={(value) => {
+                setSize(Number(value))
+                setPage(0)
+              }}
+              options={[5, 10, 20, 50].map((value) => ({
+                value: String(value),
+                label: String(value),
+              }))}
+            />
           </div>
         )}
 
-        {deleteMutation.isError && (
-          <div
-            role="alert"
-            className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800"
-          >
-            {getBranchErrorMessage(deleteMutation.error)}
-          </div>
-        )}
-
-        {courtDeleteMutation.isError && (
-          <div
-            role="alert"
-            className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800"
-          >
-            {getCourtErrorMessage(courtDeleteMutation.error)}
-          </div>
-        )}
-
-        <section aria-label="Tìm kiếm và chọn cơ sở" className="mt-6">
-          <div className="flex items-center gap-3">
-            <label className="relative min-w-0 flex-1">
-              <span className="sr-only">Tìm kiếm cơ sở</span>
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#6B7280]"
-              />
-              <input
-                type="search"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Tìm kiếm cơ sở..."
-                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-12 pr-4 text-sm outline-none transition duration-200 placeholder:text-[#9CA3AF] focus:border-[#10B981] focus:ring-4 focus:ring-emerald-100"
-              />
-            </label>
-            <button
-              type="button"
-              aria-label="Mở bộ lọc"
-              aria-expanded={showFilters}
-              onClick={() => setShowFilters((current) => !current)}
-              className={`grid size-12 shrink-0 place-items-center rounded-xl border bg-white transition duration-200 hover:border-[#10B981] hover:text-[#059669] ${
-                showFilters
-                  ? 'border-[#10B981] text-[#059669] shadow-sm'
-                  : 'border-[#E5E7EB] text-[#6B7280]'
-              }`}
-            >
-              <SlidersHorizontal aria-hidden="true" className="size-5" />
-            </button>
-            <Link
-              to="/admin/branches/new"
-              aria-label="Thêm cơ sở"
-              className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#10B981] text-white shadow-sm transition duration-200 hover:bg-[#059669] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
-            >
-              <Plus aria-hidden="true" className="size-6" />
-            </Link>
-          </div>
-
-          {showFilters && (
-            <div className="mt-3 grid gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:grid-cols-3">
-              <FilterSelect
-                label="Sắp xếp theo"
-                value={sortField}
-                onChange={(value) => {
-                  setSortField(value as BranchSortField)
-                  setPage(0)
-                }}
-                options={sortOptions}
-              />
-              <FilterSelect
-                label="Thứ tự"
-                value={sortDirection}
-                onChange={(value) => {
-                  setSortDirection(value as SortDirection)
-                  setPage(0)
-                }}
-                options={[
-                  { value: 'asc', label: 'Tăng dần' },
-                  { value: 'desc', label: 'Giảm dần' },
-                ]}
-              />
-              <FilterSelect
-                label="Số cơ sở mỗi trang"
-                value={String(size)}
-                onChange={(value) => {
-                  setSize(Number(value))
-                  setPage(0)
-                }}
-                options={[5, 10, 20, 50].map((value) => ({
-                  value: String(value),
-                  label: String(value),
-                }))}
-              />
-            </div>
-          )}
-
-          {branchQuery.isPending ? (
-            <StatePanel title="Đang tải danh sách cơ sở..." />
-          ) : branchQuery.isError ? (
-            <StatePanel
-              title="Không thể tải danh sách cơ sở"
-              description={getBranchErrorMessage(branchQuery.error)}
-              actionLabel="Thử lại"
-              onAction={() => void branchQuery.refetch()}
-            />
-          ) : !data || data.content.length === 0 ? (
-            <StatePanel
-              title="Chưa có cơ sở đang hoạt động"
-              description="Thêm cơ sở đầu tiên để bắt đầu quản lý."
-            />
-          ) : filteredBranches.length === 0 ? (
-            <StatePanel
-              title="Không tìm thấy cơ sở"
-              description="Hãy thử một tên hoặc địa chỉ khác."
-            />
-          ) : (
-            <div className="mt-5 flex snap-x gap-4 overflow-x-auto pb-3 pt-1">
-              {filteredBranches.map((branch) => {
-                const isSelected = branch.id === effectiveSelectedBranchId
-                const isDeleting =
-                  deleteMutation.isPending && deleteMutation.variables === branch.id
-                return (
-                  <article
-                    key={branch.id}
-                    className={`relative min-w-40 snap-start overflow-hidden rounded-2xl border-2 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${
-                      isSelected ? 'border-[#10B981]' : 'border-transparent'
+        {branchQuery.isPending ? (
+          <StatePanel title="Đang tải danh sách cơ sở..." />
+        ) : branchQuery.isError ? (
+          <StatePanel
+            title="Không thể tải danh sách cơ sở"
+            description={getBranchErrorMessage(branchQuery.error)}
+            actionLabel="Thử lại"
+            onAction={() => void branchQuery.refetch()}
+          />
+        ) : !data || data.content.length === 0 ? (
+          <StatePanel
+            title="Chưa có cơ sở đang hoạt động"
+            description="Thêm cơ sở đầu tiên để bắt đầu quản lý."
+          />
+        ) : filteredBranches.length === 0 ? (
+          <StatePanel
+            title="Không tìm thấy cơ sở"
+            description="Hãy thử một tên hoặc địa chỉ khác."
+          />
+        ) : (
+          <div className="mt-5 flex snap-x gap-4 overflow-x-auto pb-3 pt-1">
+            {filteredBranches.map((branch) => {
+              const isSelected = branch.id === effectiveSelectedBranchId
+              const isDeleting =
+                deleteMutation.isPending && deleteMutation.variables === branch.id
+              return (
+                <article
+                  key={branch.id}
+                  className={`relative min-w-40 snap-start overflow-hidden rounded-2xl border-2 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${isSelected ? 'border-[#10B981]' : 'border-transparent'
                     }`}
+                >
+                  <button
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setSelectedBranchId(branch.id)}
+                    className="block w-full text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-emerald-200"
                   >
-                    <button
-                      type="button"
-                      aria-pressed={isSelected}
-                      onClick={() => setSelectedBranchId(branch.id)}
-                      className="block w-full text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-emerald-200"
-                    >
-                      <div className="px-4 py-3 pr-12">
-                        <p className="truncate text-lg font-bold">{branch.name}</p>
-                        <p className="mt-1 text-sm text-[#6B7280]">
-                          {allCourts.filter((court) => court.branchId === branch.id).length} sân
-                        </p>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Xóa cơ sở ${branch.name}`}
-                      title="Xóa cơ sở"
-                      disabled={deleteMutation.isPending}
-                      onClick={() => handleDelete(branch)}
-                      className="absolute bottom-3 right-3 z-10 grid size-8 place-items-center rounded-full text-red-500 transition duration-200 hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-100 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Trash2
-                        aria-hidden="true"
-                        className={`size-4 ${isDeleting ? 'animate-pulse' : ''}`}
-                      />
-                    </button>
-                  </article>
-                )
-              })}
-            </div>
-          )}
-        </section>
-
-        {selectedBranch && (
-          <>
-            <BranchDetailCard branch={selectedBranch} courtCount={courts.length} />
-            <CourtList
-              key={selectedBranch.id}
-              branchId={selectedBranch.id}
-              focusCourtId={focusCourtId}
-              courts={courts}
-              isLoading={courtQuery.isPending}
-              error={courtQuery.error}
-              onRetry={() => void courtQuery.refetch()}
-              isDeleting={courtDeleteMutation.isPending}
-              onDelete={handleCourtDelete}
-            />
-          </>
-        )}
-
-        {data && data.totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-between gap-3 text-sm text-[#6B7280]">
-            <button
-              type="button"
-              disabled={data.first || branchQuery.isFetching}
-              onClick={() => setPage((current) => Math.max(0, current - 1))}
-              className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 font-semibold text-[#111827] hover:border-[#10B981] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Trang trước
-            </button>
-            <span className="font-medium">
-              Trang {data.number + 1}/{data.totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={data.last || branchQuery.isFetching}
-              onClick={() => setPage((current) => current + 1)}
-              className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 font-semibold text-[#111827] hover:border-[#10B981] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Trang sau
-            </button>
+                    <div className="px-4 py-3 pr-12">
+                      <p className="truncate text-lg font-bold">{branch.name}</p>
+                      <p className="mt-1 text-sm text-[#6B7280]">
+                        {allCourts.filter((court) => court.branchId === branch.id).length} sân
+                      </p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Xóa cơ sở ${branch.name}`}
+                    title="Xóa cơ sở"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => handleDelete(branch)}
+                    className="absolute bottom-3 right-3 z-10 grid size-8 place-items-center rounded-full text-red-500 transition duration-200 hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Trash2
+                      aria-hidden="true"
+                      className={`size-4 ${isDeleting ? 'animate-pulse' : ''}`}
+                    />
+                  </button>
+                </article>
+              )
+            })}
           </div>
         )}
-      </main>
+      </section>
+
+      {selectedBranch && (
+        <>
+          <BranchDetailCard branch={selectedBranch} courtCount={courts.length} />
+          <CourtList
+            key={selectedBranch.id}
+            branchId={selectedBranch.id}
+            focusCourtId={focusCourtId}
+            courts={courts}
+            isLoading={courtQuery.isPending}
+            error={courtQuery.error}
+            onRetry={() => void courtQuery.refetch()}
+            isDeleting={courtDeleteMutation.isPending}
+            onDelete={handleCourtDelete}
+          />
+        </>
+      )}
+
+      {data && data.totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-between gap-3 text-sm text-[#6B7280]">
+          <button
+            type="button"
+            disabled={data.first || branchQuery.isFetching}
+            onClick={() => setPage((current) => Math.max(0, current - 1))}
+            className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 font-semibold text-[#111827] hover:border-[#10B981] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Trang trước
+          </button>
+          <span className="font-medium">
+            Trang {data.number + 1}/{data.totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={data.last || branchQuery.isFetching}
+            onClick={() => setPage((current) => current + 1)}
+            className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 font-semibold text-[#111827] hover:border-[#10B981] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Trang sau
+          </button>
+        </div>
+      )}
 
       {courtPendingDelete && (
         <DeleteCourtDialog
@@ -502,16 +507,18 @@ function CourtList({
   return (
     <section className="mt-8" aria-labelledby="court-list-title">
       <div className="flex items-center justify-between gap-4">
-        <h2 id="court-list-title" className="text-2xl font-bold">
+        <h2 id="court-list-title" className="text-2xl font-bold text-slate-900">
           Danh sách sân ({courts.length})
         </h2>
         <Link
           to="/admin/courts/new"
           state={{ returnTo: '/admin/branches', selectedBranchId: branchId }}
           aria-label="Thêm sân"
-          className="shrink-0 rounded-lg px-2 py-2 text-sm font-bold text-[#10B981] transition duration-200 hover:bg-emerald-50 hover:text-[#059669]"
+          style={{ backgroundColor: '#006d38' }}
+          className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-95"
         >
-          + Thêm sân
+          <Plus className="size-5 text-white stroke-[3]" />
+          <span className="text-white">Thêm sân</span>
         </Link>
       </div>
 
@@ -621,7 +628,7 @@ function CourtList({
                   <Pencil aria-hidden="true" className="size-5" />
                 </Link>
                 <button
-                type="button"
+                  type="button"
                   aria-label={`Xóa ${court.name}`}
                   title="Xóa sân"
                   disabled={isDeleting}

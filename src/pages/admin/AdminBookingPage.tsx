@@ -214,19 +214,20 @@ export function AdminBookingPage() {
   ];
 
   return (
-    <div className="min-h-full bg-background p-4 sm:p-6 lg:p-8">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Duyệt thanh toán đặt sân</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Theo dõi và cập nhật trạng thái đặt sân của khách hàng
-            </p>
-          </div>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Duyệt thanh toán & Đặt sân</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Theo dõi và cập nhật trạng thái đơn đặt sân của khách hàng
+          </p>
+        </div>
           <div className="flex items-center gap-3">
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center gap-2 bg-muted text-foreground px-4 py-2 rounded-xl text-sm font-medium hover:bg-muted/80 transition-colors disabled:opacity-60"
+              style={{ backgroundColor: '#006d38' }}
+              className="flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               Làm mới
@@ -528,9 +529,10 @@ function BookingRow({
       <td className="px-5 py-4">
         <button
           onClick={onView}
-          className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+          style={canReview ? { backgroundColor: '#006d38' } : undefined}
+          className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
             canReview
-              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+              ? 'text-white shadow-sm hover:opacity-90 active:scale-95'
               : 'border border-border text-foreground hover:bg-muted'
           }`}
           aria-label={`${canReview ? 'Xử lý' : 'Xem'} ${getBookingCode(booking)}`}

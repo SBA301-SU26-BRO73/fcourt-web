@@ -12,7 +12,7 @@ const variantClasses = {
     "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50",
   link: "text-primary underline-offset-4 hover:underline",
   primary:
-    "border border-green-600 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50",
+    "bg-[#006d38] hover:bg-[#00552b] text-white font-bold rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50",
   danger:
     "border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50",
   neutral:

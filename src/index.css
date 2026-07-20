@@ -28,13 +28,20 @@
     -webkit-text-fill-color: transparent;
   }
   
-  .no-scrollbar::-webkit-scrollbar { 
+  .no-scrollbar::-webkit-scrollbar,
+  .scrollbar-hide::-webkit-scrollbar { 
     display: none; 
   }
   
-  .no-scrollbar { 
+  .no-scrollbar,
+  .scrollbar-hide { 
     -ms-overflow-style: none; 
     scrollbar-width: none; 
+  }
+
+  .active-scale:active {
+    transform: scale(0.95);
+    transition: transform 0.15s ease;
   }
 }
 

@@ -182,7 +182,7 @@ export function PendingPage() {
   }
 
   return (
-    <div className="p-6 space-y-5 max-w-6xl">
+    <div className="max-w-7xl mx-auto space-y-6">
       {toast && <Toast msg={toast} />}
 
       {/* Header */}

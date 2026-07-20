@@ -233,7 +233,7 @@ export function CourtTypesPage() {
   }
 
   return (
-    <div className="p-6 space-y-5 max-w-6xl">
+    <div className="max-w-7xl mx-auto space-y-6">
       {toast && <Toast msg={toast} />}
 
       <div className="flex items-end justify-between">
@@ -244,9 +244,10 @@ export function CourtTypesPage() {
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 text-white text-[13.5px] font-semibold hover:bg-green-700 transition"
+          style={{ backgroundColor: '#006d38' }}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-white text-[13.5px] font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all"
         >
-          <Plus size={16} strokeWidth={2.5} /> Thêm loại sân
+          <Plus size={16} strokeWidth={3} className="text-white" /> Thêm loại sân
         </button>
       </div>
 

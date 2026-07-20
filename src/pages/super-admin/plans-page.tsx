@@ -189,7 +189,7 @@ export function PlansPage() {
   }
 
   return (
-    <div className="p-6 space-y-5 max-w-6xl">
+    <div className="max-w-7xl mx-auto space-y-6">
       {toast && <Toast msg={toast} />}
 
       <div className="flex items-end justify-between">
@@ -199,16 +199,16 @@ export function PlansPage() {
           <p className="text-[13px] text-slate-400 mt-0.5">Cấu hình các gói dịch vụ cho chủ sân</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-xl border border-slate-200 bg-white overflow-hidden text-[12.5px] font-semibold">
-            <button onClick={() => setCycle('monthly')} className={`px-3.5 py-1.5 transition ${cycle === 'monthly' ? 'bg-green-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+          <div className="flex rounded-xl border border-slate-200 bg-white overflow-hidden text-[12.5px] font-semibold shadow-xs">
+            <button onClick={() => setCycle('monthly')} style={cycle === 'monthly' ? { backgroundColor: '#006d38' } : undefined} className={`px-3.5 py-1.5 transition font-bold ${cycle === 'monthly' ? 'text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
               Theo tháng
             </button>
-            <button onClick={() => setCycle('yearly')} className={`px-3.5 py-1.5 transition ${cycle === 'yearly' ? 'bg-green-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+            <button onClick={() => setCycle('yearly')} style={cycle === 'yearly' ? { backgroundColor: '#006d38' } : undefined} className={`px-3.5 py-1.5 transition font-bold ${cycle === 'yearly' ? 'text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
               Theo năm
             </button>
           </div>
-          <button onClick={() => { setEditing(null); setFormOpen(true) }} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 text-white text-[13.5px] font-semibold hover:bg-green-700 transition">
-            <Plus size={16} strokeWidth={2.5} /> Thêm gói
+          <button onClick={() => { setEditing(null); setFormOpen(true) }} style={{ backgroundColor: '#006d38' }} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-white text-[13.5px] font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all">
+            <Plus size={16} strokeWidth={3} className="text-white" /> Thêm gói
           </button>
         </div>
       </div>

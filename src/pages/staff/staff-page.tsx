@@ -104,13 +104,13 @@ export function StaffPage() {
   const endRow = Math.min((safePage + 1) * PAGE_SIZE, filtered.length)
 
   return (
-    <div className="p-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Page header */}
-      <div className="mb-5 flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Nhân viên</h1>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Quản lý tài khoản nhân viên · {totalElements} tài khoản
+          <h1 className="text-2xl font-bold text-slate-900">Quản lý tài khoản nhân viên</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Quản lý tài khoản và phân quyền nhân viên chi nhánh · {totalElements} tài khoản
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -136,8 +136,9 @@ export function StaffPage() {
           </Button>
           <Button
             variant="primary"
-            icon={<UserPlus size={15} />}
+            icon={<UserPlus size={15} className="text-white stroke-[2.5]" />}
             disabled={branchId == null}
+            className="bg-[#006d38] hover:bg-[#00552b] text-white font-bold px-4 py-2.5 rounded-xl shadow-sm"
             onClick={() => {
               setEditingStaff(null)
               setShowForm(true)

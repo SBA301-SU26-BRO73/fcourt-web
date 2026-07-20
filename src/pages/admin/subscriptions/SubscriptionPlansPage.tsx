@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck, Zap, AlertCircle, Building2, Layout, Calendar } from 'lucide-react'
 import { getSubscriptionPlans, getMyActiveSubscription, subscribePlan } from '@/services/subscription/subscription.api'
-import { SubscriptionPlanCard, translateSubscriptionText } from '@/components/admin/SubscriptionPlanCard'
+import { SubscriptionPlanCard } from '@/components/admin/SubscriptionPlanCard'
 import type { SubscriptionPlan, Subscription } from '@/types/subscription'
 
 export default function SubscriptionPlansPage() {
@@ -34,13 +34,13 @@ export default function SubscriptionPlansPage() {
     mutationFn: (planId: number) => subscribePlan({ planId, billingCycle }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['myActiveSubscription'] })
-      setToastMessage(`Successfully subscribed to ${data.plan.name} plan!`)
+      setToastMessage(`Đã đăng ký thành công gói ${data.plan.name}!`)
       setErrorMessage(null)
       setTimeout(() => setToastMessage(null), 5000)
     },
     onError: (err: unknown) => {
       const errorResponse = err as { response?: { data?: { message?: string } }; message?: string }
-      const msg = errorResponse?.response?.data?.message || errorResponse?.message || 'Failed to subscribe to plan.'
+      const msg = errorResponse?.response?.data?.message || errorResponse?.message || 'Không thể đăng ký gói dịch vụ.'
       setErrorMessage(msg)
       setTimeout(() => setErrorMessage(null), 6000)
     },
@@ -58,10 +58,10 @@ export default function SubscriptionPlansPage() {
         <div>
           <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2.5">
             <Zap className="h-6 w-6 text-emerald-600 fill-emerald-600/20" />
-            Subscription Plans & Limits
+            Gói dịch vụ &amp; Hạn mức
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Choose the subscription plan that fits your business scale. Upgrade anytime to expand your branch and court limits.
+            Chọn gói dịch vụ phù hợp với quy mô kinh doanh của bạn. Nâng cấp bất cứ lúc nào để mở rộng giới hạn chi nhánh và sân đấu.
           </p>
         </div>
 
@@ -75,7 +75,7 @@ export default function SubscriptionPlansPage() {
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Monthly Billing
+            Thanh toán hàng tháng
           </button>
           <button
             onClick={() => setBillingCycle('YEARLY')}
@@ -85,9 +85,9 @@ export default function SubscriptionPlansPage() {
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <span>Yearly Billing</span>
+            <span>Thanh toán hàng năm</span>
             <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-              Save
+              Tiết kiệm
             </span>
           </button>
         </div>
@@ -115,15 +115,15 @@ export default function SubscriptionPlansPage() {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-                  CURRENT PLAN
+                  GÓI HIỆN TẠI
                 </span>
                 <span className="rounded-md bg-emerald-600 text-white text-[11px] font-bold px-2 py-0.5">
-                  {translateSubscriptionText(currentSub.plan.name)}
+                  {currentSub.plan.name}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground flex items-center gap-2">
                 <Calendar className="h-3.5 w-3.5" />
-                Period: {currentSub.startDate} to {currentSub.endDate}
+                Thời hạn: {currentSub.startDate} đến {currentSub.endDate}
               </p>
             </div>
 
@@ -134,7 +134,7 @@ export default function SubscriptionPlansPage() {
                   <Building2 className="h-4 w-4 text-emerald-600" />
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Branches</div>
+                  <div className="text-xs text-muted-foreground">Chi nhánh</div>
                   <div className="text-sm font-extrabold text-foreground">
                     {currentSub.currentBranchCount ?? 0} /{' '}
                     {currentSub.maxBranches >= 99 ? '∞' : currentSub.maxBranches}
@@ -147,7 +147,7 @@ export default function SubscriptionPlansPage() {
                   <Layout className="h-4 w-4 text-emerald-600" />
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Courts</div>
+                  <div className="text-xs text-muted-foreground">Sân đấu</div>
                   <div className="text-sm font-extrabold text-foreground">
                     {currentSub.currentCourtCount ?? 0} /{' '}
                     {currentSub.maxCourts >= 99 ? '∞' : currentSub.maxCourts}

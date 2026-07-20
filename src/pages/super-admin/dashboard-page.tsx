@@ -532,101 +532,100 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="min-h-full bg-[#F8F9FB] px-6 py-7 text-slate-900">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-slate-400">
-              Overview
-            </p>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Dashboard Super Admin</h1>
-          </div>
-          <button
-            onClick={() => {
-              refetch()
-              refetchRevenue()
-            }}
-            disabled={fetching}
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[13px] font-bold text-slate-700 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100 transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.10)] disabled:opacity-60"
-          >
-            <RefreshCw className={`h-4 w-4 text-emerald-600 ${fetching ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-slate-400">
+            Overview
+          </p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Dashboard Super Admin</h1>
         </div>
-
-        {loading && (
-          <div className="rounded-[20px] bg-white p-10 text-center text-sm font-medium text-slate-500 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100">
-            Loading dashboard metrics...
-          </div>
-        )}
-
-        {hasError && (
-          <div className="rounded-[20px] bg-red-50 p-5 text-sm font-semibold text-red-700 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-red-100">
-            {displayError || 'Unable to load the dashboard.'}
-          </div>
-        )}
-
-        {data && bookingRevenue && (
-          <>
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                icon={CircleDollarSign}
-                gradient="from-emerald-400 to-teal-600"
-                label="Booking Revenue"
-                value={formatCurrency(bookingRevenue.totalRevenue)}
-                foot={`${bookingRevenue.bookingCount} revenue-counted bookings`}
-                onClick={() => setActiveModal('revenue')}
-              />
-              <StatCard
-                icon={Building2}
-                gradient="from-sky-400 to-blue-600"
-                label="Active Branches"
-                value={data.activeBranchCount}
-                foot="Branches currently operating"
-                onClick={() => setActiveModal('branches')}
-              />
-              <StatCard
-                icon={Layers}
-                gradient="from-violet-400 to-purple-600"
-                label="Total Courts"
-                value={data.totalCourtCount}
-                foot="Courts not soft-deleted"
-                onClick={() => setActiveModal('courts')}
-              />
-              <StatCard
-                icon={CalendarCheck2}
-                gradient="from-amber-400 to-orange-600"
-                label="Active / Expired Subscriptions"
-                value={`${data.activeSubscriptionCount} / ${data.expiredSubscriptionCount}`}
-                foot={`${data.newSubscriptionsThisMonth} new plans this month`}
-                onClick={() => setActiveModal('subscriptions')}
-              />
-            </div>
-
-            <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
-              <RevenueChart data={bookingRevenue.revenueChart} />
-              <div className="grid gap-6">
-                <SubscriptionRing
-                  label="Active Subscriptions"
-                  value={data.activeSubscriptionCount}
-                  total={subscriptionTotal}
-                  accent="#10b981"
-                  foot="End date is today or later"
-                />
-                <SubscriptionRing
-                  label="Expired Subscriptions"
-                  value={data.expiredSubscriptionCount}
-                  total={subscriptionTotal}
-                  accent="#f59e0b"
-                  foot="End date is before today"
-                />
-              </div>
-            </div>
-
-            <BranchRevenueTable rows={bookingRevenue.branchRevenue} />
-          </>
-        )}
+        <button
+          onClick={() => {
+            refetch()
+            refetchRevenue()
+          }}
+          disabled={fetching}
+          style={{ backgroundColor: '#006d38' }}
+          className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:opacity-90 active:scale-95 disabled:opacity-60"
+        >
+          <RefreshCw className={`h-4 w-4 text-white ${fetching ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
+
+      {loading && (
+        <div className="rounded-[20px] bg-white p-10 text-center text-sm font-medium text-slate-500 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100">
+          Loading dashboard metrics...
+        </div>
+      )}
+
+      {hasError && (
+        <div className="rounded-[20px] bg-red-50 p-5 text-sm font-semibold text-red-700 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-red-100">
+          {displayError || 'Unable to load the dashboard.'}
+        </div>
+      )}
+
+      {data && bookingRevenue && (
+        <>
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              icon={CircleDollarSign}
+              gradient="from-emerald-400 to-teal-600"
+              label="Booking Revenue"
+              value={formatCurrency(bookingRevenue.totalRevenue)}
+              foot={`${bookingRevenue.bookingCount} revenue-counted bookings`}
+              onClick={() => setActiveModal('revenue')}
+            />
+            <StatCard
+              icon={Building2}
+              gradient="from-sky-400 to-blue-600"
+              label="Active Branches"
+              value={data.activeBranchCount}
+              foot="Branches currently operating"
+              onClick={() => setActiveModal('branches')}
+            />
+            <StatCard
+              icon={Layers}
+              gradient="from-violet-400 to-purple-600"
+              label="Total Courts"
+              value={data.totalCourtCount}
+              foot="Courts not soft-deleted"
+              onClick={() => setActiveModal('courts')}
+            />
+            <StatCard
+              icon={CalendarCheck2}
+              gradient="from-amber-400 to-orange-600"
+              label="Active / Expired Subscriptions"
+              value={`${data.activeSubscriptionCount} / ${data.expiredSubscriptionCount}`}
+              foot={`${data.newSubscriptionsThisMonth} new plans this month`}
+              onClick={() => setActiveModal('subscriptions')}
+            />
+          </div>
+
+          <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
+            <RevenueChart data={bookingRevenue.revenueChart} />
+            <div className="grid gap-6">
+              <SubscriptionRing
+                label="Active Subscriptions"
+                value={data.activeSubscriptionCount}
+                total={subscriptionTotal}
+                accent="#10b981"
+                foot="End date is today or later"
+              />
+              <SubscriptionRing
+                label="Expired Subscriptions"
+                value={data.expiredSubscriptionCount}
+                total={subscriptionTotal}
+                accent="#f59e0b"
+                foot="End date is before today"
+              />
+            </div>
+          </div>
+
+          <BranchRevenueTable rows={bookingRevenue.branchRevenue} />
+        </>
+      )}
       {renderModalContent()}
     </div>
   )

@@ -19,19 +19,19 @@ export function UpgradePlanModal({
   if (!isOpen) return null
 
   const getTitle = () => {
-    if (limitType === 'BRANCH') return 'Branch Limit Reached'
-    if (limitType === 'COURT') return 'Court Limit Reached'
-    return 'Subscription Limit Exceeded'
+    if (limitType === 'BRANCH') return 'Đã đạt giới hạn chi nhánh'
+    if (limitType === 'COURT') return 'Đã đạt giới hạn sân đấu'
+    return 'Vượt quá giới hạn gói dịch vụ'
   }
 
   const getDefaultMessage = () => {
     if (limitType === 'BRANCH') {
-      return 'You have reached the maximum number of branches allowed for your current subscription plan. Please upgrade to add more branches.'
+      return 'Bạn đã đạt số lượng chi nhánh tối đa được phép của gói dịch vụ hiện tại. Vui lòng nâng cấp gói để thêm chi nhánh mới.'
     }
     if (limitType === 'COURT') {
-      return 'You have reached the maximum number of courts allowed for your current subscription plan. Please upgrade to add more courts.'
+      return 'Bạn đã đạt số lượng sân đấu tối đa được phép của gói dịch vụ hiện tại. Vui lòng nâng cấp gói để thêm sân mới.'
     }
-    return 'This action exceeds your current subscription plan limits. Please upgrade to continue.'
+    return 'Thao tác này vượt quá giới hạn gói dịch vụ hiện tại của bạn. Vui lòng nâng cấp gói để tiếp tục.'
   }
 
   const handleUpgrade = () => {
@@ -72,10 +72,10 @@ export function UpgradePlanModal({
           </div>
           <div className="text-left min-w-0">
             <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-              Upgrade to Standard or Pro Plan
+              Nâng cấp lên gói Tiêu chuẩn hoặc Chuyên nghiệp
             </div>
             <div className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 truncate">
-              Unlock higher limits for your branches & courts
+              Mở rộng hạn mức quản lý cho chi nhánh &amp; sân đấu của bạn
             </div>
           </div>
         </div>
@@ -87,7 +87,7 @@ export function UpgradePlanModal({
             onClick={onClose}
             className="flex-1 rounded-xl border border-border bg-card py-2.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
           >
-            Dismiss
+            Bỏ qua
           </button>
 
           <button
@@ -95,7 +95,7 @@ export function UpgradePlanModal({
             onClick={handleUpgrade}
             className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2.5 text-xs font-bold text-white transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-[0.98]"
           >
-            <span>Upgrade Now</span>
+            <span>Nâng cấp ngay</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>

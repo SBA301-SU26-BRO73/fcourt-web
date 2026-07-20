@@ -148,54 +148,55 @@ export default function AdminVoucherPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F6F8] text-[#111827] pb-12">
-      <main className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-[32px] font-bold tracking-tight">Quản lý mã giảm giá (Voucher)</h1>
-          {activeTab === 'list' && (
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">Quản lý mã giảm giá (Voucher)</h1>
+              <p className="text-sm text-slate-500 mt-1">Tạo và quản lý các chương trình ưu đãi cho từng chi nhánh</p>
+            </div>
+            {activeTab === 'list' && (
+              <button
+                type="button"
+                onClick={handleCreate}
+                className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition-all"
+              >
+                <Plus className="size-5" /> Thêm mã giảm giá
+              </button>
+            )}
+          </div>
+
+          {/* Tab Headers */}
+          <div className="flex border-b border-slate-200">
             <button
               type="button"
-              onClick={handleCreate}
-              className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-green-700 transition"
+              onClick={() => {
+                setActiveTab('list')
+                setSearchTerm('')
+              }}
+              className={`px-6 py-3 text-sm font-bold border-b-2 transition ${
+                activeTab === 'list'
+                  ? 'border-emerald-600 text-emerald-700 font-extrabold'
+                  : 'border-transparent text-slate-500 hover:text-slate-900'
+              }`}
             >
-              <Plus className="size-5" />
-              Thêm mã giảm giá
+              Danh sách mã giảm giá
             </button>
-          )}
-        </div>
-
-        {/* Tab Headers */}
-        <div className="mt-6 flex border-b border-slate-200">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('list')
-              setSearchTerm('')
-            }}
-            className={`px-6 py-3 text-sm font-bold border-b-2 transition ${
-              activeTab === 'list'
-                ? 'border-green-600 text-green-700 font-extrabold'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            Danh sách mã giảm giá
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('history')
-              setSearchTerm('')
-            }}
-            className={`px-6 py-3 text-sm font-bold border-b-2 transition ${
-              activeTab === 'history'
-                ? 'border-green-600 text-green-700 font-extrabold'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            Lịch sử sử dụng voucher
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('history')
+                setSearchTerm('')
+              }}
+              className={`px-6 py-3 text-sm font-bold border-b-2 transition ${
+                activeTab === 'history'
+                  ? 'border-emerald-600 text-emerald-700 font-extrabold'
+                  : 'border-transparent text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Lịch sử sử dụng
+            </button>
+          </div>
 
         {/* Success Alert */}
         {successMessage && (
@@ -587,7 +588,6 @@ export default function AdminVoucherPage() {
             )}
           </>
         )}
-      </main>
 
       {/* Form Modal */}
       <VoucherFormModal

@@ -218,9 +218,10 @@ export function BookingDetailModal({
               {status === 'AWAITING_CONFIRMATION' && (
                 <button
                   onClick={onApprove}
-                  className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"
+                  style={{ backgroundColor: '#006d38' }}
+                  className="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-sm"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
+                  <CheckCircle2 className="w-4 h-4 text-white" />
                   Xác nhận
                 </button>
               )}
