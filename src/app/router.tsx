@@ -29,6 +29,7 @@ import { MyBookingsPage } from '@/pages/booking/my-bookings-page'
 import { BookingLookupPage } from '@/pages/booking/booking-lookup-page'
 import {AdminBookingPage} from "@/pages/admin/AdminBookingPage.tsx";
 import AdminVoucherPage from "@/pages/admin/vouchers/AdminVoucherPage.tsx";
+import { AdminDashboardPage } from '@/pages/admin/admin-dashboard-page'
 import { StaffPage } from '@/pages/staff/staff-page'
 import { StaffSchedulePage } from '@/pages/staff/staff-schedule-page'
 import { StaffCheckInPage } from '@/pages/staff/staff-check-in-page'
@@ -130,7 +131,11 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to="staff" replace />,
+        element: <Navigate to="dashboard" replace />,
+      },
+      {
+        path: 'dashboard',
+        element: <AdminDashboardPage />,
       },
       {
         path: 'staff',
