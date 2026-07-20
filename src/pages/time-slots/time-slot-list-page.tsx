@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { formatLocalDate } from '@/common/utils/local-date'
 import { CalendarDays, Clock3, Copy, Eye, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
@@ -34,7 +35,7 @@ export function TimeSlotListPage() {
   const [pendingDelete, setPendingDelete] = useState<TimeSlotTemplate | null>(null)
   const [showApply, setShowApply] = useState(false)
   const [applyMessage, setApplyMessage] = useState('')
-  const [scheduleDate, setScheduleDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [scheduleDate, setScheduleDate] = useState(() => formatLocalDate(new Date()))
 
   const allQuery = useQuery({
     queryKey: ['time-slots', 'list', page, size, sortField, sortDirection],
