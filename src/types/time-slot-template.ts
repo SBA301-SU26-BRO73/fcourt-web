@@ -16,8 +16,13 @@ export interface CreateTimeSlotTemplateRequest {
   startTime: string
   endTime: string
   price: number
-  dayOfWeek: number
+  dayOfWeeks: number[]
   active?: boolean | null
+}
+
+export interface TimeSlotTemplateBatchResponse {
+  createdCount: number
+  slots: TimeSlotTemplate[]
 }
 
 export interface UpdateTimeSlotTemplateRequest {

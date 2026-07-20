@@ -212,6 +212,15 @@ export function BranchForm({
               onChange={onChange}
             />
           </div>
+          <SelectField
+            label="Độ dài slot đặt sân"
+            name="slotDurationMinutes"
+            value={values.slotDurationMinutes}
+            error={errors.slotDurationMinutes}
+            options={['30', '60']}
+            required
+            onChange={(field, value) => onChange(field, value.replace(' phút', ''))}
+          />
         </div>
 
       </section>

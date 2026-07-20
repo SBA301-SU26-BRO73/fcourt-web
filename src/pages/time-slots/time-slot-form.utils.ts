@@ -6,10 +6,11 @@ import type {
 
 export interface TimeSlotFormValues {
   courtId: string
-  dayOfWeek: string
+  dayOfWeeks: string[]
   startTime: string
   endTime: string
   price: string
+  slotDurationMinutes: string
   active: boolean
 }
 
@@ -17,20 +18,22 @@ export type TimeSlotFormErrors = Partial<Record<keyof TimeSlotFormValues, string
 
 export const emptyTimeSlotFormValues: TimeSlotFormValues = {
   courtId: '',
-  dayOfWeek: '1',
+  dayOfWeeks: ['1'],
   startTime: '06:00',
   endTime: '07:00',
   price: '',
+  slotDurationMinutes: '60',
   active: true,
 }
 
 export function timeSlotToFormValues(slot: TimeSlotTemplate): TimeSlotFormValues {
   return {
     courtId: String(slot.courtId),
-    dayOfWeek: String(slot.dayOfWeek),
+    dayOfWeeks: [String(slot.dayOfWeek)],
     startTime: slot.startTime.slice(0, 5),
     endTime: slot.endTime.slice(0, 5),
     price: String(slot.price),
+    slotDurationMinutes: String(Math.max(30, Math.min(60, toMinutes(slot.endTime) - toMinutes(slot.startTime)))),
     active: slot.active,
   }
 }
@@ -38,12 +41,18 @@ export function timeSlotToFormValues(slot: TimeSlotTemplate): TimeSlotFormValues
 export function validateTimeSlotForm(values: TimeSlotFormValues): TimeSlotFormErrors {
   const errors: TimeSlotFormErrors = {}
   const courtId = Number(values.courtId)
-  const dayOfWeek = Number(values.dayOfWeek)
+  const dayOfWeeks = values.dayOfWeeks.map(Number)
   const price = Number(values.price)
 
   if (!Number.isInteger(courtId) || courtId <= 0) errors.courtId = 'Court là bắt buộc.'
-  if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
-    errors.dayOfWeek = 'Ngày trong tuần không hợp lệ.'
+  if (dayOfWeeks.length === 0 || dayOfWeeks.some((day) => !Number.isInteger(day) || day < 0 || day > 6)) {
+    errors.dayOfWeeks = 'Chọn ít nhất một ngày hợp lệ.'
+  }
+  const duration = Number(values.slotDurationMinutes)
+  if (duration !== 30 && duration !== 60) errors.slotDurationMinutes = 'Độ dài slot phải là 30 hoặc 60 phút.'
+  if (values.startTime && values.endTime && duration > 0) {
+    const range = toMinutes(values.endTime) - toMinutes(values.startTime)
+    if (range > 0 && range % duration !== 0) errors.slotDurationMinutes = 'Khoảng giờ phải chia hết cho độ dài slot.'
   }
   if (!values.startTime) errors.startTime = 'Giờ bắt đầu là bắt buộc.'
   if (!values.endTime) errors.endTime = 'Giờ kết thúc là bắt buộc.'
@@ -71,7 +80,7 @@ export function toCreateTimeSlotPayload(
 ): CreateTimeSlotTemplateRequest {
   return {
     courtId: Number(values.courtId),
-    dayOfWeek: Number(values.dayOfWeek),
+    dayOfWeeks: values.dayOfWeeks.map(Number),
     startTime: toApiTime(values.startTime),
     endTime: toApiTime(values.endTime),
     price: Number(values.price),
@@ -79,11 +88,16 @@ export function toCreateTimeSlotPayload(
   }
 }
 
+function toMinutes(value: string) {
+  const [hour = '0', minute = '0'] = value.split(':')
+  return Number(hour) * 60 + Number(minute)
+}
+
 export function toUpdateTimeSlotPayload(
   values: TimeSlotFormValues,
 ): UpdateTimeSlotTemplateRequest {
   return {
-    dayOfWeek: Number(values.dayOfWeek),
+    dayOfWeek: Number(values.dayOfWeeks[0]),
     startTime: toApiTime(values.startTime),
     endTime: toApiTime(values.endTime),
     price: Number(values.price),

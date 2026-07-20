@@ -10,7 +10,7 @@ type TimeSlotFormProps = {
   courts: Court[]
   isEdit: boolean
   isSubmitting: boolean
-  onChange: (field: keyof TimeSlotFormValues, value: string | boolean) => void
+  onChange: (field: keyof TimeSlotFormValues, value: string | string[] | boolean) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
 
@@ -23,6 +23,8 @@ export function TimeSlotForm({
   onChange,
   onSubmit,
 }: TimeSlotFormProps) {
+  const selectedCourt = courts.find((court) => String(court.id) === values.courtId)
+  const configuredDuration = selectedCourt?.slotDurationMinutes ?? Number(values.slotDurationMinutes)
   const fieldClass = (error?: string) =>
     `w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm outline-none focus:ring-2 ${
       error
@@ -49,10 +51,16 @@ export function TimeSlotForm({
             </select>
           </Field>
 
-          <Field label="Ngày trong tuần" error={errors.dayOfWeek}>
-            <select value={values.dayOfWeek} onChange={(event) => onChange('dayOfWeek', event.target.value)} className={fieldClass(errors.dayOfWeek)}>
-              {Object.entries(DAY_OF_WEEK_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
+          <Field label="Ngày trong tuần" error={errors.dayOfWeeks}>
+            <div className={`${fieldClass(errors.dayOfWeeks)} grid grid-cols-2 gap-2`}>
+              {Object.entries(DAY_OF_WEEK_LABELS).map(([value, label]) => {
+                const checked = values.dayOfWeeks.includes(value)
+                return <label key={value} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium">
+                  <input type="checkbox" checked={checked} disabled={isEdit} onChange={() => onChange('dayOfWeeks', checked ? values.dayOfWeeks.filter((day) => day !== value) : [...values.dayOfWeeks, value])} className="size-4 accent-emerald-600" />
+                  {label}
+                </label>
+              })}
+            </div>
           </Field>
 
           <Field label="Giờ bắt đầu" error={errors.startTime}>
@@ -65,6 +73,13 @@ export function TimeSlotForm({
 
           <Field label="Giá" error={errors.price}>
             <input type="number" min="0.01" step="0.01" value={values.price} placeholder="150000" onChange={(event) => onChange('price', event.target.value)} className={fieldClass(errors.price)} />
+          </Field>
+
+          <Field label="Độ dài mỗi slot" error={errors.slotDurationMinutes}>
+            <div className={`${fieldClass(errors.slotDurationMinutes)} bg-slate-50 text-slate-700`}>
+              {configuredDuration === 30 ? '30 phút' : configuredDuration === 60 ? '60 phút' : 'Chọn court để xem cấu hình'}
+            </div>
+            {!isEdit && <span className="block text-xs text-slate-500">Được cấu hình tại branch. Sẽ tạo {getSlotCount(values, configuredDuration)} slot cho mỗi ngày đã chọn.</span>}
           </Field>
 
           <label className="flex items-center gap-3 self-end rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -81,6 +96,14 @@ export function TimeSlotForm({
       </div>
     </form>
   )
+}
+
+function getSlotCount(values: TimeSlotFormValues, configuredDuration: number) {
+  const [startHour, startMinute] = values.startTime.split(':').map(Number)
+  const [endHour, endMinute] = values.endTime.split(':').map(Number)
+  const range = (endHour * 60 + endMinute) - (startHour * 60 + startMinute)
+  const duration = configuredDuration
+  return range > 0 && duration > 0 && range % duration === 0 ? range / duration * values.dayOfWeeks.length : 0
 }
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {

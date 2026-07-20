@@ -14,6 +14,7 @@ export interface BranchFormValues {
   phone: string
   openTime: string
   closeTime: string
+  slotDurationMinutes: string
   bankAccountNumber: string
   bankAccountName: string
   bankName: string
@@ -31,6 +32,7 @@ export const emptyBranchFormValues: BranchFormValues = {
   phone: '',
   openTime: '06:00',
   closeTime: '22:00',
+  slotDurationMinutes: '30',
   bankAccountNumber: '',
   bankAccountName: '',
   bankName: '',
@@ -59,6 +61,7 @@ export function branchToFormValues(branch: Branch): BranchFormValues {
     phone: branch.phone ?? '',
     openTime: branch.openTime.slice(0, 5),
     closeTime: branch.closeTime.slice(0, 5),
+    slotDurationMinutes: String(branch.slotDurationMinutes ?? 30),
     bankAccountNumber: branch.bankAccountNumber ?? '',
     bankAccountName: branch.bankAccountName ?? '',
     bankName: branch.bankName ?? '',
@@ -85,6 +88,7 @@ export function validateBranchForm(values: BranchFormValues): BranchFormErrors {
 
   if (!values.openTime) errors.openTime = 'Open time is required.'
   if (!values.closeTime) errors.closeTime = 'Close time is required.'
+  if (!['30', '60'].includes(values.slotDurationMinutes)) errors.slotDurationMinutes = 'Chọn 30 hoặc 60 phút.'
   if (values.openTime && values.closeTime && values.openTime >= values.closeTime) {
     errors.closeTime = 'Close time must be later than open time.'
   }
@@ -122,6 +126,7 @@ export function toCreateBranchPayload(
     phone: nullable(values.phone),
     openTime: toApiTime(values.openTime),
     closeTime: toApiTime(values.closeTime),
+    slotDurationMinutes: Number(values.slotDurationMinutes) as 30 | 60,
     bankAccountNumber: nullable(values.bankAccountNumber),
     bankAccountName: nullable(values.bankAccountName),
     bankName: nullable(values.bankName),

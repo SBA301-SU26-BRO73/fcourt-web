@@ -10,7 +10,7 @@ import {
   Building2,
   Settings,
   Bell,
-  ChevronDown,
+  LogOut,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth-context'
@@ -117,15 +117,18 @@ export function AdminLayout() {
         </nav>
 
         {/* Profile */}
-        <div className="flex items-center gap-2.5 border-t border-slate-100 px-3 py-3">
-          <Avatar email="admin@bro73.app" size={32} />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-slate-800">
-              Admin
+        <div className="mt-auto border-t border-slate-100 px-3 py-3">
+          <div className="flex items-center gap-2.5">
+            <Avatar email="admin@bro73.app" size={32} />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium text-slate-800">Admin</div>
+              <div className="truncate text-xs text-slate-400">Owner</div>
             </div>
-            <div className="truncate text-xs text-slate-400">Owner</div>
           </div>
-          <ChevronDown size={14} className="shrink-0 text-slate-400" />
+          <button type="button" onClick={() => { clearAuth(); navigate('/auth/login?role=admin', { replace: true }) }} className="mt-3 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600">
+            <LogOut size={16} />
+            Đăng xuất
+          </button>
         </div>
       </aside>
 

@@ -11,6 +11,7 @@ export interface Branch {
   phone: string | null
   openTime: string
   closeTime: string
+  slotDurationMinutes: 30 | 60
   bankAccountNumber: string | null
   bankAccountName: string | null
   bankName: string | null
@@ -29,6 +30,7 @@ export interface CreateBranchRequest {
   phone?: string | null
   openTime: string
   closeTime: string
+  slotDurationMinutes?: 30 | 60 | null
   bankAccountNumber?: string | null
   bankAccountName?: string | null
   bankName?: string | null

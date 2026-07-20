@@ -4,6 +4,7 @@ export interface Court {
   id: number
   branchId: number
   branchName: string
+  slotDurationMinutes: 30 | 60
   name: string
   courtTypeId: number
   courtTypeName: string

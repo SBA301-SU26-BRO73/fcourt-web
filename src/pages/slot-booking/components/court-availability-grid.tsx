@@ -12,7 +12,7 @@ interface CourtAvailabilityGridProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
   selectedSlots: SelectedSlot[];
-  onSlotClick: (court: Court, timeStr: string, price: number, isPeak: boolean) => void;
+  onSlotClick: (court: Court, timeStr: string, price: number, endTime: string, isPeak: boolean) => void;
   courtSchedules: Record<number, DailySlotResponse[]>;
   courts: Court[];
   timeSlots: string[];
@@ -224,7 +224,7 @@ export default function CourtAvailabilityGrid({
                         >
                           <button
                             disabled={disabled}
-                            onClick={() => onSlotClick(court, time, price, isPeakHour(time))}
+                            onClick={() => onSlotClick(court, time, price, apiSlot?.endTime ?? time, isPeakHour(time))}
                             className={`w-full h-full rounded-xl border flex items-center justify-center transition-all duration-150 select-none ${cellStyle}`}
                           >
                             {content}

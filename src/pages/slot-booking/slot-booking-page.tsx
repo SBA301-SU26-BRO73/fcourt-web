@@ -9,13 +9,6 @@ import type { DailySlotResponse } from '@/services/branch/branch.api';
 import { createBookings } from '@/services/booking/booking.api';
 import { useAuth } from '@/hooks/use-auth-context';
 
-const EXTENDED_TIMESLOTS = [
-  '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-  '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-  '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
-  '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'
-];
-
 export default function SlotBookingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -172,15 +165,7 @@ export default function SlotBookingPage() {
     setSearchParams(updatedParams);
   };
 
-  const handleSlotClick = (court: Court, timeStr: string, price: number) => {
-    const [hh, mm] = timeStr.split(':').map(Number);
-    let endH = hh;
-    let endM = mm + 30;
-    if (endM >= 60) {
-      endH += 1;
-      endM = 0;
-    }
-    const endTimeStr = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+  const handleSlotClick = (court: Court, timeStr: string, price: number, endTimeStr: string) => {
 
     const isAlreadySelected = selectedSlots.some(
       (s) => s.courtId === court.id && s.startTime === timeStr && s.date === selectedDate
@@ -270,6 +255,12 @@ export default function SlotBookingPage() {
               Thử lại
             </button>
           </div>
+        ) : getScheduleStartTimes(courtSchedules).length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 border border-outline-variant/30 rounded-2xl bg-white shadow-sm">
+            <span className="material-symbols-outlined text-on-surface-variant/40 text-5xl mb-4">schedule</span>
+            <h3 className="text-xl font-bold text-on-surface">No Time Slots Available</h3>
+            <p className="text-on-surface-variant text-sm mt-1">Branch này chưa có khung giờ hoạt động cho ngày đã chọn.</p>
+          </div>
         ) : (
           <CourtAvailabilityGrid
             selectedDate={selectedDate}
@@ -278,7 +269,7 @@ export default function SlotBookingPage() {
             onSlotClick={handleSlotClick}
             courtSchedules={courtSchedules}
             courts={courts}
-            timeSlots={EXTENDED_TIMESLOTS}
+            timeSlots={getScheduleStartTimes(courtSchedules)}
           />
         )}
 
@@ -292,6 +283,14 @@ export default function SlotBookingPage() {
       />
     </div>
   );
+}
+
+function getScheduleStartTimes(schedules: Record<number, DailySlotResponse[]>) {
+  return Array.from(new Set(
+    Object.values(schedules)
+      .flat()
+      .map((slot) => slot.startTime.slice(0, 5)),
+  )).sort((a, b) => toMinutes(a) - toMinutes(b));
 }
 
 function normalizeTime(time: string) {

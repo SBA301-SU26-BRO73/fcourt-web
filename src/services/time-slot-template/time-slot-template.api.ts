@@ -5,6 +5,7 @@ import type {
   ApplyTimeSlotTemplateRequest,
   ApplyTimeSlotTemplateResponse,
   CreateTimeSlotTemplateRequest,
+  TimeSlotTemplateBatchResponse,
   SpringPage,
   TimeSlotListParams,
   TimeSlotTemplate,
@@ -47,7 +48,7 @@ export async function getTimeSlotTemplatesByCourt(courtId: number) {
 }
 
 export async function createTimeSlotTemplate(payload: CreateTimeSlotTemplateRequest) {
-  const response = await axiosClient.post<ApiResponse<TimeSlotTemplate>>(
+  const response = await axiosClient.post<ApiResponse<TimeSlotTemplateBatchResponse>>(
     API_ENDPOINTS.timeSlotTemplates.list,
     payload,
   )

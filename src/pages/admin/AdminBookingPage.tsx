@@ -7,11 +7,6 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  LayoutDashboard,
-  CalendarDays,
-  Settings,
-  LogOut,
-  Bell,
   SlidersHorizontal,
   InboxIcon,
 } from 'lucide-react';
@@ -219,74 +214,15 @@ export function AdminBookingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-card border-r border-border flex flex-col">
-        {/* Logo */}
-        <div className="px-6 py-5 border-b border-border">
-          <h1 className="text-xl font-bold text-primary">SportCourt</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Quản trị hệ thống</p>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {[
-            { icon: <LayoutDashboard className="w-4 h-4" />, label: 'Tổng quan', active: false },
-            { icon: <ClipboardList className="w-4 h-4" />, label: 'Duyệt đặt sân', active: true },
-            { icon: <CalendarDays className="w-4 h-4" />, label: 'Lịch sân', active: false },
-            { icon: <Settings className="w-4 h-4" />, label: 'Cài đặt', active: false },
-          ].map((item) => (
-            <button
-              key={item.label}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
-                item.active
-                  ? 'bg-primary/10 text-primary font-semibold'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              {item.icon}
-              {item.label}
-              {item.label === 'Duyệt đặt sân' && stats.pending > 0 && (
-                <span className="ml-auto bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                  {stats.pending}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-
-        {/* User */}
-        <div className="px-3 py-4 border-t border-border">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors cursor-pointer">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-xs font-bold text-primary">AD</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-foreground truncate">Admin</div>
-              <div className="text-xs text-muted-foreground truncate">admin@sportcourt.vn</div>
-            </div>
-            <LogOut className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          </div>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        <header className="bg-card border-b border-border px-8 py-4 flex items-center justify-between flex-shrink-0">
+    <div className="min-h-full bg-background p-4 sm:p-6 lg:p-8">
+        <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-foreground">Duyệt thanh toán đặt sân</h2>
+            <h1 className="text-xl font-semibold text-foreground">Duyệt thanh toán đặt sân</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
               Theo dõi và cập nhật trạng thái đặt sân của khách hàng
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative p-2 hover:bg-muted rounded-xl transition-colors">
-              <Bell className="w-5 h-5 text-muted-foreground" />
-              {stats.pending > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full" />
-              )}
-            </button>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -296,9 +232,9 @@ export function AdminBookingPage() {
               Làm mới
             </button>
           </div>
-        </header>
+        </div>
 
-        <main className="flex-1 overflow-auto p-8 space-y-6">
+        <div className="space-y-6">
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
@@ -463,8 +399,7 @@ export function AdminBookingPage() {
               </div>
             )}
           </div>
-        </main>
-      </div>
+        </div>
 
       {/* Modals */}
       {detailBooking && (

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Clock3, Copy, Eye, Pencil, Plus, Trash2 } from 'lucide-react'
+import { CalendarDays, Clock3, Copy, Eye, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { getCourts } from '@/services/court/court.api'
+import { branchApi, type DailySlotResponse } from '@/services/branch/branch.api'
 import { applyTimeSlotTemplates, deleteTimeSlotTemplate, getTimeSlotTemplates, getTimeSlotTemplatesByCourt } from '@/services/time-slot-template/time-slot-template.api'
 import type { Court } from '@/types/court'
 import { DAY_OF_WEEK_LABELS, type SortDirection, type TimeSlotSortField, type TimeSlotTemplate } from '@/types/time-slot-template'
@@ -33,6 +34,7 @@ export function TimeSlotListPage() {
   const [pendingDelete, setPendingDelete] = useState<TimeSlotTemplate | null>(null)
   const [showApply, setShowApply] = useState(false)
   const [applyMessage, setApplyMessage] = useState('')
+  const [scheduleDate, setScheduleDate] = useState(() => new Date().toISOString().slice(0, 10))
 
   const allQuery = useQuery({
     queryKey: ['time-slots', 'list', page, size, sortField, sortDirection],
@@ -85,6 +87,12 @@ export function TimeSlotListPage() {
   const courtSlots = useMemo(() => [...(courtQuery.data ?? [])].sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)), [courtQuery.data])
   const courtMap = new Map((courtsQuery.data?.content ?? []).map((court) => [court.id, court]))
   const selectedCourt = courtMap.get(Number(selectedCourtId))
+  const dailyScheduleQuery = useQuery({
+    queryKey: ['admin', 'daily-court-schedule', selectedCourtId, scheduleDate],
+    queryFn: () => branchApi.getDailyCourtSchedule(Number(selectedCourtId), scheduleDate),
+    enabled: Boolean(selectedCourtId),
+    refetchInterval: 15000,
+  })
 
   return <div className="min-h-screen bg-[#F5F6F8] text-[#111827]"><main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
     {navigationState?.returnTo && <Link to={navigationState.returnTo} state={navigationState.returnState} className="mb-4 inline-block text-sm font-bold text-[#059669]">← Quay lại</Link>}
@@ -99,7 +107,7 @@ export function TimeSlotListPage() {
       {!selectedCourtId && <><Select label="Sắp xếp" value={sortField} onChange={(value) => { setSortField(value as TimeSlotSortField); setPage(0) }} options={[{ value: 'dayOfWeek', label: 'Ngày trong tuần' }, { value: 'startTime', label: 'Giờ bắt đầu' }, { value: 'price', label: 'Giá' }, { value: 'active', label: 'Trạng thái' }, { value: 'createdAt', label: 'Ngày tạo' }]} /><Select label="Thứ tự" value={sortDirection} onChange={(value) => { setSortDirection(value as SortDirection); setPage(0) }} options={[{ value: 'asc', label: 'Tăng dần' }, { value: 'desc', label: 'Giảm dần' }]} /><Select label="Số bản ghi" value={String(size)} onChange={(value) => { setSize(Number(value)); setPage(0) }} options={[5, 10, 20, 50].map((value) => ({ value: String(value), label: String(value) }))} /></>}
     </div></section>
 
-    {selectedCourtId ? <CourtSchedule court={selectedCourt} slots={courtSlots} isLoading={courtQuery.isPending} error={courtQuery.error} returnState={{ courtId: Number(selectedCourtId), returnTo: navigationState?.returnTo, returnState: navigationState?.returnState }} onRetry={() => void courtQuery.refetch()} onDelete={setPendingDelete} /> : <AllSlotList data={allQuery.data} isLoading={allQuery.isPending} error={allQuery.error} returnState={{}} onRetry={() => void allQuery.refetch()} onDelete={setPendingDelete} />}
+    {selectedCourtId ? <><CourtSchedule court={selectedCourt} slots={courtSlots} isLoading={courtQuery.isPending} error={courtQuery.error} returnState={{ courtId: Number(selectedCourtId), returnTo: navigationState?.returnTo, returnState: navigationState?.returnState }} onRetry={() => void courtQuery.refetch()} onDelete={setPendingDelete} /><DailyCourtStatusBoard date={scheduleDate} onDateChange={setScheduleDate} slots={dailyScheduleQuery.data ?? []} isLoading={dailyScheduleQuery.isPending} error={dailyScheduleQuery.error} onRefresh={() => void dailyScheduleQuery.refetch()} /></> : <AllSlotList data={allQuery.data} isLoading={allQuery.isPending} error={allQuery.error} returnState={{}} onRetry={() => void allQuery.refetch()} onDelete={setPendingDelete} />}
 
     {!selectedCourtId && allQuery.data && allQuery.data.totalPages > 1 && <div className="mt-8 flex items-center justify-between text-sm"><span>Tổng {allQuery.data.totalElements} khung giờ</span><div className="flex items-center gap-3"><button disabled={allQuery.data.first || allQuery.isFetching} onClick={() => setPage((current) => Math.max(0, current - 1))} className="rounded-xl border bg-white px-4 py-2.5 font-bold disabled:opacity-40">Trang trước</button><span>Trang {allQuery.data.number + 1}/{allQuery.data.totalPages}</span><button disabled={allQuery.data.last || allQuery.isFetching} onClick={() => setPage((current) => current + 1)} className="rounded-xl border bg-white px-4 py-2.5 font-bold disabled:opacity-40">Trang sau</button></div></div>}
   </main>
@@ -107,6 +115,21 @@ export function TimeSlotListPage() {
   {showApply && <ApplyDialog courts={courtsQuery.data?.content ?? []} onClose={() => setShowApply(false)} onApplied={(message) => { setApplyMessage(message); setShowApply(false) }} />}
   </div>
 }
+
+function DailyCourtStatusBoard({ date, onDateChange, slots, isLoading, error, onRefresh }: { date: string; onDateChange: (value: string) => void; slots: DailySlotResponse[]; isLoading: boolean; error: unknown; onRefresh: () => void }) {
+  return <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div><p className="text-sm font-bold uppercase tracking-[0.16em] text-[#10B981]">Live schedule</p><h2 className="mt-1 text-2xl font-black">Trạng thái slot theo ngày</h2><p className="mt-1 text-sm text-slate-500">HOLDING tự cập nhật mỗi 15 giây để admin biết giờ đang được khách giữ.</p></div>
+      <div className="flex items-center gap-2"><label className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2"><CalendarDays className="size-4 text-[#059669]" /><input type="date" value={date} onChange={(event) => onDateChange(event.target.value)} className="text-sm font-semibold outline-none" /></label><button type="button" onClick={onRefresh} className="grid size-10 place-items-center rounded-xl border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600" title="Làm mới"><RefreshCw className="size-4" /></button></div>
+    </div>
+    <div className="mt-5 flex flex-wrap gap-3 text-xs font-bold"><StatusLegend status="AVAILABLE" label="Trống" /><StatusLegend status="HOLDING" label="Đang giữ" /><StatusLegend status="BOOKED" label="Đã đặt" /><StatusLegend status="EXPIRED" label="Hết hạn" /></div>
+    {isLoading ? <State title="Đang tải trạng thái slot..." /> : error ? <State title="Không thể tải trạng thái slot" description={getTimeSlotErrorMessage(error)} action={onRefresh} /> : !slots.length ? <State title="Chưa có slot trong ngày này" /> : <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{slots.map((slot) => <div key={`${slot.startTime}-${slot.endTime}`} className={`rounded-xl border px-4 py-3 ${statusClass(slot.status)}`}><div className="flex items-center justify-between gap-2"><span className="font-black">{formatTime(slot.startTime)} - {formatTime(slot.endTime)}</span><span className="text-[11px] font-black uppercase">{statusLabel(slot.status)}</span></div><p className="mt-2 text-sm font-semibold">{slot.price.toLocaleString('vi-VN')}đ</p></div>)}</div>}
+  </section>
+}
+
+function StatusLegend({ status, label }: { status: DailySlotResponse['status']; label: string }) { return <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 ${statusClass(status)}`}><span className="size-2 rounded-full bg-current" />{label}</span> }
+function statusClass(status: DailySlotResponse['status']) { return status === 'HOLDING' ? 'border-amber-200 bg-amber-50 text-amber-800' : status === 'BOOKED' ? 'border-blue-200 bg-blue-50 text-blue-800' : status === 'EXPIRED' ? 'border-slate-200 bg-slate-100 text-slate-500' : 'border-emerald-200 bg-emerald-50 text-emerald-800' }
+function statusLabel(status: DailySlotResponse['status']) { return status === 'HOLDING' ? 'Đang giữ' : status === 'BOOKED' ? 'Đã đặt' : status === 'EXPIRED' ? 'Hết hạn' : 'Trống' }
 
 function AllSlotList({ data, isLoading, error, returnState, onRetry, onDelete }: { data?: { content: TimeSlotTemplate[] }; isLoading: boolean; error: unknown; returnState: unknown; onRetry: () => void; onDelete: (slot: TimeSlotTemplate) => void }) {
   if (isLoading) return <State title="Đang tải danh sách khung giờ..." />

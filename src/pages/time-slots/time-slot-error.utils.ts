@@ -27,7 +27,7 @@ export function getTimeSlotFieldErrors(error: unknown): TimeSlotFormErrors {
   }
 
   const message = response.message?.toLowerCase() ?? ''
-  if (message.includes('day of week')) return { dayOfWeek: response.message }
+  if (message.includes('day of week')) return { dayOfWeeks: response.message }
   if (message.includes('start time')) return { endTime: response.message }
   if (message.includes('price')) return { price: response.message }
   if (message.includes('already exists')) {

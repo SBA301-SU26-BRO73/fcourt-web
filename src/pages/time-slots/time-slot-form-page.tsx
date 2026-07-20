@@ -1,10 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { getCourts } from '@/services/court/court.api'
 import { createTimeSlotTemplate, getTimeSlotTemplateDetail, updateTimeSlotTemplate } from '@/services/time-slot-template/time-slot-template.api'
-import type { TimeSlotTemplate } from '@/types/time-slot-template'
+import type { TimeSlotTemplate, TimeSlotTemplateBatchResponse } from '@/types/time-slot-template'
 import { TimeSlotForm } from './time-slot-form'
 import { getTimeSlotErrorCode, getTimeSlotErrorMessage, getTimeSlotFieldErrors } from './time-slot-error.utils'
 import { emptyTimeSlotFormValues, timeSlotToFormValues, toCreateTimeSlotPayload, toUpdateTimeSlotPayload, validateTimeSlotForm, type TimeSlotFormErrors, type TimeSlotFormValues } from './time-slot-form.utils'
@@ -38,8 +38,16 @@ function TimeSlotEditor({ mode, slot, initialCourtId, returnTo, returnState }: {
   const [errors, setErrors] = useState<TimeSlotFormErrors>({})
   const [submitError, setSubmitError] = useState('')
   const courtsQuery = useQuery({ queryKey: ['courts', 'time-slot-options'], queryFn: () => getCourts({ page: 0, size: 1000, sortField: 'name', sortDirection: 'asc' }) })
-  const mutation = useMutation({
-    mutationFn: () => isEdit && slot ? updateTimeSlotTemplate(slot.id, toUpdateTimeSlotPayload(values)) : createTimeSlotTemplate(toCreateTimeSlotPayload(values)),
+  useEffect(() => {
+    if (isEdit || !values.courtId) return
+    const court = courtsQuery.data?.content.find((item) => String(item.id) === values.courtId)
+    if (court) setValues((current) => ({ ...current, slotDurationMinutes: String(court.slotDurationMinutes) }))
+  }, [courtsQuery.data?.content, isEdit, values.courtId])
+  const mutation = useMutation<TimeSlotTemplate | TimeSlotTemplateBatchResponse>({
+    mutationFn: async () => {
+      if (isEdit && slot) return updateTimeSlotTemplate(slot.id, toUpdateTimeSlotPayload(values))
+      return createTimeSlotTemplate(toCreateTimeSlotPayload(values))
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['time-slots'] })
       navigate(returnTo ?? '/admin/time-slots', {
@@ -54,7 +62,7 @@ function TimeSlotEditor({ mode, slot, initialCourtId, returnTo, returnState }: {
     onError: (error) => { setErrors((current) => ({ ...current, ...getTimeSlotFieldErrors(error) })); setSubmitError(getTimeSlotErrorMessage(error)) },
   })
 
-  function handleChange(field: keyof TimeSlotFormValues, value: string | boolean) {
+  function handleChange(field: keyof TimeSlotFormValues, value: string | string[] | boolean) {
     setValues((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: undefined }))
     setSubmitError('')

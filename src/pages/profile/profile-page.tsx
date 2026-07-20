@@ -126,15 +126,7 @@ export function ProfilePage() {
           <button type="button" onClick={() => navigate('/')} className="text-2xl font-bold tracking-tight text-green-700">
             FCourt
           </button>
-          <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-700 md:flex">
-            <span>Pickleball</span>
-            <span className="border-b-2 border-green-600 pb-2 text-slate-900">Tennis</span>
-            <span>Badminton</span>
-          </nav>
           <div className="flex items-center gap-2 sm:gap-3">
-            <button type="button" aria-label="Notifications" className="rounded-lg p-2 text-slate-600 hover:bg-slate-100">
-              <span className="material-symbols-outlined">notifications</span>
-            </button>
             <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-1.5 sm:px-3">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white">{initials}</div>
               <span className="hidden text-sm font-semibold text-slate-700 sm:inline">Tài khoản</span>
