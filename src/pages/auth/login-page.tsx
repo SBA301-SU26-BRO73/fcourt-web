@@ -1,18 +1,79 @@
-import { Building2, Mail, User } from 'lucide-react'
+import { Building2, Mail, ShieldCheck, User, UserCog } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { Button, Check, Field, Logo, PasswordInput, TextInput } from '@/components/auth/auth-ui'
 import { HeroPanel } from '@/components/auth/hero-panel'
+import type { HeroVariant } from '@/components/auth/hero-panel'
 import { useLogin } from '@/hooks/use-auth'
 import { validators } from '@/utils/validators'
+
+interface LoginRoleConfig {
+  label: string
+  icon: React.ElementType
+  heroVariant: HeroVariant
+  registerPath: string | null
+  registerLabel: string | null
+}
+
+const LOGIN_ROLE_CONFIG = {
+  customer: {
+    label: 'Khách hàng',
+    icon: User,
+    heroVariant: 'login',
+    registerPath: '/auth/register/customer',
+    registerLabel: 'Đăng ký ngay',
+  },
+  admin: {
+    label: 'Chủ sân / Đối tác',
+    icon: Building2,
+    heroVariant: 'admin',
+    registerPath: '/auth/register/court-owner',
+    registerLabel: 'Đăng ký Chủ sân',
+  },
+  staff: {
+    label: 'Nhân viên',
+    icon: UserCog,
+    heroVariant: 'staff',
+    registerPath: null,
+    registerLabel: null,
+  },
+  'super-admin': {
+    label: 'Super Admin',
+    icon: ShieldCheck,
+    heroVariant: 'superAdmin',
+    registerPath: null,
+    registerLabel: null,
+  },
+} as const satisfies Record<string, LoginRoleConfig>
+
+type LoginRole = keyof typeof LOGIN_ROLE_CONFIG
+
+function getLoginRoleConfig(role: string | null) {
+  if (role && role in LOGIN_ROLE_CONFIG) {
+    return LOGIN_ROLE_CONFIG[role as LoginRole]
+  }
+
+  return LOGIN_ROLE_CONFIG.customer
+}
+
+function getServerErrorMessage(error: unknown) {
+  if (!(error instanceof Error)) return null
+
+  const apiError = error as Error & {
+    response?: { data?: { message?: unknown } }
+  }
+  const message = apiError.response?.data?.message
+
+  return typeof message === 'string' ? message : error.message
+}
 
 export function LoginPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const isAdmin = params.get('role') === 'admin'
-  const RoleIcon = isAdmin ? Building2 : User
-  const roleLabel = isAdmin ? 'Chủ sân / Đối tác' : 'Khách hàng'
+  const roleConfig = getLoginRoleConfig(params.get('role'))
+  const RoleIcon = roleConfig.icon
+  const roleLabel = roleConfig.label
 
   const [f, setF] = useState({ email: '', password: '', remember: false })
   const [errs, setErrs] = useState<Record<string, string>>({})
@@ -38,14 +99,11 @@ export function LoginPage() {
     login.mutate({ email: f.email, password: f.password })
   }
 
-  const serverError =
-    login.error instanceof Error
-      ? (login.error as any).response?.data?.message ?? login.error.message
-      : null
+  const serverError = getServerErrorMessage(login.error)
 
   return (
     <div className="grid md:grid-cols-[46fr_54fr] h-screen overflow-hidden bg-white">
-      <HeroPanel variant={isAdmin ? 'admin' : 'login'} />
+      <HeroPanel variant={roleConfig.heroVariant} />
       <div className="overflow-y-auto flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <div className="mb-6">
@@ -116,15 +174,17 @@ export function LoginPage() {
               Đăng nhập
             </Button>
           </form>
-          <p className="mt-5 text-center text-sm text-slate-500">
-            Chưa có tài khoản?{' '}
-            <Link
-              to={isAdmin ? '/auth/register/court-owner' : '/auth/register/customer'}
-              className="text-green-600 font-semibold hover:underline"
-            >
-              Đăng ký {isAdmin ? 'Chủ sân' : 'ngay'}
-            </Link>
-          </p>
+          {roleConfig.registerPath && roleConfig.registerLabel && (
+            <p className="mt-5 text-center text-sm text-slate-500">
+              Chưa có tài khoản?{' '}
+              <Link
+                to={roleConfig.registerPath}
+                className="text-green-600 font-semibold hover:underline"
+              >
+                {roleConfig.registerLabel}
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </div>
