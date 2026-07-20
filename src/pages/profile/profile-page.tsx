@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Building2, ChevronRight, LogOut, Mail, Pencil, Phone, Trophy, User, X } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronRight, LogOut, Mail, Pencil, Phone, Trophy, User, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -155,9 +155,19 @@ export function ProfilePage() {
       {/* Header */}
       <header className="border-b border-slate-200 bg-white px-6">
         <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between">
-          <button type="button" onClick={() => navigate('/')} className="text-2xl font-bold tracking-tight text-green-700">
-            FCourt
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(getProfileBackPath(user.role))}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition hover:border-green-200 hover:bg-green-50 hover:text-green-700"
+            >
+              <ArrowLeft size={16} />
+              <span className="hidden sm:inline">Quay lại</span>
+            </button>
+            <button type="button" onClick={() => navigate('/')} className="text-2xl font-bold tracking-tight text-green-700">
+              FCourt
+            </button>
+          </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-1.5 sm:px-3">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white">{initials}</div>
@@ -428,4 +438,14 @@ function formatVnd(value: number) {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}tr`
   if (value >= 1_000) return `${Math.round(value / 1_000)}k`
   return `${value.toLocaleString('vi-VN')}đ`
+}
+function getProfileBackPath(role: UserRole) {
+  const paths: Record<UserRole, string> = {
+    ADMIN: '/admin/dashboard',
+    SUPER_ADMIN: '/super-admin',
+    STAFF: '/staff',
+    CUSTOMER: '/',
+  }
+
+  return paths[role] ?? '/'
 }
