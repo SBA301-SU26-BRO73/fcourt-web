@@ -19,13 +19,13 @@ import type {
   AdminTopCourtRow,
 } from '@/services/admin/admin-dashboard.service'
 
-const currencyFormatter = new Intl.NumberFormat('vi-VN', {
+const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'VND',
   maximumFractionDigits: 0,
 })
 
-const numberFormatter = new Intl.NumberFormat('vi-VN')
+const numberFormatter = new Intl.NumberFormat('en-US')
 
 export function AdminDashboardPage() {
   const { data, isLoading, isError, error, refetch, isFetching } = useAdminDashboard()
@@ -42,9 +42,9 @@ export function AdminDashboardPage() {
     return (
       <div className="min-h-full bg-slate-50 p-5 sm:p-6 lg:p-8">
         <div className="rounded-lg border border-rose-200 bg-white p-6 shadow-sm">
-          <div className="text-sm font-semibold text-rose-700">Khong the tai dashboard Admin</div>
+          <div className="text-sm font-semibold text-rose-700">Unable to load the Admin dashboard</div>
           <p className="mt-2 text-sm text-slate-500">
-            {(error as Error)?.message || 'Vui long thu lai sau.'}
+            {(error as Error)?.message || 'Please try again later.'}
           </p>
           <button
             type="button"
@@ -52,7 +52,7 @@ export function AdminDashboardPage() {
             className="mt-5 inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
           >
             <RefreshCw size={16} />
-            Tai lai
+            Retry
           </button>
         </div>
       </div>
@@ -88,10 +88,10 @@ function Header({ isFetching, onRefresh }: { isFetching: boolean; onRefresh: () 
           Branch Admin Dashboard
         </div>
         <h1 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">
-          Tong quan van hanh san
+          Court Operations Overview
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          Doanh thu booking, ty le lap day, gio cao diem va top san theo du lieu thuc te.
+          Booking revenue, occupancy rate, peak hours, and top courts based on live data.
         </p>
       </div>
       <button
@@ -101,7 +101,7 @@ function Header({ isFetching, onRefresh }: { isFetching: boolean; onRefresh: () 
         className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-950 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
-        Lam moi
+        Refresh
       </button>
     </div>
   )
@@ -110,30 +110,30 @@ function Header({ isFetching, onRefresh }: { isFetching: boolean; onRefresh: () 
 function KpiGrid({ data }: { data: AdminDashboardStats }) {
   const items = [
     {
-      label: 'Doanh thu hom nay',
+      label: "Today's revenue",
       value: formatCurrency(data.todayRevenue),
-      meta: `${numberFormatter.format(data.todayBookings)} booking`,
+      meta: `${numberFormatter.format(data.todayBookings)} bookings`,
       icon: CircleDollarSign,
       tone: 'emerald',
     },
     {
-      label: 'Doanh thu thang',
+      label: 'Monthly revenue',
       value: formatCurrency(data.monthRevenue),
-      meta: `${numberFormatter.format(data.monthBookings)} booking trong thang`,
+      meta: `${numberFormatter.format(data.monthBookings)} bookings this month`,
       icon: WalletCards,
       tone: 'sky',
     },
     {
-      label: 'Ty le lap day',
+      label: 'Occupancy rate',
       value: `${formatPercent(data.occupancyRate)}`,
-      meta: `${numberFormatter.format(data.bookedSlotsLast30Days)} / ${numberFormatter.format(data.availableSlotsLast30Days)} slot 30 ngay`,
+      meta: `${numberFormatter.format(data.bookedSlotsLast30Days)} / ${numberFormatter.format(data.availableSlotsLast30Days)} slots in 30 days`,
       icon: BarChart3,
       tone: 'amber',
     },
     {
-      label: 'Quy mo hoat dong',
-      value: `${numberFormatter.format(data.activeCourtCount)} san`,
-      meta: `${numberFormatter.format(data.activeBranchCount)} chi nhanh dang mo`,
+      label: 'Operating scale',
+      value: `${numberFormatter.format(data.activeCourtCount)} courts`,
+      meta: `${numberFormatter.format(data.activeBranchCount)} active branches`,
       icon: Building2,
       tone: 'violet',
     },
@@ -174,8 +174,8 @@ function RevenuePanel({ data }: { data: AdminRevenuePoint[] }) {
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <PanelTitle
         icon={CalendarDays}
-        title="Doanh thu 14 ngay gan nhat"
-        description="Tong tien booking da xac nhan, check-in hoac hoan tat."
+        title="Revenue in the Last 14 Days"
+        description="Total revenue from confirmed, checked-in, or completed bookings."
       />
       <div className="mt-6 h-[320px]">
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-44 w-full overflow-visible">
@@ -223,8 +223,8 @@ function OccupancyPanel({ data }: { data: AdminDashboardStats }) {
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <PanelTitle
         icon={BarChart3}
-        title="Ty le lap day"
-        description="Tinh theo slot lich active trong 30 ngay gan nhat."
+        title="Occupancy Rate"
+        description="Calculated from active schedule slots in the last 30 days."
       />
       <div className="mt-6 flex flex-col items-center">
         <div className="relative h-44 w-44">
@@ -248,10 +248,10 @@ function OccupancyPanel({ data }: { data: AdminDashboardStats }) {
           </div>
         </div>
         <div className="mt-6 grid w-full grid-cols-2 gap-3">
-          <MiniMetric label="Slot da dat" value={numberFormatter.format(data.bookedSlotsLast30Days)} />
-          <MiniMetric label="Suc chua slot" value={numberFormatter.format(data.availableSlotsLast30Days)} />
-          <MiniMetric label="Doanh thu nam" value={formatCompactCurrency(data.yearRevenue)} />
-          <MiniMetric label="Booking thang" value={numberFormatter.format(data.monthBookings)} />
+          <MiniMetric label="Booked slots" value={numberFormatter.format(data.bookedSlotsLast30Days)} />
+          <MiniMetric label="Slot capacity" value={numberFormatter.format(data.availableSlotsLast30Days)} />
+          <MiniMetric label="Year revenue" value={formatCompactCurrency(data.yearRevenue)} />
+          <MiniMetric label="Monthly bookings" value={numberFormatter.format(data.monthBookings)} />
         </div>
       </div>
     </section>
@@ -265,8 +265,8 @@ function PeakHoursPanel({ data }: { data: AdminPeakHourPoint[] }) {
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <PanelTitle
         icon={Clock3}
-        title="So do peak hours"
-        description="Slot duoc dat nhieu theo khung gio."
+        title="Peak Hours"
+        description="Booked slots by time range."
       />
       <div className="mt-6 flex h-64 items-end gap-2">
         {data.map((item) => {
@@ -299,23 +299,23 @@ function TopCourtsPanel({ data }: { data: AdminTopCourtRow[] }) {
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <PanelTitle
         icon={Trophy}
-        title="Top san co doanh so cao nhat"
-        description="Xep hang theo doanh thu booking trong nam hien tai."
+        title="Top Revenue Courts"
+        description="Ranked by booking revenue in the current year."
       />
       <div className="mt-5 overflow-hidden rounded-lg border border-slate-200">
         {data.length === 0 ? (
           <div className="flex h-56 flex-col items-center justify-center bg-slate-50 text-center">
             <Trophy size={38} className="text-slate-300" />
-            <div className="mt-3 text-sm font-bold text-slate-700">Chua co doanh thu booking</div>
-            <div className="mt-1 text-xs text-slate-500">Top san se hien thi khi co booking da xac nhan.</div>
+            <div className="mt-3 text-sm font-bold text-slate-700">No booking revenue yet</div>
+            <div className="mt-1 text-xs text-slate-500">Top courts will appear after bookings are confirmed.</div>
           </div>
         ) : (
           <table className="w-full">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">San</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Court</th>
                 <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-widest text-slate-400">Slot</th>
-                <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-widest text-slate-400">Doanh thu</th>
+                <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-widest text-slate-400">Revenue</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -415,11 +415,11 @@ function formatCurrency(value: number) {
 }
 
 function formatCompactCurrency(value: number) {
-  if (!value) return '0 d'
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} ty`
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} tr`
-  if (value >= 1_000) return `${Math.round(value / 1_000)}k`
-  return `${numberFormatter.format(value)} d`
+  if (!value) return 'VND 0'
+  if (value >= 1_000_000_000) return `VND ${(value / 1_000_000_000).toFixed(1)}B`
+  if (value >= 1_000_000) return `VND ${(value / 1_000_000).toFixed(1)}M`
+  if (value >= 1_000) return `VND ${Math.round(value / 1_000)}K`
+  return `VND ${numberFormatter.format(value)}`
 }
 
 function formatPercent(value: number) {
@@ -429,5 +429,5 @@ function formatPercent(value: number) {
 function formatShortDate(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
 }
