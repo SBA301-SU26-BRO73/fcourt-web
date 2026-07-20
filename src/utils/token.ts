@@ -34,6 +34,11 @@ export const tokenStorage = {
     const days = msLeft > 0 ? Math.ceil(msLeft / 86400000) : 1
     setCookie(ACCESS_KEY, tokens.accessToken, days)
     setCookie(REFRESH_KEY, tokens.refreshToken, 7)
+    try {
+      this.setUser(decodeJwt(tokens.accessToken))
+    } catch {
+      localStorage.removeItem(USER_KEY)
+    }
   },
 
   getAccessToken(): string | null {
