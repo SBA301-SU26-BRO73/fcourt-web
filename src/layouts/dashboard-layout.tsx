@@ -6,14 +6,14 @@ import { useAuth } from '@/hooks/use-auth-context'
 import { useUsers } from '@/hooks/use-users'
 
 const NAV = [
-  { section: 'Tổng quan' },
+  { section: 'Overview' },
   { to: '/super-admin', label: 'Dashboard', icon: Grid2X2, end: true },
   { to: '/super-admin/users', label: 'Users', icon: Users },
-  { section: 'Quản lý Admin' },
-  { to: '/super-admin/pending', label: 'Chờ duyệt', icon: Inbox, badge: true },
-  { section: 'Cấu hình hệ thống' },
-  { to: '/super-admin/court-types', label: 'Loại sân', icon: Layers },
-  { to: '/super-admin/plans', label: 'Gói đăng ký', icon: Tag },
+  { section: 'Admin Management' },
+  { to: '/super-admin/pending', label: 'Pending Approval', icon: Inbox, badge: true },
+  { section: 'System Settings' },
+  { to: '/super-admin/court-types', label: 'Court Types', icon: Layers },
+  { to: '/super-admin/plans', label: 'Subscription Plans', icon: Tag },
 ] as const
 
 export function DashboardLayout() {
@@ -112,7 +112,7 @@ export function DashboardLayout() {
               type="button"
               onClick={logout}
               className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white hover:text-slate-700 hover:shadow-sm"
-              title="Đăng xuất"
+              title="Log out"
             >
               <LogOut size={15} />
             </button>

@@ -27,7 +27,7 @@ import type {
 type DetailModal = 'revenue' | 'branches' | 'courts' | 'subscriptions'
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat('vi-VN', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'VND',
     maximumFractionDigits: 0,
@@ -36,7 +36,7 @@ function formatCurrency(value: number) {
 
 function formatMonth(month: string) {
   const [year, monthIndex] = month.split('-').map(Number)
-  return new Intl.DateTimeFormat('vi-VN', {
+  return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     year: '2-digit',
   }).format(new Date(year, monthIndex - 1, 1))
@@ -70,7 +70,7 @@ function StatCard({
           <Icon size={21} className="text-white" />
         </span>
         <span className="rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 transition group-hover:bg-emerald-50 group-hover:text-emerald-600">
-          Chi tiet
+          Details
         </span>
       </div>
       <div className="mb-1 text-[28px] font-extrabold leading-tight text-slate-900">{value}</div>
@@ -87,9 +87,9 @@ function RevenueChart({ data }: { data: BookingRevenuePoint[] }) {
     <div className="rounded-[20px] bg-white p-6 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold text-slate-900">Doanh thu dat san</h2>
+          <h2 className="text-base font-bold text-slate-900">Booking Revenue</h2>
           <p className="mt-1 text-[12.5px] font-medium text-slate-400">
-            Theo thang booking da xac nhan
+            Confirmed bookings by month
           </p>
         </div>
         <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 shadow-lg shadow-emerald-100">
@@ -111,7 +111,7 @@ function RevenueChart({ data }: { data: BookingRevenuePoint[] }) {
                   <div className="absolute -top-14 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded-2xl bg-slate-900 px-3 py-2 text-[12px] font-bold text-white shadow-xl group-hover:block">
                     {formatCurrency(item.revenue)}
                     <div className="mt-0.5 text-center text-[10px] font-medium text-slate-300">
-                      {item.bookings} booking
+                      {item.bookings} bookings
                     </div>
                     <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900" />
                   </div>
@@ -179,9 +179,9 @@ function BranchRevenueTable({ rows }: { rows: BranchRevenueRow[] }) {
   return (
     <div className="overflow-hidden rounded-[20px] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100">
       <div className="border-b border-slate-100 px-6 py-5">
-        <h2 className="text-base font-bold text-slate-900">Doanh thu theo chi nhanh</h2>
+        <h2 className="text-base font-bold text-slate-900">Revenue by Branch</h2>
         <p className="mt-1 text-[12.5px] font-medium text-slate-400">
-          Tinh tu booking da xac nhan, dang check-in hoac da hoan thanh.
+          Calculated from confirmed, checked-in, or completed bookings.
         </p>
       </div>
 
@@ -190,9 +190,9 @@ function BranchRevenueTable({ rows }: { rows: BranchRevenueRow[] }) {
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-slate-100 to-emerald-50 text-emerald-600 shadow-inner">
             <BarChart3 className="h-8 w-8" />
           </div>
-          <div className="text-[14px] font-bold text-slate-700">Chua co booking nao co doanh thu.</div>
+          <div className="text-[14px] font-bold text-slate-700">No revenue-generating bookings yet.</div>
           <div className="mt-1 max-w-sm text-[12.5px] font-medium text-slate-400">
-            Du lieu se hien thi sau khi booking duoc xac nhan hoac hoan thanh.
+            Data will appear after bookings are confirmed or completed.
           </div>
         </div>
       ) : (
@@ -200,9 +200,9 @@ function BranchRevenueTable({ rows }: { rows: BranchRevenueRow[] }) {
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
               <tr className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-400">
-                <th className="px-6 py-4 font-bold">Chi nhanh</th>
-                <th className="px-6 py-4 text-right font-bold">Booking tinh doanh thu</th>
-                <th className="px-6 py-4 text-right font-bold">Doanh thu</th>
+                <th className="px-6 py-4 font-bold">Branch</th>
+                <th className="px-6 py-4 text-right font-bold">Revenue-counted bookings</th>
+                <th className="px-6 py-4 text-right font-bold">Revenue</th>
               </tr>
             </thead>
             <tbody>
@@ -246,7 +246,7 @@ function DetailModalShell({
             type="button"
             onClick={onClose}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
-            aria-label="Dong popup"
+            aria-label="Close popup"
           >
             <X className="h-5 w-5" />
           </button>
@@ -268,22 +268,22 @@ function EmptyDetail({ label }: { label: string }) {
 function LoadingDetail() {
   return (
     <div className="grid place-items-center rounded-2xl bg-slate-50 px-6 py-12 text-center text-sm font-semibold text-slate-500">
-      Dang tai chi tiet...
+      Loading details...
     </div>
   )
 }
 
 function RevenueDetail({ rows }: { rows: BranchRevenueRow[] }) {
-  if (rows.length === 0) return <EmptyDetail label="Chua co doanh thu booking de hien thi." />
+  if (rows.length === 0) return <EmptyDetail label="No booking revenue to display." />
 
   return (
     <div className="overflow-hidden rounded-2xl ring-1 ring-slate-100">
       <table className="w-full min-w-[620px] text-left text-sm">
         <thead>
           <tr className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400">
-            <th className="px-5 py-4 font-bold">Chi nhanh</th>
-            <th className="px-5 py-4 text-right font-bold">Booking tinh doanh thu</th>
-            <th className="px-5 py-4 text-right font-bold">Doanh thu</th>
+            <th className="px-5 py-4 font-bold">Branch</th>
+            <th className="px-5 py-4 text-right font-bold">Revenue-counted bookings</th>
+            <th className="px-5 py-4 text-right font-bold">Revenue</th>
           </tr>
         </thead>
         <tbody>
@@ -301,17 +301,17 @@ function RevenueDetail({ rows }: { rows: BranchRevenueRow[] }) {
 }
 
 function BranchDetail({ rows }: { rows: DashboardBranchRow[] }) {
-  if (rows.length === 0) return <EmptyDetail label="Khong co chi nhanh active." />
+  if (rows.length === 0) return <EmptyDetail label="No active branches." />
 
   return (
     <div className="overflow-hidden rounded-2xl ring-1 ring-slate-100">
       <table className="w-full min-w-[760px] text-left text-sm">
         <thead>
           <tr className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400">
-            <th className="px-5 py-4 font-bold">Chi nhanh</th>
+            <th className="px-5 py-4 font-bold">Branch</th>
             <th className="px-5 py-4 font-bold">Admin</th>
-            <th className="px-5 py-4 font-bold">Dia chi</th>
-            <th className="px-5 py-4 font-bold">Gio hoat dong</th>
+            <th className="px-5 py-4 font-bold">Address</th>
+            <th className="px-5 py-4 font-bold">Operating Hours</th>
             <th className="px-5 py-4 text-right font-bold">Slot</th>
           </tr>
         </thead>
@@ -320,15 +320,15 @@ function BranchDetail({ rows }: { rows: DashboardBranchRow[] }) {
             <tr key={row.id} className="border-t border-slate-100 align-top">
               <td className="px-5 py-4">
                 <div className="font-bold text-slate-900">{row.name}</div>
-                <div className="mt-1 text-[12px] font-medium text-slate-400">{row.phone ?? 'Chua co SDT'}</div>
+                <div className="mt-1 text-[12px] font-medium text-slate-400">{row.phone ?? 'No phone number'}</div>
               </td>
               <td className="px-5 py-4">
-                <div className="font-semibold text-slate-700">{row.adminName ?? 'Chua cap nhat'}</div>
+                <div className="font-semibold text-slate-700">{row.adminName ?? 'Not updated'}</div>
                 <div className="mt-1 text-[12px] font-medium text-slate-400">{row.adminEmail}</div>
               </td>
               <td className="px-5 py-4 font-medium text-slate-600">{row.address}, {row.city}</td>
               <td className="px-5 py-4 font-semibold text-slate-600">{row.openTime} - {row.closeTime}</td>
-              <td className="px-5 py-4 text-right font-bold text-slate-900">{row.slotDurationMinutes} phut</td>
+              <td className="px-5 py-4 text-right font-bold text-slate-900">{row.slotDurationMinutes} min</td>
             </tr>
           ))}
         </tbody>
@@ -338,17 +338,17 @@ function BranchDetail({ rows }: { rows: DashboardBranchRow[] }) {
 }
 
 function CourtDetail({ rows }: { rows: DashboardCourtRow[] }) {
-  if (rows.length === 0) return <EmptyDetail label="Khong co san nao." />
+  if (rows.length === 0) return <EmptyDetail label="No courts." />
 
   return (
     <div className="overflow-hidden rounded-2xl ring-1 ring-slate-100">
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
           <tr className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400">
-            <th className="px-5 py-4 font-bold">San</th>
-            <th className="px-5 py-4 font-bold">Chi nhanh</th>
-            <th className="px-5 py-4 font-bold">Loai san</th>
-            <th className="px-5 py-4 text-right font-bold">Trang thai</th>
+            <th className="px-5 py-4 font-bold">Court</th>
+            <th className="px-5 py-4 font-bold">Branch</th>
+            <th className="px-5 py-4 font-bold">Court Type</th>
+            <th className="px-5 py-4 text-right font-bold">Status</th>
           </tr>
         </thead>
         <tbody>
@@ -371,7 +371,7 @@ function CourtDetail({ rows }: { rows: DashboardCourtRow[] }) {
 }
 
 function SubscriptionDetail({ rows }: { rows: DashboardSubscriptionRow[] }) {
-  if (rows.length === 0) return <EmptyDetail label="Khong co subscription." />
+  if (rows.length === 0) return <EmptyDetail label="No subscriptions." />
 
   return (
     <div className="overflow-hidden rounded-2xl ring-1 ring-slate-100">
@@ -379,23 +379,23 @@ function SubscriptionDetail({ rows }: { rows: DashboardSubscriptionRow[] }) {
         <thead>
           <tr className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400">
             <th className="px-5 py-4 font-bold">Admin</th>
-            <th className="px-5 py-4 font-bold">Goi</th>
-            <th className="px-5 py-4 font-bold">Han su dung</th>
-            <th className="px-5 py-4 text-right font-bold">Gioi han</th>
-            <th className="px-5 py-4 text-right font-bold">Trang thai</th>
+            <th className="px-5 py-4 font-bold">Plan</th>
+            <th className="px-5 py-4 font-bold">Valid Period</th>
+            <th className="px-5 py-4 text-right font-bold">Limits</th>
+            <th className="px-5 py-4 text-right font-bold">Status</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.id} className="border-t border-slate-100 align-top">
               <td className="px-5 py-4">
-                <div className="font-semibold text-slate-700">{row.adminName ?? 'Chua cap nhat'}</div>
+                <div className="font-semibold text-slate-700">{row.adminName ?? 'Not updated'}</div>
                 <div className="mt-1 text-[12px] font-medium text-slate-400">{row.adminEmail}</div>
               </td>
               <td className="px-5 py-4 font-bold text-slate-900">{row.planName}</td>
               <td className="px-5 py-4 font-semibold text-slate-600">{row.startDate} - {row.endDate}</td>
               <td className="px-5 py-4 text-right font-medium text-slate-600">
-                {row.maxBranches} branch / {row.maxCourts} san
+                {row.maxBranches} branches / {row.maxCourts} courts
               </td>
               <td className="px-5 py-4 text-right">
                 <span
@@ -454,8 +454,8 @@ export function DashboardPage() {
     if (activeModal === 'revenue') {
       return (
         <DetailModalShell
-          title="Chi tiet doanh thu dat san"
-          subtitle={`${bookingRevenue.bookingCount} booking da tinh doanh thu, tong ${formatCurrency(bookingRevenue.totalRevenue)}`}
+          title="Booking Revenue Details"
+          subtitle={`${bookingRevenue.bookingCount} revenue-counted bookings, total ${formatCurrency(bookingRevenue.totalRevenue)}`}
           onClose={() => setActiveModal(null)}
         >
           <RevenueDetail rows={bookingRevenue.branchRevenue} />
@@ -466,8 +466,8 @@ export function DashboardPage() {
     if (isDetailsLoading) {
       return (
         <DetailModalShell
-          title="Dang tai chi tiet"
-          subtitle="He thong dang lay du lieu moi nhat tu backend."
+          title="Loading Details"
+          subtitle="The system is fetching the latest data from the backend."
           onClose={() => setActiveModal(null)}
         >
           <LoadingDetail />
@@ -478,11 +478,11 @@ export function DashboardPage() {
     if (isDetailsError || !details) {
       return (
         <DetailModalShell
-          title="Khong the tai chi tiet"
-          subtitle={(detailsError as Error)?.message || 'Vui long thu lai sau.'}
+          title="Unable to Load Details"
+          subtitle={(detailsError as Error)?.message || 'Please try again later.'}
           onClose={() => setActiveModal(null)}
         >
-          <EmptyDetail label="Khong the tai du lieu chi tiet." />
+          <EmptyDetail label="Unable to load detail data." />
         </DetailModalShell>
       )
     }
@@ -490,8 +490,8 @@ export function DashboardPage() {
     if (activeModal === 'branches') {
       return (
         <DetailModalShell
-          title="Danh sach chi nhanh active"
-          subtitle={`${details.activeBranches.length} chi nhanh dang hoat dong`}
+          title="Active Branches"
+          subtitle={`${details.activeBranches.length} active branches`}
           onClose={() => setActiveModal(null)}
         >
           <BranchDetail rows={details.activeBranches} />
@@ -502,8 +502,8 @@ export function DashboardPage() {
     if (activeModal === 'courts') {
       return (
         <DetailModalShell
-          title="Danh sach san"
-          subtitle={`${details.courts.length} san chua bi xoa mem trong he thong`}
+          title="Court List"
+          subtitle={`${details.courts.length} courts not soft-deleted in the system`}
           onClose={() => setActiveModal(null)}
         >
           <CourtDetail rows={details.courts} />
@@ -513,17 +513,17 @@ export function DashboardPage() {
 
     return (
       <DetailModalShell
-        title="Chi tiet subscription"
-        subtitle={`${activeSubscriptions.length} active / ${expiredSubscriptions.length} het han`}
+        title="Subscription Details"
+        subtitle={`${activeSubscriptions.length} active / ${expiredSubscriptions.length} expired`}
         onClose={() => setActiveModal(null)}
       >
         <div className="space-y-6">
           <div>
-            <h3 className="mb-3 text-sm font-extrabold text-slate-900">Dang active</h3>
+            <h3 className="mb-3 text-sm font-extrabold text-slate-900">Active</h3>
             <SubscriptionDetail rows={activeSubscriptions} />
           </div>
           <div>
-            <h3 className="mb-3 text-sm font-extrabold text-slate-900">Het han</h3>
+            <h3 className="mb-3 text-sm font-extrabold text-slate-900">Expired</h3>
             <SubscriptionDetail rows={expiredSubscriptions} />
           </div>
         </div>
@@ -537,7 +537,7 @@ export function DashboardPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-slate-400">
-              Tong quan
+              Overview
             </p>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Dashboard Super Admin</h1>
           </div>
@@ -550,19 +550,19 @@ export function DashboardPage() {
             className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[13px] font-bold text-slate-700 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100 transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.10)] disabled:opacity-60"
           >
             <RefreshCw className={`h-4 w-4 text-emerald-600 ${fetching ? 'animate-spin' : ''}`} />
-            Lam moi
+            Refresh
           </button>
         </div>
 
         {loading && (
           <div className="rounded-[20px] bg-white p-10 text-center text-sm font-medium text-slate-500 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100">
-            Dang tai so lieu dashboard...
+            Loading dashboard metrics...
           </div>
         )}
 
         {hasError && (
           <div className="rounded-[20px] bg-red-50 p-5 text-sm font-semibold text-red-700 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-red-100">
-            {displayError || 'Khong the tai dashboard.'}
+            {displayError || 'Unable to load the dashboard.'}
           </div>
         )}
 
@@ -572,33 +572,33 @@ export function DashboardPage() {
               <StatCard
                 icon={CircleDollarSign}
                 gradient="from-emerald-400 to-teal-600"
-                label="Doanh thu dat san"
+                label="Booking Revenue"
                 value={formatCurrency(bookingRevenue.totalRevenue)}
-                foot={`${bookingRevenue.bookingCount} booking da tinh doanh thu`}
+                foot={`${bookingRevenue.bookingCount} revenue-counted bookings`}
                 onClick={() => setActiveModal('revenue')}
               />
               <StatCard
                 icon={Building2}
                 gradient="from-sky-400 to-blue-600"
-                label="Chi nhanh active"
+                label="Active Branches"
                 value={data.activeBranchCount}
-                foot="Branch dang hoat dong"
+                foot="Branches currently operating"
                 onClick={() => setActiveModal('branches')}
               />
               <StatCard
                 icon={Layers}
                 gradient="from-violet-400 to-purple-600"
-                label="Tong so san"
+                label="Total Courts"
                 value={data.totalCourtCount}
-                foot="Court chua bi xoa mem"
+                foot="Courts not soft-deleted"
                 onClick={() => setActiveModal('courts')}
               />
               <StatCard
                 icon={CalendarCheck2}
                 gradient="from-amber-400 to-orange-600"
-                label="Subscription active / het han"
+                label="Active / Expired Subscriptions"
                 value={`${data.activeSubscriptionCount} / ${data.expiredSubscriptionCount}`}
-                foot={`${data.newSubscriptionsThisMonth} goi moi trong thang nay`}
+                foot={`${data.newSubscriptionsThisMonth} new plans this month`}
                 onClick={() => setActiveModal('subscriptions')}
               />
             </div>
@@ -607,18 +607,18 @@ export function DashboardPage() {
               <RevenueChart data={bookingRevenue.revenueChart} />
               <div className="grid gap-6">
                 <SubscriptionRing
-                  label="Subscription dang active"
+                  label="Active Subscriptions"
                   value={data.activeSubscriptionCount}
                   total={subscriptionTotal}
                   accent="#10b981"
-                  foot="End date tu hom nay tro ve sau"
+                  foot="End date is today or later"
                 />
                 <SubscriptionRing
-                  label="Subscription het han"
+                  label="Expired Subscriptions"
                   value={data.expiredSubscriptionCount}
                   total={subscriptionTotal}
                   accent="#f59e0b"
-                  foot="End date truoc hom nay"
+                  foot="End date is before today"
                 />
               </div>
             </div>
