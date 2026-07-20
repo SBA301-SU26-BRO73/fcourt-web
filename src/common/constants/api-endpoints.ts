@@ -14,6 +14,7 @@ export const API_PREFIXES = {
   vouchers: '/vouchers',
   bookings: '/bookings',
   payments: '/payments',
+  superAdminDashboard: '/super-admin/dashboard',
 } as const
 
 function joinEndpoint(...segments: Array<string | number>) {
@@ -106,9 +107,14 @@ export const API_ENDPOINTS = {
     list: joinEndpoint(API_PREFIXES.bookings),
     my: joinEndpoint(API_PREFIXES.bookings, 'my'),
     lookup: joinEndpoint(API_PREFIXES.bookings, 'lookup'),
+    revenue: joinEndpoint(API_PREFIXES.bookings, 'revenue'),
   },
   payments: {
     list: joinEndpoint(API_PREFIXES.payments),
     detail: (id: string | number) => joinEndpoint(API_PREFIXES.payments, id),
+  },
+  superAdminDashboard: {
+    stats: joinEndpoint(API_PREFIXES.superAdminDashboard, 'stats'),
+    details: joinEndpoint(API_PREFIXES.superAdminDashboard, 'details'),
   },
 } as const
