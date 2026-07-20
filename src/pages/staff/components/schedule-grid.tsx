@@ -7,6 +7,7 @@ import {
   ROW_HEIGHT,
   SLOT_MINUTES,
   formatTime12h,
+  hasScheduleTime,
   nowMinutes,
 } from '@/pages/staff/schedule-utils'
 
@@ -30,6 +31,7 @@ export function ScheduleGrid({
   const bookingsByCourt = useMemo(() => {
     const map = new Map<number, StaffScheduleItem[]>()
     for (const item of schedule) {
+      if (!hasScheduleTime(item)) continue
       const list = map.get(item.courtId) ?? []
       list.push(item)
       map.set(item.courtId, list)

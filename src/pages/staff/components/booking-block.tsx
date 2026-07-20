@@ -14,7 +14,9 @@ interface BookingBlockProps {
 
 export function BookingBlock({ item, openMin, onClick }: BookingBlockProps) {
   const style = STATUS_STYLES[item.status]
-  const { top, height, span } = blockGeometry(item, openMin)
+  const geometry = blockGeometry(item, openMin)
+  if (!geometry) return null
+  const { top, height, span } = geometry
   const clickable =
     (item.status === 'CONFIRMED' || item.status === 'CHECKED_IN') && onClick != null
 

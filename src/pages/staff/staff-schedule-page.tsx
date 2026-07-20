@@ -9,6 +9,7 @@ import { ScheduleGrid } from '@/pages/staff/components/schedule-grid'
 import {
   STATUS_STYLES,
   buildTimeWindow,
+  hasScheduleTime,
   nowMinutes,
   timeToMinutes,
 } from '@/pages/staff/schedule-utils'
@@ -16,6 +17,7 @@ import type { StaffScheduleItem } from '@/types/staff'
 
 function isPlayingNow(item: StaffScheduleItem): boolean {
   if (item.status !== 'CHECKED_IN') return false
+  if (!hasScheduleTime(item)) return false
   const now = nowMinutes()
   return now >= timeToMinutes(item.startTime) && now < timeToMinutes(item.endTime)
 }

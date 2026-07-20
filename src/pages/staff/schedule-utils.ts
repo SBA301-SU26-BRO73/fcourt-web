@@ -6,8 +6,10 @@ export const DEFAULT_OPEN = '06:00:00'
 export const DEFAULT_CLOSE = '22:00:00'
 
 /** "14:30:00" | "14:30" -> minutes since midnight. */
-export function timeToMinutes(time: string): number {
+export function timeToMinutes(time: string | null | undefined): number {
+  if (!time) return Number.NaN
   const [h, m] = time.split(':').map(Number)
+  if (!Number.isFinite(h)) return Number.NaN
   return h * 60 + (m || 0)
 }
 
@@ -21,8 +23,9 @@ export function formatTime12h(minutes: number): string {
 }
 
 /** "14:30:00" -> "2:30 PM". */
-export function formatClock(time: string): string {
-  return formatTime12h(timeToMinutes(time))
+export function formatClock(time: string | null | undefined): string {
+  const minutes = timeToMinutes(time)
+  return Number.isFinite(minutes) ? formatTime12h(minutes) : '--:--'
 }
 
 /** Minutes since midnight for the local "now". */
@@ -83,8 +86,16 @@ export function customerLabel(item: StaffScheduleItem): string {
   return item.customerName ?? item.guestPhone ?? 'Guest'
 }
 
+export function hasScheduleTime(item: StaffScheduleItem): item is StaffScheduleItem & {
+  startTime: string
+  endTime: string
+} {
+  return Number.isFinite(timeToMinutes(item.startTime)) && Number.isFinite(timeToMinutes(item.endTime))
+}
+
 /** Geometry for a booking block inside its court column. */
 export function blockGeometry(item: StaffScheduleItem, openMin: number) {
+  if (!hasScheduleTime(item)) return null
   const startMin = timeToMinutes(item.startTime)
   const top = ((startMin - openMin) / SLOT_MINUTES) * ROW_HEIGHT
   const span = Math.max(1, item.slotCount)

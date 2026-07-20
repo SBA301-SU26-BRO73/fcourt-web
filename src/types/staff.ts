@@ -49,8 +49,8 @@ export interface StaffScheduleItem {
   guestPhone: string | null
   status: BookingStatus
   date: string // YYYY-MM-DD
-  startTime: string // HH:mm:ss — earliest slot start
-  endTime: string // HH:mm:ss — latest slot end
+  startTime: string | null // HH:mm:ss — earliest slot start
+  endTime: string | null // HH:mm:ss — latest slot end
   totalPrice: number
   slotCount: number
 }

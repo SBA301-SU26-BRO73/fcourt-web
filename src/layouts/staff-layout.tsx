@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { CalendarDays, Grid3x3, PlusCircle, ScanLine, ShoppingCart } from 'lucide-react'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { CalendarDays, Grid3x3, LogOut, PlusCircle, ScanLine, ShoppingCart } from 'lucide-react'
 
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth-context'
@@ -41,6 +41,11 @@ export function StaffLayout() {
     return null
   }
 
+  function logout() {
+    clearAuth()
+    navigate('/auth/login?role=staff', { replace: true })
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center bg-slate-50">
       <header className="sticky top-0 z-20 flex w-full max-w-[1180px] flex-col border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -64,9 +69,22 @@ export function StaffLayout() {
             {branchName ?? 'Loading branch…'}
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-slate-700">
+          <Link
+            to="/profile"
+            className="flex items-center gap-2 rounded-full px-2 py-1 text-sm text-slate-700 transition hover:bg-slate-100"
+            title="Trang cá nhân"
+          >
             <Avatar email={user.email} size={28} />
-          </div>
+            <span className="hidden max-w-40 truncate font-medium md:inline">{user.email}</span>
+          </Link>
+          <button
+            type="button"
+            onClick={logout}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+            title="Đăng xuất"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
 
         <nav className="no-scrollbar flex w-full items-center gap-1 overflow-x-auto border-t border-slate-100 px-6 py-2">
