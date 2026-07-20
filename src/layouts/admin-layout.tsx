@@ -5,8 +5,6 @@ import {
   Calendar,
   Layout,
   Users,
-  CreditCard,
-  Activity,
   Building2,
   Settings,
   Bell,
@@ -22,8 +20,6 @@ const NAV_ITEMS = [
   { id: 'bookings', to: '/admin/bookings', icon: Calendar, label: 'Bookings' },
   { id: 'courts', to: '/admin/courts', icon: Layout, label: 'Courts' },
   { id: 'staff', to: '/admin/staff', icon: Users, label: 'Staff' },
-  { id: 'payments', to: '/admin/payments', icon: CreditCard, label: 'Payments' },
-  { id: 'reports', to: '/admin/reports', icon: Activity, label: 'Reports' },
 ] as const
 
 const NAV_SYSTEM = [
