@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Link, Outlet, NavLink, useNavigate } from 'react-router-dom'
 import {
   Home,
   Calendar,
@@ -120,13 +120,16 @@ export function AdminLayout() {
 
         {/* Profile */}
         <div className="mt-auto border-t border-slate-100 px-3 py-3">
-          <div className="flex items-center gap-2.5">
-            <Avatar email="admin@bro73.app" size={32} />
+          <Link
+            to="/profile"
+            className="flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-slate-50"
+          >
+            <Avatar email={user.email} size={32} />
             <div className="min-w-0">
-              <div className="truncate text-sm font-medium text-slate-800">Admin</div>
-              <div className="truncate text-xs text-slate-400">Owner</div>
+              <div className="truncate text-sm font-medium text-slate-800">{user.email}</div>
+              <div className="truncate text-xs text-slate-400">{getRoleLabel(user.role)}</div>
             </div>
-          </div>
+          </Link>
           <button type="button" onClick={() => { clearAuth(); navigate('/auth/login?role=admin', { replace: true }) }} className="mt-3 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600">
             <LogOut size={16} />
             Đăng xuất
@@ -159,4 +162,15 @@ export function AdminLayout() {
       </div>
     </div>
   )
+}
+
+function getRoleLabel(role: string) {
+  const labels: Record<string, string> = {
+    ADMIN: 'Admin',
+    SUPER_ADMIN: 'Super Admin',
+    STAFF: 'Staff',
+    CUSTOMER: 'Customer',
+  }
+
+  return labels[role] ?? role
 }
