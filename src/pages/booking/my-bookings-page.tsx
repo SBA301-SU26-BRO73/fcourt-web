@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Calendar, MapPin } from 'lucide-react'
+import { Calendar, CreditCard, MapPin } from 'lucide-react'
 
 import { useAuth } from '@/hooks/use-auth-context'
 import { getMyBookings } from '@/services/booking/booking.api'
@@ -88,6 +88,16 @@ export function MyBookingsPage() {
                     checkinCode={booking.checkinCode}
                     bookingCode={booking.bookingCode}
                   />
+                  {booking.status === 'PENDING_PAYMENT' && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/payment?bookingId=${booking.id}`)}
+                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                    >
+                      <CreditCard size={16} />
+                      Tiếp tục thanh toán
+                    </button>
+                  )}
                 </div>
               )}
             </div>
