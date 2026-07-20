@@ -19,6 +19,16 @@ const HERO_COPY = {
     headline: 'Đưa sân của bạn\nlên nền tảng\nFCourt',
     sub: 'Tiếp cận 50,000+ người chơi. Quản lý lịch đặt sân và doanh thu trực quan.',
   },
+  staff: {
+    kicker: 'Trạm vận hành sân',
+    headline: 'Xử lý ca trực\nnhanh gọn &\nchính xác',
+    sub: 'Theo dõi lịch đặt, check-in khách và hỗ trợ vận hành sân trong một màn hình.',
+  },
+  superAdmin: {
+    kicker: 'Điều phối nền tảng',
+    headline: 'Quản trị hệ thống\nFCourt toàn diện\nvà minh bạch',
+    sub: 'Duyệt đối tác, quản lý gói dịch vụ và theo dõi chất lượng vận hành nền tảng.',
+  },
   forgot: {
     kicker: 'Hỗ trợ tài khoản',
     headline: 'Lấy lại\nquyền truy cập\ntài khoản',
@@ -61,7 +71,7 @@ function CourtLines() {
   )
 }
 
-type HeroVariant = keyof typeof HERO_COPY
+export type HeroVariant = keyof typeof HERO_COPY
 
 interface HeroPanelProps {
   variant?: HeroVariant

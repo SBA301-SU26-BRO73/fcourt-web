@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, User } from 'lucide-react'
+import { Building2, ChevronRight, ShieldCheck, User, UserCog } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -10,6 +10,13 @@ interface RoleCardProps {
   title: string
   desc: string
   onClick: () => void
+}
+
+interface RoleOption {
+  icon: React.ElementType
+  title: string
+  desc: string
+  loginPath: string
 }
 
 function RoleCard({ icon: Icon, title, desc, onClick }: RoleCardProps) {
@@ -47,6 +54,33 @@ function RoleCard({ icon: Icon, title, desc, onClick }: RoleCardProps) {
   )
 }
 
+const ROLE_OPTIONS = [
+  {
+    icon: User,
+    title: 'Khách hàng',
+    desc: 'Tìm kiếm và đặt sân thể thao gần bạn',
+    loginPath: '/auth/login?role=customer',
+  },
+  {
+    icon: Building2,
+    title: 'Chủ sân / Đối tác',
+    desc: 'Quản lý sân, lịch đặt và theo dõi doanh thu',
+    loginPath: '/auth/login?role=admin',
+  },
+  {
+    icon: UserCog,
+    title: 'Nhân viên',
+    desc: 'Tiếp nhận khách, check-in và xử lý vận hành tại sân',
+    loginPath: '/auth/login?role=staff',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Super Admin',
+    desc: 'Giám sát hệ thống, duyệt đối tác và cấu hình nền tảng',
+    loginPath: '/auth/login?role=super-admin',
+  },
+] satisfies RoleOption[]
+
 export function RolePickPage() {
   const navigate = useNavigate()
   return (
@@ -69,18 +103,15 @@ export function RolePickPage() {
             </p>
           </div>
           <div className="flex flex-col gap-3">
-            <RoleCard
-              icon={User}
-              title="Khách hàng"
-              desc="Tìm kiếm và đặt sân thể thao gần bạn"
-              onClick={() => navigate('/auth/login?role=customer')}
-            />
-            <RoleCard
-              icon={Building2}
-              title="Chủ sân / Đối tác"
-              desc="Quản lý sân, lịch đặt và theo dõi doanh thu"
-              onClick={() => navigate('/auth/login?role=admin')}
-            />
+            {ROLE_OPTIONS.map((role) => (
+              <RoleCard
+                key={role.loginPath}
+                icon={role.icon}
+                title={role.title}
+                desc={role.desc}
+                onClick={() => navigate(role.loginPath)}
+              />
+            ))}
           </div>
         </div>
       </div>
