@@ -5,6 +5,7 @@ import { X, Percent, Tag, ShieldCheck } from 'lucide-react'
 import { createVoucher, updateVoucher } from '@/services/voucher/voucher.api'
 import type { Voucher, CreateVoucherRequest, UpdateVoucherRequest } from '@/types/voucher'
 import type { Branch } from '@/types/branch'
+import { formatLocalDateTime } from '@/common/utils/local-date'
 
 interface VoucherFormModalProps {
   isOpen: boolean
@@ -50,8 +51,8 @@ export default function VoucherFormModal({
         setUsageLimit(voucher.usageLimit)
         
         // Format ISO dates to datetime-local (yyyy-MM-ddThh:mm)
-        setStartDate(voucher.startDate ? voucher.startDate.slice(0, 16) : '')
-        setExpiryDate(voucher.expiryDate ? voucher.expiryDate.slice(0, 16) : '')
+        setStartDate(voucher.startDate ? formatLocalDateTime(new Date(voucher.startDate)) : '')
+        setExpiryDate(voucher.expiryDate ? formatLocalDateTime(new Date(voucher.expiryDate)) : '')
         setActive(voucher.active)
       } else {
         setBranchId(branches[0]?.id || 0)
