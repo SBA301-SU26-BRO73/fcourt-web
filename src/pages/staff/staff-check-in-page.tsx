@@ -63,7 +63,7 @@ export function StaffCheckInPage() {
           <h1 className="text-lg font-bold tracking-tight text-slate-900">
             Check in a customer
           </h1>
-          <p className="text-[13px] text-slate-500">
+          <p className="text-sm text-slate-500">
             Point the camera at the booking QR, or enter the code.
           </p>
         </div>
@@ -121,7 +121,7 @@ export function StaffCheckInPage() {
               <div className="text-sm font-semibold text-slate-700">
                 Waiting for a code…
               </div>
-              <p className="max-w-[280px] text-[13px] text-slate-500">
+              <p className="max-w-[280px] text-sm text-slate-500">
                 Scan the booking QR or enter the code to check the customer in.
               </p>
             </div>

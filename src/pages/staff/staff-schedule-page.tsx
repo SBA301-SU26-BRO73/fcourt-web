@@ -38,6 +38,13 @@ export function StaffSchedulePage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div>
+        <h1 className="text-lg font-bold tracking-tight text-slate-900">Lịch hôm nay</h1>
+        <p className="text-sm text-slate-500">
+          Tổng quan sân và các thao tác nhanh tại quầy
+        </p>
+      </div>
+
       {/* KPI row */}
       <div className="grid grid-cols-3 gap-3">
         <KpiCard
@@ -66,7 +73,7 @@ export function StaffSchedulePage() {
           to="/staff/board"
           className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
         >
-          <Grid3x3 size={22} className="text-green-600" />
+          <Grid3x3 size={20} className="text-green-600" />
           <div className="leading-tight">
             <div className="text-base font-semibold">Bảng giám sát sân</div>
             <div className="text-sm text-slate-500">Xem trạng thái sân thời gian thực</div>
@@ -77,29 +84,7 @@ export function StaffSchedulePage() {
           to="/staff/pos"
           className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
         >
-          <ShoppingCart size={22} className="text-green-600" />
-          <div className="leading-tight">
-            <div className="text-base font-semibold">Bán hàng tại quầy</div>
-            <div className="text-sm text-slate-500">Thuê vợt, bán nước, cầu lông</div>
-          </div>
-          <span className="ml-auto text-xl text-slate-400">→</span>
-        </Link>
-        <Link
-          to="/staff/board"
-          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
-        >
-          <Grid3x3 size={22} className="text-green-600" />
-            <div className="leading-tight">
-              <div className="text-base font-semibold">Bảng giám sát sân</div>
-              <div className="text-sm text-slate-500">Xem trạng thái sân thời gian thực</div>
-            </div>
-            <span className="ml-auto text-xl text-slate-400">→</span>
-        </Link>
-        <Link
-          to="/staff/pos"
-          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
-        >
-          <ShoppingCart size={22} className="text-green-600" />
+          <ShoppingCart size={20} className="text-green-600" />
           <div className="leading-tight">
             <div className="text-base font-semibold">Bán hàng tại quầy</div>
             <div className="text-sm text-slate-500">Thuê vợt, bán nước, cầu lông</div>
@@ -110,7 +95,7 @@ export function StaffSchedulePage() {
           to="/staff/check-in"
           className="flex items-center gap-3 rounded-xl bg-green-600 px-5 py-4 text-white shadow-sm transition-colors hover:bg-green-700"
         >
-          <ScanLine size={22} />
+          <ScanLine size={20} />
           <div className="leading-tight">
             <div className="text-base font-semibold">Scan QR to check in</div>
             <div className="text-sm text-green-100">
@@ -123,7 +108,7 @@ export function StaffSchedulePage() {
           to="/staff/walk-in"
           className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
         >
-          <PlusCircle size={22} className="text-green-600" />
+          <PlusCircle size={20} className="text-green-600" />
           <div className="leading-tight">
             <div className="text-base font-semibold">New walk-in booking</div>
             <div className="text-sm text-slate-500">Create a booking at the counter</div>

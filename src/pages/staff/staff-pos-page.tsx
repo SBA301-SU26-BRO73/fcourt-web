@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Minus, Plus, ShoppingCart, Trash2, X } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
+import { Field } from '@/components/ui/field'
 import { useBranchGrid } from '@/hooks/staff/use-branch-grid'
 import { useTodaySchedule } from '@/hooks/staff/use-today-schedule'
 import { getPosProducts, createPosOrder, confirmPosOrder } from '@/services/staff/staff.api'
@@ -124,39 +126,32 @@ export function StaffPosPage() {
         {order.status === 'PENDING' && (
           <div className="mt-4 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
             {branch?.bankQrImageUrl && (
-              <img src={branch.bankQrImageUrl} alt="QR chuyển khoản" className="mx-auto h-48 w-48 rounded-lg" />
+              <img
+                src={branch.bankQrImageUrl}
+                alt="QR chuyển khoản"
+                width={192}
+                height={192}
+                className="mx-auto h-48 w-48 rounded-lg object-contain"
+              />
             )}
             <p className="text-center text-xs text-amber-800">
               {branch?.bankAccountName} · {branch?.bankAccountNumber} ({branch?.bankName})
             </p>
-            <button
-              type="button"
-              disabled={confirming}
-              onClick={handleConfirmReceived}
-              className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
-            >
+            <Button variant="primary" disabled={confirming} onClick={handleConfirmReceived}>
               {confirming ? 'Đang xác nhận…' : 'Xác nhận đã nhận tiền'}
-            </button>
+            </Button>
           </div>
         )}
 
         {error && <p className="mt-3 text-center text-sm text-red-600">{error}</p>}
 
         <div className="mt-4 flex gap-2 print:hidden">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
+          <Button variant="ghost" onClick={() => window.print()} className="flex-1">
             In hoá đơn
-          </button>
-          <button
-            type="button"
-            onClick={resetForNextSale}
-            className="flex-1 rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-900"
-          >
+          </Button>
+          <Button variant="neutral" onClick={resetForNextSale} className="flex-1">
             Bán tiếp
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -166,7 +161,7 @@ export function StaffPosPage() {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
       {/* Product grid */}
       <div>
-        <h1 className="mb-3 text-lg font-bold text-slate-900">Bán hàng tại quầy</h1>
+        <h1 className="mb-3 text-lg font-bold tracking-tight text-slate-900">Bán hàng tại quầy</h1>
         {isLoading ? (
           <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">
             Đang tải sản phẩm…
@@ -197,8 +192,8 @@ export function StaffPosPage() {
 
       {/* Cart */}
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
-        <div className="flex items-center gap-2 font-semibold text-slate-900">
-          <ShoppingCart size={18} /> Giỏ hàng
+        <div className="flex items-center gap-2 text-base font-semibold text-slate-900">
+          <ShoppingCart size={16} /> Giỏ hàng
         </div>
 
         {lines.length === 0 ? (
@@ -208,25 +203,32 @@ export function StaffPosPage() {
             {lines.map(({ product, quantity }) => (
               <div key={product.id} className="flex items-center gap-2 text-sm">
                 <span className="flex-1 truncate">{product.name}</span>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Giảm số lượng"
                   onClick={() => changeQuantity(product.id, -1)}
-                  className="rounded-md border border-slate-200 p-1 hover:bg-slate-50"
                 >
-                  <Minus size={12} />
-                </button>
+                  <Minus size={14} />
+                </Button>
                 <span className="w-6 text-center font-mono">{quantity}</span>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Tăng số lượng"
                   onClick={() => changeQuantity(product.id, 1)}
-                  className="rounded-md border border-slate-200 p-1 hover:bg-slate-50"
                 >
-                  <Plus size={12} />
-                </button>
+                  <Plus size={14} />
+                </Button>
                 <span className="w-20 text-right font-mono">{formatMoney(product.price * quantity)}</span>
-                <button type="button" onClick={() => removeLine(product.id)} className="text-slate-400 hover:text-red-600">
+                <Button
+                  variant="danger"
+                  size="icon"
+                  aria-label="Xoá sản phẩm"
+                  onClick={() => removeLine(product.id)}
+                >
                   <Trash2 size={14} />
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -237,12 +239,11 @@ export function StaffPosPage() {
           <span className="font-mono">{formatMoney(total)}</span>
         </div>
 
-        <label className="text-xs font-medium text-slate-600">
-          Gộp vào booking
+        <Field label="Gộp vào booking">
           <select
             value={target}
             onChange={(e) => setTarget(e.target.value === 'standalone' ? 'standalone' : Number(e.target.value))}
-            className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
           >
             <option value="standalone">Bill riêng (không gộp)</option>
             {activeCheckedInBookings.map((b) => (
@@ -251,11 +252,12 @@ export function StaffPosPage() {
               </option>
             ))}
           </select>
-        </label>
+        </Field>
 
         <div className="flex gap-2 text-xs font-medium">
           <button
             type="button"
+            aria-pressed={method === 'CASH'}
             onClick={() => setMethod('CASH')}
             className={`flex-1 rounded-lg border px-2 py-1.5 ${
               method === 'CASH' ? 'border-green-500 bg-green-50 text-green-700' : 'border-slate-200 text-slate-600'
@@ -265,6 +267,7 @@ export function StaffPosPage() {
           </button>
           <button
             type="button"
+            aria-pressed={method === 'TRANSFER'}
             onClick={() => setMethod('TRANSFER')}
             className={`flex-1 rounded-lg border px-2 py-1.5 ${
               method === 'TRANSFER' ? 'border-green-500 bg-green-50 text-green-700' : 'border-slate-200 text-slate-600'
@@ -276,22 +279,22 @@ export function StaffPosPage() {
 
         {error && <p className="text-xs text-red-600">{error}</p>}
 
-        <button
-          type="button"
+        <Button
+          variant="primary"
           disabled={lines.length === 0 || submitting}
           onClick={handleSubmit}
-          className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
         >
           {submitting ? 'Đang tạo hoá đơn…' : 'Tạo hoá đơn'}
-        </button>
+        </Button>
         {lines.length > 0 && (
-          <button
-            type="button"
+          <Button
+            variant="link"
+            icon={<X size={14} />}
             onClick={() => setCart(new Map())}
-            className="flex items-center justify-center gap-1 text-xs text-slate-400 hover:text-slate-600"
+            className="text-xs text-slate-400 hover:text-slate-600"
           >
-            <X size={12} /> Xoá giỏ hàng
-          </button>
+            Xoá giỏ hàng
+          </Button>
         )}
       </div>
     </div>

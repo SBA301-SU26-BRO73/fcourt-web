@@ -19,7 +19,7 @@ export function ManualCodeInput({ onSubmit, disabled }: ManualCodeInputProps) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <div className="mb-2 flex items-center gap-1.5 text-[12.5px] font-medium text-slate-500">
+      <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-slate-500">
         <Keyboard size={14} />
         Or enter the booking code manually
       </div>
@@ -40,7 +40,7 @@ export function ManualCodeInput({ onSubmit, disabled }: ManualCodeInputProps) {
           Find
         </Button>
       </form>
-      <p className="mt-2 text-[11.5px] text-slate-400">
+      <p className="mt-2 text-xs text-slate-400">
         The code is on the customer&apos;s confirmation (a UUID like
         <span className="font-mono"> 550e8400-…</span>).
       </p>

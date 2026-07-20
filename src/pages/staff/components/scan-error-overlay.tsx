@@ -10,7 +10,7 @@ interface ScanErrorOverlayProps {
 export function ScanErrorOverlay({ message, onRetry }: ScanErrorOverlayProps) {
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-2xl bg-rose-600/95 px-6 text-center text-white">
-      <AlertTriangle size={36} />
+      <AlertTriangle size={40} />
       <div className="text-lg font-bold">Check-in failed</div>
       <div className="max-w-xs text-sm text-white/90">{message}</div>
       <Button

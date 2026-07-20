@@ -65,7 +65,7 @@ export function StaffCheckoutPage() {
           <div className="relative mx-auto mb-6 h-32 w-32">
             <div className="absolute inset-0 animate-ping rounded-full bg-green-100 opacity-60" />
             <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-green-600 text-white">
-              <Flag size={46} strokeWidth={2.4} />
+              <Flag size={40} strokeWidth={2.4} />
             </div>
           </div>
 
@@ -78,7 +78,7 @@ export function StaffCheckoutPage() {
 
           <div className="mb-6 grid grid-cols-2 gap-x-6 gap-y-4 rounded-xl bg-slate-50 p-5 text-left">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Status
               </div>
               <div className="mt-0.5">
@@ -86,26 +86,26 @@ export function StaffCheckoutPage() {
               </div>
             </div>
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Court
               </div>
-              <div className="mt-0.5 text-[14px] font-medium text-slate-800">
+              <div className="mt-0.5 text-sm font-medium text-slate-800">
                 {result.courtName}
               </div>
             </div>
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Total
               </div>
-              <div className="mt-0.5 font-mono text-[14px] font-medium text-slate-800">
+              <div className="mt-0.5 font-mono text-sm font-medium text-slate-800">
                 {result.totalPrice.toLocaleString('vi-VN')}đ
               </div>
             </div>
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Booking
               </div>
-              <div className="mt-0.5 font-mono text-[14px] font-medium text-slate-800">
+              <div className="mt-0.5 font-mono text-sm font-medium text-slate-800">
                 #{result.bookingId}
               </div>
             </div>
@@ -130,7 +130,7 @@ export function StaffCheckoutPage() {
         <div className="mb-6 flex items-center">
           <Button
             variant="ghost"
-            icon={<ChevronLeft size={15} />}
+            icon={<ChevronLeft size={14} />}
             onClick={() => navigate('/staff')}
           >
             Schedule
@@ -143,42 +143,42 @@ export function StaffCheckoutPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-green-50 text-green-700">
             <LogOut size={28} />
           </div>
-          <h2 className="mb-1.5 text-xl font-bold tracking-tight text-slate-900">
+          <h2 className="mb-1.5 text-2xl font-bold tracking-tight text-slate-900">
             Check out customer?
           </h2>
-          <p className="text-[13.5px] text-slate-500">
+          <p className="text-sm text-slate-500">
             This will free the court for the next session.
           </p>
         </div>
 
         <div className="mb-7 grid grid-cols-2 gap-x-6 gap-y-4 rounded-xl bg-slate-50 p-5">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               Customer
             </div>
-            <div className="mt-0.5 text-[14px] font-medium text-slate-800">
+            <div className="mt-0.5 text-sm font-medium text-slate-800">
               {item.customerName ?? item.guestPhone ?? 'Guest'}
             </div>
           </div>
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               Court
             </div>
-            <div className="mt-0.5 text-[14px] font-medium text-slate-800">{item.courtName}</div>
+            <div className="mt-0.5 text-sm font-medium text-slate-800">{item.courtName}</div>
           </div>
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               Time slot
             </div>
-            <div className="mt-0.5 font-mono text-[14px] font-medium text-slate-800">
+            <div className="mt-0.5 font-mono text-sm font-medium text-slate-800">
               {formatClock(item.startTime)} – {formatClock(item.endTime)}
             </div>
           </div>
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               Phone
             </div>
-            <div className="mt-0.5 font-mono text-[14px] font-medium text-slate-800">
+            <div className="mt-0.5 font-mono text-sm font-medium text-slate-800">
               {item.guestPhone ?? '—'}
             </div>
           </div>
@@ -191,7 +191,7 @@ export function StaffCheckoutPage() {
         <Button
           variant="primary"
           className="h-[72px] w-full justify-center text-lg font-bold"
-          icon={<CheckCircle size={22} />}
+          icon={<CheckCircle size={20} />}
           disabled={checkoutMutation.isPending}
           onClick={handleCheckout}
         >
@@ -200,7 +200,7 @@ export function StaffCheckoutPage() {
         <div className="mt-3 text-center">
           <button
             type="button"
-            className="text-[13px] text-slate-400 underline-offset-2 hover:underline"
+            className="text-sm text-slate-400 underline-offset-2 hover:underline"
             onClick={() => navigate('/staff')}
           >
             Not yet — keep court reserved

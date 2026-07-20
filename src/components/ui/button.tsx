@@ -15,6 +15,8 @@ const variantClasses = {
     "border border-green-600 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50",
   danger:
     "border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50",
+  neutral:
+    "border border-slate-800 bg-slate-800 text-white hover:bg-slate-900 disabled:opacity-50",
 } as const;
 
 const sizeClasses = {

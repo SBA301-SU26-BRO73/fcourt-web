@@ -100,7 +100,7 @@ export function StaffBoardPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-slate-900">Bảng giám sát sân</h1>
+          <h1 className="text-lg font-bold tracking-tight text-slate-900">Bảng giám sát sân</h1>
           <p className="text-sm text-slate-500">
             {courts.length > 0 ? `${freeCount} / ${courts.length} sân trống` : 'Đang tải…'}
           </p>

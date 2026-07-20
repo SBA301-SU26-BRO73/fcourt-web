@@ -19,7 +19,7 @@ function formatCheckedInAt(iso: string): string {
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 py-2">
-      <span className="font-mono text-[11px] uppercase tracking-widest text-slate-400">
+      <span className="font-mono text-xs uppercase tracking-widest text-slate-400">
         {label}
       </span>
       <span className="text-sm font-semibold text-slate-800">{value}</span>
@@ -38,7 +38,7 @@ export function CheckinSuccess({
     <div className="flex flex-col items-center py-10 text-center">
       <div className="flex h-24 w-24 items-center justify-center rounded-full bg-green-100">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white">
-          <CheckCircle size={36} />
+          <CheckCircle size={40} />
         </div>
       </div>
 
@@ -71,7 +71,7 @@ export function CheckinSuccess({
         </Button>
       </div>
 
-      <p className="mt-4 font-mono text-[11px] uppercase tracking-widest text-slate-400">
+      <p className="mt-4 font-mono text-xs uppercase tracking-widest text-slate-400">
         Screen auto-returns in 30s · #{result.bookingId}
       </p>
     </div>

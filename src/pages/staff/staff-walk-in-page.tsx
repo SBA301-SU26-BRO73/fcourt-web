@@ -146,10 +146,10 @@ export function StaffWalkInPage() {
           Cancel
         </Button>
         <div className="leading-tight">
-          <h1 className="text-base font-bold tracking-tight text-slate-900">
+          <h1 className="text-lg font-bold tracking-tight text-slate-900">
             New walk-in booking
           </h1>
-          <p className="text-[12.5px] text-slate-500">
+          <p className="text-sm text-slate-500">
             Payment will be collected at the counter
           </p>
         </div>
@@ -167,7 +167,7 @@ export function StaffWalkInPage() {
                 }`}
               >
                 <div
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                     step > s.n
                       ? 'bg-green-600 text-white'
                       : step === s.n
@@ -175,7 +175,7 @@ export function StaffWalkInPage() {
                         : 'border border-slate-300 text-slate-400'
                   }`}
                 >
-                  {step > s.n ? <Check size={10} strokeWidth={3} /> : s.n}
+                  {step > s.n ? <Check size={14} strokeWidth={3} /> : s.n}
                 </div>
                 <span className="hidden sm:inline">{s.label}</span>
               </div>
@@ -192,10 +192,10 @@ export function StaffWalkInPage() {
       {/* Step 1 — Customer */}
       {step === 1 && (
         <div className="mx-auto w-full max-w-lg rounded-xl border border-slate-200 bg-white p-7">
-          <h2 className="mb-1 text-lg font-bold tracking-tight text-slate-900">
+          <h2 className="mb-1 text-base font-semibold text-slate-900">
             Who's the customer?
           </h2>
-          <p className="mb-6 text-[13px] text-slate-500">
+          <p className="mb-6 text-sm text-slate-500">
             Phone number is required to create the booking.
           </p>
           <Field
@@ -234,10 +234,10 @@ export function StaffWalkInPage() {
       {/* Step 2 — Court & time */}
       {step === 2 && (
         <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <h2 className="mb-1 text-lg font-bold tracking-tight text-slate-900">
+          <h2 className="mb-1 text-base font-semibold text-slate-900">
             Pick a court and time
           </h2>
-          <p className="mb-5 text-[13px] text-slate-500">
+          <p className="mb-5 text-sm text-slate-500">
             Select one or more consecutive 30-minute slots. Booked slots are dimmed.
           </p>
 
@@ -262,7 +262,7 @@ export function StaffWalkInPage() {
             </Field>
           </div>
 
-          <div className="mb-3 flex items-center justify-between text-[12.5px] text-slate-500">
+          <div className="mb-3 flex items-center justify-between text-sm text-slate-500">
             <span>{selectedCourt?.courtTypeName} · 30-min slots</span>
             {selectedSorted.length > 0 && (
               <span className="font-mono font-semibold text-slate-800">
@@ -289,7 +289,7 @@ export function StaffWalkInPage() {
           <div className="mt-6 flex justify-between">
             <Button
               variant="ghost"
-              icon={<ChevronLeft size={15} />}
+              icon={<ChevronLeft size={14} />}
               onClick={() => setStep(1)}
             >
               Back
@@ -310,10 +310,10 @@ export function StaffWalkInPage() {
       {/* Step 3 — Confirm */}
       {step === 3 && (
         <div className="mx-auto w-full max-w-lg rounded-xl border border-slate-200 bg-white p-7">
-          <h2 className="mb-1 text-lg font-bold tracking-tight text-slate-900">
+          <h2 className="mb-1 text-base font-semibold text-slate-900">
             Confirm walk-in booking
           </h2>
-          <p className="mb-6 text-[13px] text-slate-500">
+          <p className="mb-6 text-sm text-slate-500">
             Collect{' '}
             <strong className="text-slate-900">{total.toLocaleString('vi-VN')}đ</strong> at the
             counter, then create the booking.
@@ -330,11 +330,11 @@ export function StaffWalkInPage() {
               ] as const
             ).map(({ label, value, mono }) => (
               <div key={label}>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   {label}
                 </div>
                 <div
-                  className={`mt-0.5 text-[14px] font-medium text-slate-800 ${mono ? 'font-mono' : ''}`}
+                  className={`mt-0.5 text-sm font-medium text-slate-800 ${mono ? 'font-mono' : ''}`}
                 >
                   {value}
                 </div>
@@ -344,7 +344,7 @@ export function StaffWalkInPage() {
 
           <div className="mb-6 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Total due at counter
               </div>
               <div className="font-mono text-3xl font-bold tracking-tight text-slate-900">
@@ -363,7 +363,7 @@ export function StaffWalkInPage() {
           <div className="flex justify-between">
             <Button
               variant="ghost"
-              icon={<ChevronLeft size={15} />}
+              icon={<ChevronLeft size={14} />}
               onClick={() => setStep(2)}
             >
               Back

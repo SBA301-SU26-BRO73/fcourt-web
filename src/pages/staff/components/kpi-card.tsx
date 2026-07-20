@@ -13,7 +13,7 @@ export function KpiCard({ icon: Icon, iconClass, value, label }: KpiCardProps) {
       <div
         className={`flex h-10 w-10 items-center justify-center rounded-lg ${iconClass}`}
       >
-        <Icon size={18} />
+        <Icon size={16} />
       </div>
       <div className="leading-tight">
         <div className="text-xl font-bold text-slate-900">{value}</div>
