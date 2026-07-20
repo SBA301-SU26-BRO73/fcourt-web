@@ -23,6 +23,7 @@ export function QRPaymentCard({
   timeLeft,
 }: QRPaymentCardProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [qrLoadFailed, setQrLoadFailed] = useState(false);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
@@ -60,15 +61,18 @@ export function QRPaymentCard({
         {/* QR Code Section */}
         <div className="flex-shrink-0">
           <div className="w-52 h-52 bg-white border-2 border-border rounded-xl p-3 flex items-center justify-center">
-            {bankQrImageUrl ? (
+            {bankQrImageUrl && !qrLoadFailed ? (
               <img
                 src={bankQrImageUrl}
                 alt={`QR thanh toán ${branchName}`}
                 className="w-full h-full object-contain"
+                onError={() => setQrLoadFailed(true)}
               />
             ) : (
               <div className="text-center text-sm text-muted-foreground px-4">
-                Chi nhánh chưa cấu hình QR thanh toán
+                {qrLoadFailed
+                  ? 'Không tải được mã QR. Vui lòng dùng thông tin chuyển khoản bên cạnh.'
+                  : 'Chi nhánh chưa cấu hình QR thanh toán'}
               </div>
             )}
           </div>
