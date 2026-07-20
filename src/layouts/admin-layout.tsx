@@ -8,6 +8,7 @@ import {
   Building2,
   Bell,
   Ticket,
+  Zap,
   LogOut,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
@@ -24,6 +25,8 @@ const NAV_ITEMS = [
 const NAV_SYSTEM = [
   { id: 'branches', to: '/admin/branches', icon: Building2, label: 'Branches' },
   { id: 'vouchers', to: '/admin/vouchers', icon: Ticket, label: 'Vouchers' },
+  { id: 'subscriptions', to: '/admin/subscriptions', icon: Zap, label: 'Subscriptions' },
+  { id: 'settings', to: '/admin/settings', icon: Settings, label: 'Settings' },
 ] as const
 
 export function AdminLayout() {

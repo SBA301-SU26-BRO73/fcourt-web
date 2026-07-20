@@ -19,6 +19,8 @@ import {
   type CourtFormValues,
 } from './court-form.utils'
 
+import { UpgradePlanModal } from '@/components/admin/UpgradePlanModal'
+
 type CourtFormPageProps = { mode: 'create' | 'edit' }
 type CourtNavigationState = {
   returnTo?: string
@@ -102,6 +104,8 @@ function CourtEditor({
   )
   const [errors, setErrors] = useState<CourtFormErrors>({})
   const [submitError, setSubmitError] = useState('')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [limitMessage, setLimitMessage] = useState<string | null>(null)
 
   const branchesQuery = useQuery({
     queryKey: ['branches', 'court-form-options'],
@@ -124,7 +128,22 @@ function CourtEditor({
         },
       })
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
+      const errorObj = error as { response?: { data?: { code?: string; message?: string } }; message?: string }
+      const errCode = errorObj?.response?.data?.code || ''
+      const errServerMsg = errorObj?.response?.data?.message || errorObj?.message || ''
+
+      if (
+        errCode === 'court_limit_exceeded' ||
+        errCode === 'subscription_limit_exceeded' ||
+        errServerMsg.toLowerCase().includes('limit') ||
+        errServerMsg.toLowerCase().includes('gói')
+      ) {
+        setShowUpgradeModal(true)
+        setLimitMessage(errServerMsg)
+        return
+      }
+
       setErrors((current) => ({ ...current, ...getCourtFieldErrors(error) }))
       setSubmitError(getCourtErrorMessage(error))
     },
@@ -204,6 +223,13 @@ function CourtEditor({
           submitLabel={isEdit ? 'Cập nhật sân' : 'Tạo sân'}
           onChange={handleChange}
           onSubmit={handleSubmit}
+        />
+
+        <UpgradePlanModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          limitType="COURT"
+          message={limitMessage}
         />
       </div>
     </div>

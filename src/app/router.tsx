@@ -44,7 +44,7 @@ import { TimeSlotDetailPage } from '@/pages/time-slots/time-slot-detail-page'
 import { TimeSlotFormPage } from '@/pages/time-slots/time-slot-form-page'
 import { TimeSlotListPage } from '@/pages/time-slots/time-slot-list-page'
 import HomePage from '@/pages/home/home-page'
-
+import SubscriptionPlansPage from '@/pages/admin/subscriptions/SubscriptionPlansPage'
 
 export const router = createBrowserRouter([
   {
@@ -196,6 +196,10 @@ export const router = createBrowserRouter([
       {
         path: 'vouchers',
         element: <AdminVoucherPage />,
+      },
+      {
+        path: 'subscriptions',
+        element: <SubscriptionPlansPage />,
       },
     ],
   },

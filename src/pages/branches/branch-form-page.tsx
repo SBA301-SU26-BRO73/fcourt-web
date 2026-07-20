@@ -26,6 +26,8 @@ import {
 } from './branch-form.utils'
 import { findLocationCity, findLocationDistrict, sampleLocations } from '@/data/sample-locations'
 
+import { UpgradePlanModal } from '@/components/admin/UpgradePlanModal'
+
 type BranchFormPageProps = {
   mode: 'create' | 'edit'
 }
@@ -93,6 +95,8 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
   )
   const [errors, setErrors] = useState<BranchFormErrors>({})
   const [submitError, setSubmitError] = useState('')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [limitMessage, setLimitMessage] = useState<string | null>(null)
 
   const locationCity = findLocationCity(values.city)
   const locationDistricts = locationCity?.districts ?? []
@@ -131,7 +135,22 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
         },
       })
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
+      const errorObj = error as { response?: { data?: { code?: string; message?: string } }; message?: string }
+      const errCode = errorObj?.response?.data?.code || ''
+      const errServerMsg = errorObj?.response?.data?.message || errorObj?.message || ''
+
+      if (
+        errCode === 'branch_limit_exceeded' ||
+        errCode === 'subscription_limit_exceeded' ||
+        errServerMsg.toLowerCase().includes('limit') ||
+        errServerMsg.toLowerCase().includes('gói')
+      ) {
+        setShowUpgradeModal(true)
+        setLimitMessage(errServerMsg)
+        return
+      }
+
       setErrors((current) => ({
         ...current,
         ...getBranchFieldErrors(error),
@@ -206,6 +225,13 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
         cities={cityOptions}
         districts={districtOptions}
         wards={wardOptions}
+      />
+
+      <UpgradePlanModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        limitType="BRANCH"
+        message={limitMessage}
       />
     </div>
   )

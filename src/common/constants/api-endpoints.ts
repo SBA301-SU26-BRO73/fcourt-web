@@ -15,6 +15,7 @@ export const API_PREFIXES = {
   bookings: '/bookings',
   payments: '/payments',
   superAdminDashboard: '/super-admin/dashboard',
+  subscriptions: '/subscriptions',
   adminDashboard: '/admin/dashboard',
 } as const
 
@@ -113,6 +114,11 @@ export const API_ENDPOINTS = {
   payments: {
     list: joinEndpoint(API_PREFIXES.payments),
     detail: (id: string | number) => joinEndpoint(API_PREFIXES.payments, id),
+  },
+  subscriptions: {
+    plans: joinEndpoint(API_PREFIXES.subscriptions, 'plans'),
+    mySubscription: joinEndpoint(API_PREFIXES.subscriptions, 'my-subscription'),
+    subscribe: joinEndpoint(API_PREFIXES.subscriptions, 'subscribe'),
   },
   superAdminDashboard: {
     stats: joinEndpoint(API_PREFIXES.superAdminDashboard, 'stats'),
