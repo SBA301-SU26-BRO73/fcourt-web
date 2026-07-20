@@ -1,4 +1,4 @@
-import { Grid2X2, Inbox, Layers, LogOut, ShieldCheck, Tag } from 'lucide-react'
+import { Grid2X2, Inbox, Layers, LogOut, ShieldCheck, Tag, Users } from 'lucide-react'
 import { useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
@@ -8,6 +8,7 @@ import { useUsers } from '@/hooks/use-users'
 const NAV = [
   { section: 'Tổng quan' },
   { to: '/super-admin', label: 'Dashboard', icon: Grid2X2, end: true },
+  { to: '/super-admin/users', label: 'Users', icon: Users },
   { section: 'Quản lý Admin' },
   { to: '/super-admin/pending', label: 'Chờ duyệt', icon: Inbox, badge: true },
   { section: 'Cấu hình hệ thống' },
