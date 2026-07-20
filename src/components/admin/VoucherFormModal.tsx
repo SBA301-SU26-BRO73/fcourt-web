@@ -67,8 +67,8 @@ export default function VoucherFormModal({
         const now = new Date()
         const future = new Date()
         future.setDate(now.getDate() + 30)
-        setStartDate(now.toISOString().slice(0, 16))
-        setExpiryDate(future.toISOString().slice(0, 16))
+        setStartDate(formatLocalDateTime(now))
+        setExpiryDate(formatLocalDateTime(future))
         setActive(true)
       }
     }
