@@ -9,6 +9,7 @@ import {
   Bell,
   Ticket,
   Zap,
+  Settings,
   LogOut,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
