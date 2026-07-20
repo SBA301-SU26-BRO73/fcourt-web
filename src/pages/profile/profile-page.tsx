@@ -10,6 +10,7 @@ import type { UserRole } from '@/types/auth'
 import { getProfile, updateProfile } from '@/services/auth/auth.service'
 import { getCourts } from '@/services/court/court.api'
 import type { Court, CourtStatus } from '@/types/court'
+import { tokenStorage } from '@/utils/token'
 import { validators } from '@/utils/validators'
 
 const ROLE_LABEL: Record<UserRole, string> = {
@@ -49,8 +50,8 @@ export function ProfilePage() {
   const { user, isLoggedIn, clearAuth } = useAuth()
 
   useEffect(() => {
-    if (!isLoggedIn) navigate('/auth/login?role=customer', { replace: true })
-  }, [isLoggedIn, navigate])
+    if (!isLoggedIn) navigate(getProfileLoginPath(user?.role), { replace: true })
+  }, [isLoggedIn, navigate, user?.role])
 
   const [editing, setEditing] = useState(false)
   const [toast, setToast] = useState('')
@@ -448,4 +449,16 @@ function getProfileBackPath(role: UserRole) {
   }
 
   return paths[role] ?? '/'
+}
+
+function getProfileLoginPath(currentRole?: UserRole) {
+  const role = currentRole ?? tokenStorage.getLastRole() ?? 'CUSTOMER'
+  const params: Record<UserRole, string> = {
+    ADMIN: 'admin',
+    SUPER_ADMIN: 'super-admin',
+    STAFF: 'staff',
+    CUSTOMER: 'customer',
+  }
+
+  return `/auth/login?role=${params[role]}`
 }

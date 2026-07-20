@@ -3,6 +3,8 @@ import type { AuthUser, TokenResponse } from '@/types/auth'
 const ACCESS_KEY = 'fcourt_access'
 const REFRESH_KEY = 'fcourt_refresh'
 const USER_KEY = 'fcourt_user'
+const LAST_ROLE_KEY = 'fcourt_last_role'
+const USER_ROLES = ['CUSTOMER', 'ADMIN', 'SUPER_ADMIN', 'STAFF'] as const
 
 function setCookie(name: string, value: string, days = 7) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString()
@@ -51,6 +53,7 @@ export const tokenStorage = {
 
   setUser(user: AuthUser): void {
     localStorage.setItem(USER_KEY, JSON.stringify(user))
+    localStorage.setItem(LAST_ROLE_KEY, user.role)
   },
 
   getUser(): AuthUser | null {
@@ -61,6 +64,11 @@ export const tokenStorage = {
     } catch {
       return null
     }
+  },
+
+  getLastRole(): AuthUser['role'] | null {
+    const role = localStorage.getItem(LAST_ROLE_KEY)
+    return USER_ROLES.includes(role as AuthUser['role']) ? (role as AuthUser['role']) : null
   },
 
   clear(): void {
