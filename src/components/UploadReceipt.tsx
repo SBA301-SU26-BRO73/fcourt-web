@@ -1,6 +1,6 @@
-﻿import { Upload, X } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import { createPayment } from '@/services/booking/booking.api';
 import type { CreateBookingsResponse } from '@/types/booking';
 
@@ -10,9 +10,17 @@ interface UploadReceiptProps {
   bookingData: CreateBookingsResponse;
   paymentCode: string;
   isExpired?: boolean;
+  discount?: number;
+  voucherCode?: string | null;
 }
 
-export function UploadReceipt({ bookingData, paymentCode, isExpired }: UploadReceiptProps) {
+export function UploadReceipt({
+  bookingData,
+  paymentCode,
+  isExpired,
+  discount = 0,
+  voucherCode,
+}: UploadReceiptProps) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -59,16 +67,19 @@ export function UploadReceipt({ bookingData, paymentCode, isExpired }: UploadRec
   };
 
   const handleSubmit = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !bookingData) return;
     setError(null);
     setSubmitting(true);
+
+    const finalAmount = Math.max(0, bookingData.totalAmount - discount);
 
     try {
       const payment = await createPayment({
         branchId: bookingData.branchId,
         bookingIds: bookingData.bookings.map((booking) => booking.id),
-        amount: bookingData.totalAmount,
+        amount: finalAmount,
         billImage: selectedFile,
+        voucherCode: voucherCode || undefined,
       });
 
       navigate('/confirmation?paymentId=' + payment.id, {
@@ -83,9 +94,11 @@ export function UploadReceipt({ bookingData, paymentCode, isExpired }: UploadRec
           },
         },
       });
-    } catch (error) {
+    } catch (err: unknown) {
       setSubmitting(false);
-      setError(error instanceof Error ? error.message : 'Không thể gửi biên lai.');
+      const errorResponse = err as { response?: { data?: { message?: string } }; message?: string };
+      const serverMsg = errorResponse?.response?.data?.message || errorResponse?.message || 'Không thể gửi biên lai.';
+      setError(serverMsg);
     }
   };
 

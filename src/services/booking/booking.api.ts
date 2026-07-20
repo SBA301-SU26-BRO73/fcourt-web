@@ -1,4 +1,4 @@
-﻿import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
+import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
 import type { ApiResponse } from '@/types/auth'
 import type { SpringPage } from '@/types/court'
@@ -29,6 +29,7 @@ export async function createPayment(payload: {
   bookingIds: number[]
   amount: number
   billImage: File
+  voucherCode?: string
 }) {
   const formData = new FormData()
   formData.append('branchId', String(payload.branchId))
@@ -37,6 +38,9 @@ export async function createPayment(payload: {
   })
   formData.append('amount', String(payload.amount))
   formData.append('billImage', payload.billImage)
+  if (payload.voucherCode) {
+    formData.append('voucherCode', payload.voucherCode)
+  }
 
   const { data } = await axiosClient.post<ApiResponse<PaymentResponse>>(
     API_ENDPOINTS.payments.list,

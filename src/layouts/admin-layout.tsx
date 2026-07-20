@@ -10,7 +10,6 @@ import {
   Building2,
   Settings,
   Bell,
-  ChevronDown,
   Ticket,
   LogOut,
 } from 'lucide-react'

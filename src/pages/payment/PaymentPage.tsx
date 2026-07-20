@@ -8,6 +8,7 @@ import { UploadReceipt } from '../../components/UploadReceipt';
 import { BookingSummary } from '../../components/BookingSummary';
 import { getBookingDetails } from '@/services/booking/booking.api';
 import type { CreateBookingsResponse } from '@/types/booking';
+import type { Voucher } from '@/types/voucher';
 
 interface LocationState {
   booking?: CreateBookingsResponse;
@@ -126,8 +127,17 @@ export function PaymentPage() {
     );
   }
 
+  const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+
+  const handleVoucherChange = (voucher: Voucher | null, discount: number) => {
+    setAppliedVoucher(voucher);
+    setDiscountAmount(discount);
+  };
+
   const paymentCode = `BOOK-${bookingData.bookings.map((booking) => booking.id).join('-')}`;
   const guestPhone = bookingData.bookings.find((booking) => booking.guestPhone)?.guestPhone ?? null;
+  const finalAmount = Math.max(0, bookingData.totalAmount - discountAmount);
 
   return (
     <div className="min-h-screen bg-background">
@@ -166,7 +176,7 @@ export function PaymentPage() {
               bankAccountNumber={bookingData.bankAccountNumber}
               bankAccountName={bookingData.bankAccountName}
               bankQrImageUrl={bookingData.bankQrImageUrl}
-              amount={bookingData.totalAmount}
+              amount={finalAmount}
               content={paymentCode}
               timeLeft={timeLeft}
             />
@@ -174,10 +184,17 @@ export function PaymentPage() {
               bookingData={bookingData}
               paymentCode={paymentCode}
               isExpired={isExpired}
+              discount={discountAmount}
+              voucherCode={appliedVoucher?.code}
             />
           </div>
           <div className="lg:col-span-1">
-            <BookingSummary data={bookingData} guestPhone={guestPhone} paymentCode={paymentCode} />
+            <BookingSummary
+              data={bookingData}
+              guestPhone={guestPhone}
+              paymentCode={paymentCode}
+              onVoucherChange={handleVoucherChange}
+            />
           </div>
         </div>
 

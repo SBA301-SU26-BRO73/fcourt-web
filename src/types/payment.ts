@@ -1,4 +1,3 @@
-import { SpringPage } from './branch'
 
 export type PaymentStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED'
 

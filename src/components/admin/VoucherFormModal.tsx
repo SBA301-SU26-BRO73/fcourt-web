@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, Calendar, DollarSign, Percent, Tag, ShieldCheck } from 'lucide-react'
+import { X, Percent, Tag, ShieldCheck } from 'lucide-react'
 
 import { createVoucher, updateVoucher } from '@/services/voucher/voucher.api'
 import type { Voucher, CreateVoucherRequest, UpdateVoucherRequest } from '@/types/voucher'

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import {
   Plus,
@@ -7,8 +7,6 @@ import {
   Pencil,
   Ticket,
   SlidersHorizontal,
-  Calendar,
-  Layers,
   CheckCircle,
   XCircle,
   Clock,
@@ -21,7 +19,6 @@ import { getVouchers, deleteVoucher } from '@/services/voucher/voucher.api'
 import { getBranches } from '@/services/branch/branch.api'
 import { getPayments } from '@/services/payment/payment.api'
 import type { Voucher } from '@/types/voucher'
-import type { Payment } from '@/types/payment'
 import VoucherFormModal from '@/components/admin/VoucherFormModal'
 
 export default function AdminVoucherPage() {
@@ -34,7 +31,7 @@ export default function AdminVoucherPage() {
   
   // History states
   const [historyPage, setHistoryPage] = useState(0)
-  const [historySize, setHistorySize] = useState(10)
+  const [historySize] = useState(10)
   
   const [searchTerm, setSearchTerm] = useState('')
   const [showFilters, setShowFilters] = useState(false)
