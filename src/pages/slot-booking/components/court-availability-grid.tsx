@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import type { DailySlotResponse } from '@/services/branch/branch.api';
 import type { SelectedSlot } from './booking-panel';
+import { formatLocalDate, parseLocalDate } from '@/common/utils/local-date';
 
 export interface Court {
   id: number;
@@ -45,7 +46,7 @@ export default function CourtAvailabilityGrid({
   const isSelectedDateInList = dates.some(d => d.dateStr === selectedDate);
   const getCustomButtonDisplay = () => {
     if (!isSelectedDateInList && selectedDate) {
-      const d = new Date(selectedDate);
+      const d = parseLocalDate(selectedDate);
       const daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
       return {
         dayName: daysOfWeek[d.getDay()],
