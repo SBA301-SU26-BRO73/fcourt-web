@@ -6,7 +6,6 @@ import {
   Layout,
   Users,
   Building2,
-  Settings,
   Bell,
   Ticket,
   LogOut,
@@ -25,7 +24,6 @@ const NAV_ITEMS = [
 const NAV_SYSTEM = [
   { id: 'branches', to: '/admin/branches', icon: Building2, label: 'Branches' },
   { id: 'vouchers', to: '/admin/vouchers', icon: Ticket, label: 'Vouchers' },
-  { id: 'settings', to: '/admin/settings', icon: Settings, label: 'Settings' },
 ] as const
 
 export function AdminLayout() {
