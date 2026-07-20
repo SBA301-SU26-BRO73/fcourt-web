@@ -25,6 +25,8 @@ export function PaymentPage() {
   });
   const [loading, setLoading] = useState(!bookingData && !!bookingIdParam);
   const [error, setError] = useState<string | null>(null);
+  const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
 
   useEffect(() => {
     if (bookingData) return;
@@ -126,9 +128,6 @@ export function PaymentPage() {
       </div>
     );
   }
-
-  const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
 
   const handleVoucherChange = (voucher: Voucher | null, discount: number) => {
     setAppliedVoucher(voucher);
