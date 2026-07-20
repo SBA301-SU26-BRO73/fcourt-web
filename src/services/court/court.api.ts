@@ -6,6 +6,7 @@ import type {
   CourtListParams,
   CreateCourtRequest,
   SpringPage,
+  SpringPagedPayload,
   UpdateCourtRequest,
 } from '@/types/court'
 
@@ -17,7 +18,7 @@ function requireData<T>(response: ApiResponse<T>): T {
 }
 
 export async function getCourts(params: CourtListParams) {
-  const response = await axiosClient.get<ApiResponse<SpringPage<Court>>>(
+  const response = await axiosClient.get<ApiResponse<SpringPagedPayload<Court>>>(
     API_ENDPOINTS.courts.list,
     {
       params: {
@@ -27,7 +28,28 @@ export async function getCourts(params: CourtListParams) {
       },
     },
   )
-  return requireData(response.data)
+  return normalizePage(requireData(response.data))
+}
+
+function normalizePage<T>(payload: SpringPagedPayload<T>): SpringPage<T> {
+  const metadata = payload.page ?? payload
+  const size = metadata.size ?? payload.content.length
+  const number = metadata.number ?? 0
+  const totalElements = metadata.totalElements ?? payload.content.length
+  const totalPages = metadata.totalPages ?? (totalElements === 0 ? 0 : Math.ceil(totalElements / Math.max(size, 1)))
+  const numberOfElements = payload.numberOfElements ?? payload.content.length
+
+  return {
+    content: payload.content,
+    size,
+    number,
+    totalElements,
+    totalPages,
+    numberOfElements,
+    first: payload.first ?? number === 0,
+    last: payload.last ?? (totalPages === 0 || number >= totalPages - 1),
+    empty: payload.empty ?? numberOfElements === 0,
+  }
 }
 
 export async function getCourtDetail(courtId: number) {
