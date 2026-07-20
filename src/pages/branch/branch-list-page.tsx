@@ -3,9 +3,11 @@ import BranchList from "./components/branch-list";
 
 export default function BranchListPage() {
   return (
-    <div className="pt-8 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 flex gap-gutter">
+    <div className="w-full">
       <SidebarFilters />
-      <BranchList />
+      <div className="mx-auto w-full max-w-[1280px] px-4 py-12 md:px-12 md:py-16">
+        <BranchList />
+      </div>
     </div>
   );
 }

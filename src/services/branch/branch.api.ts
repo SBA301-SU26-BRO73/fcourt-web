@@ -28,6 +28,8 @@ export interface Branch {
   status: string;
   createdAt: string;
   updatedAt: string;
+  sampleImageUrl: string | null;
+  courtTypeNames: string[];
 }
 
 export interface BranchFilterRequest {

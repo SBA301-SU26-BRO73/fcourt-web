@@ -1,41 +1,18 @@
 import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import type { BranchFilterRequest } from "@/services/branch/branch.api";
 import { useAuth } from "@/hooks/use-auth-context";
 
 export function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [urlSearchParams, setUrlSearchParams] = useSearchParams();
+  const [, setUrlSearchParams] = useSearchParams();
   const { user, isLoggedIn } = useAuth();
 
-  const [searchInput, setSearchInput] = useState("");
   const [globalFilters, setGlobalFilters] =
     useState<BranchFilterRequest>({});
 
-  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const newFilters: BranchFilterRequest = {};
-
-    if (searchInput.trim()) {
-      newFilters.keyword = searchInput.trim();
-    }
-
-    setGlobalFilters(newFilters);
-    const nextParams = new URLSearchParams(urlSearchParams);
-    ["keyword", "name", "city", "address", "ward"].forEach((key) => nextParams.delete(key));
-    if (searchInput.trim()) nextParams.set("keyword", searchInput.trim());
-    nextParams.delete("page");
-    if (location.pathname !== "/branches") {
-      navigate(`/branches?${nextParams.toString()}`);
-    } else {
-      setUrlSearchParams(nextParams);
-    }
-  };
-
   const handleGoHome = () => {
-    setSearchInput("");
     setGlobalFilters({});
     setUrlSearchParams({});
     navigate("/");
@@ -44,8 +21,6 @@ export function MainLayout() {
   const handleAccountClick = () => {
     navigate(isLoggedIn ? "/profile" : "/auth/login?role=customer");
   };
-
-  const accountLabel = isLoggedIn ? (user?.email || "Tài khoản") : "Đăng nhập";
 
   const isHomePage = location.pathname === "/";
 
@@ -62,71 +37,21 @@ export function MainLayout() {
     <div className="bg-background text-on-surface font-body-md selection:bg-primary/20 selection:text-primary min-h-screen flex flex-col">
       {!isManagementPage &&
         (isBranchListPage ? (
-          <header className="fixed left-0 top-0 z-50 flex w-full flex-col items-stretch justify-between gap-2 border-b border-outline-variant/30 px-margin-mobile py-3 shadow-md glass-nav md:flex-row md:items-center md:gap-0 md:px-margin-desktop md:py-4">
-            <div className="flex w-full items-center justify-between md:w-auto">
-              <button
-                type="button"
-                className="flex cursor-pointer items-center gap-4"
-                onClick={handleGoHome}
-              >
-                <span className="text-headline-md font-bold tracking-tight text-primary">
-                  FCourt
-                </span>
+          <header className="fixed left-0 top-0 z-50 flex h-20 w-full items-center justify-between border-b border-[#e1e3e4] bg-white px-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] md:px-12">
+            <div className="flex items-center gap-8">
+              <button type="button" onClick={handleGoHome} className="text-2xl font-bold tracking-tight text-[#2e7d32]">FCourt</button>
+              <nav className="hidden items-center gap-6 md:flex">
+                <button type="button" onClick={() => navigate('/branches')} className="border-b-2 border-[#2e7d32] pb-1 text-sm font-semibold text-[#2e7d32]">Venues</button>
+                <button type="button" onClick={() => navigate('/my-bookings')} className="text-sm font-medium text-[#41493e] transition-colors hover:text-[#2e7d32]">My Bookings</button>
+              </nav>
+            </div>
+            <div className="flex items-center gap-3 md:gap-4">
+              <span className="hidden items-center gap-2 text-sm font-semibold text-[#2e7d32] md:flex"><span className="material-symbols-outlined">location_on</span>Location</span>
+              <span className="hidden h-8 w-px bg-[#c0c9bb] md:block" />
+              <button type="button" onClick={handleAccountClick} className="flex items-center gap-2 rounded-full border border-[#c0c9bb] bg-[#f3f4f5] px-4 py-2 text-sm font-semibold text-[#2e7d32] transition-colors hover:bg-[#c8e6c9]">
+                <span className="material-symbols-outlined">account_circle</span>
+                <span>{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
               </button>
-
-              <div className="flex items-center gap-2 md:hidden">
-                <button
-                  type="button"
-                  aria-label={accountLabel}
-                  onClick={handleAccountClick}
-                  className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-primary transition-colors hover:bg-primary/10"
-                >
-                  <span className="material-symbols-outlined text-[22px]">
-                    account_circle
-                  </span>
-                  <span className="hidden text-xs font-semibold sm:inline">{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex w-full max-w-xl flex-1 gap-2 md:mx-gutter">
-              <form
-                onSubmit={handleSearch}
-                className="relative flex flex-1 items-center overflow-hidden rounded-xl border border-outline-variant bg-surface-container-low pr-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
-              >
-                <button
-                  type="submit"
-                  aria-label="Search"
-                  className="flex items-center justify-center py-2 pl-3 pr-1 text-on-surface-variant transition-colors hover:text-primary focus:outline-none"
-                >
-                  <span className="material-symbols-outlined">search</span>
-                </button>
-
-                <input
-                  className="w-full border-none bg-transparent py-2 pl-2 pr-2 text-body-sm outline-none focus:outline-none focus:ring-0"
-                  placeholder="Tìm sân, thành phố, quận, phường..."
-                  type="text"
-                  value={searchInput}
-                  onChange={(event) => setSearchInput(event.target.value)}
-                />
-              </form>
-
-            </div>
-
-            <div className="hidden items-center md:flex">
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  aria-label={accountLabel}
-                  onClick={handleAccountClick}
-                  className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-primary transition-colors hover:bg-primary/10"
-                >
-                  <span className="material-symbols-outlined text-[22px]">
-                    account_circle
-                  </span>
-                  <span className="hidden text-sm font-semibold lg:inline">{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
-                </button>
-              </div>
             </div>
           </header>
         ) : (
