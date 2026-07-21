@@ -41,8 +41,8 @@ export function ManualCodeInput({ onSubmit, disabled }: ManualCodeInputProps) {
         </Button>
       </form>
       <p className="mt-2 text-xs text-slate-400">
-        The code is on the customer&apos;s confirmation (a UUID like
-        <span className="font-mono"> 550e8400-…</span>).
+        Enter the booking code shown to the customer (e.g.
+        <span className="font-mono"> 3AF32887</span>) or the full QR code.
       </p>
     </div>
   )
