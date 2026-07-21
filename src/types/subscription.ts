@@ -33,3 +33,20 @@ export interface SubscribeRequest {
   planId: number;
   billingCycle?: 'MONTHLY' | 'YEARLY';
 }
+
+export type SubscriptionPaymentStatus = 'PENDING' | 'PAID' | 'CANCELLED' | 'EXPIRED' | 'FAILED'
+
+export interface SubscriptionPayment {
+  id: number
+  orderCode: number
+  planId: number
+  planName: string
+  billingCycle: 'MONTHLY' | 'YEARLY'
+  amount: number
+  status: SubscriptionPaymentStatus
+  checkoutUrl?: string
+  qrCode?: string
+  expiredAt: string
+  paidAt?: string
+  subscriptionActive: boolean
+}

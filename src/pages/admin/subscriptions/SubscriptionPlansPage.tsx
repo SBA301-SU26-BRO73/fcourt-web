@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ShieldCheck, Zap, AlertCircle, Building2, Layout, Calendar } from 'lucide-react'
-import { getSubscriptionPlans, getMyActiveSubscription, subscribePlan } from '@/services/subscription/subscription.api'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { Zap, AlertCircle, Building2, Layout, Calendar } from 'lucide-react'
+import { getSubscriptionPlans, getMyActiveSubscription, createSubscriptionCheckout } from '@/services/subscription/subscription.api'
 import { SubscriptionPlanCard } from '@/components/admin/SubscriptionPlanCard'
 import type { SubscriptionPlan, Subscription } from '@/types/subscription'
+import { useNavigate } from 'react-router-dom'
 
 export default function SubscriptionPlansPage() {
-  const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY')
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // Fetch active plans list
@@ -29,14 +29,12 @@ export default function SubscriptionPlansPage() {
     },
   })
 
-  // Mutation to subscribe
+  // Create a PayOS checkout; activation happens only after the webhook confirms payment.
   const subscribeMutation = useMutation({
-    mutationFn: (planId: number) => subscribePlan({ planId, billingCycle }),
+    mutationFn: (planId: number) => createSubscriptionCheckout({ planId, billingCycle }),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['myActiveSubscription'] })
-      setToastMessage(`Đã đăng ký thành công gói ${data.plan.name}!`)
+      navigate(`/admin/subscriptions/payment?orderCode=${data.orderCode}`)
       setErrorMessage(null)
-      setTimeout(() => setToastMessage(null), 5000)
     },
     onError: (err: unknown) => {
       const errorResponse = err as { response?: { data?: { message?: string } }; message?: string }
@@ -94,13 +92,6 @@ export default function SubscriptionPlansPage() {
       </div>
 
       {/* Notifications */}
-      {toastMessage && (
-        <div className="flex items-center gap-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 text-xs font-medium text-emerald-700 dark:text-emerald-400 animate-in fade-in">
-          <ShieldCheck className="h-5 w-5 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
       {errorMessage && (
         <div className="flex items-center gap-3 rounded-xl bg-destructive/10 border border-destructive/30 p-4 text-xs font-medium text-destructive animate-in fade-in">
           <AlertCircle className="h-5 w-5 shrink-0" />

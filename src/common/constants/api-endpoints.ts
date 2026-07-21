@@ -118,7 +118,8 @@ export const API_ENDPOINTS = {
   subscriptions: {
     plans: joinEndpoint(API_PREFIXES.subscriptions, 'plans'),
     mySubscription: joinEndpoint(API_PREFIXES.subscriptions, 'my-subscription'),
-    subscribe: joinEndpoint(API_PREFIXES.subscriptions, 'subscribe'),
+    checkout: joinEndpoint(API_PREFIXES.subscriptions, 'checkout'),
+    payment: (orderCode: string | number) => joinEndpoint(API_PREFIXES.subscriptions, 'payments', orderCode),
   },
   superAdminDashboard: {
     stats: joinEndpoint(API_PREFIXES.superAdminDashboard, 'stats'),
