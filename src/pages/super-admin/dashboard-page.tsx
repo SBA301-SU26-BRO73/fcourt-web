@@ -12,16 +12,15 @@ import {
 } from 'lucide-react'
 
 import {
-  useBookingRevenue,
   useSuperAdminDashboard,
   useSuperAdminDashboardDetails,
 } from '@/hooks/use-super-admin-dashboard'
 import type {
-  BookingRevenuePoint,
-  BranchRevenueRow,
   DashboardBranchRow,
   DashboardCourtRow,
   DashboardSubscriptionRow,
+  PlanSalesRow,
+  RevenuePoint,
 } from '@/services/super_admin/super-admin-dashboard.service'
 
 type DetailModal = 'revenue' | 'branches' | 'courts' | 'subscriptions'
@@ -80,7 +79,7 @@ function StatCard({
   )
 }
 
-function RevenueChart({ data }: { data: BookingRevenuePoint[] }) {
+function RevenueChart({ data }: { data: RevenuePoint[] }) {
   const maxRevenue = Math.max(...data.map((item) => item.revenue), 1)
 
   return (
@@ -111,7 +110,7 @@ function RevenueChart({ data }: { data: BookingRevenuePoint[] }) {
                   <div className="absolute -top-14 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded-2xl bg-slate-900 px-3 py-2 text-[12px] font-bold text-white shadow-xl group-hover:block">
                     {formatCurrency(item.revenue)}
                     <div className="mt-0.5 text-center text-[10px] font-medium text-slate-300">
-                      {item.bookings} bookings
+                      {item.subscriptions} subscriptions
                     </div>
                     <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900" />
                   </div>
@@ -175,13 +174,13 @@ function SubscriptionRing({
   )
 }
 
-function BranchRevenueTable({ rows }: { rows: BranchRevenueRow[] }) {
+function PlanRevenueTable({ rows }: { rows: PlanSalesRow[] }) {
   return (
     <div className="overflow-hidden rounded-[20px] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100">
       <div className="border-b border-slate-100 px-6 py-5">
-        <h2 className="text-base font-bold text-slate-900">Revenue by Branch</h2>
+        <h2 className="text-base font-bold text-slate-900">Revenue by Subscription Plan</h2>
         <p className="mt-1 text-[12.5px] font-medium text-slate-400">
-          Calculated from confirmed, checked-in, or completed bookings.
+          Calculated from subscription plans registered by court owners.
         </p>
       </div>
 
@@ -190,9 +189,9 @@ function BranchRevenueTable({ rows }: { rows: BranchRevenueRow[] }) {
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-slate-100 to-emerald-50 text-emerald-600 shadow-inner">
             <BarChart3 className="h-8 w-8" />
           </div>
-          <div className="text-[14px] font-bold text-slate-700">No revenue-generating bookings yet.</div>
+          <div className="text-[14px] font-bold text-slate-700">No subscription revenue yet.</div>
           <div className="mt-1 max-w-sm text-[12.5px] font-medium text-slate-400">
-            Data will appear after bookings are confirmed or completed.
+            Data will appear after court owners register subscription plans.
           </div>
         </div>
       ) : (
@@ -200,16 +199,18 @@ function BranchRevenueTable({ rows }: { rows: BranchRevenueRow[] }) {
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
               <tr className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-400">
-                <th className="px-6 py-4 font-bold">Branch</th>
-                <th className="px-6 py-4 text-right font-bold">Revenue-counted bookings</th>
+                <th className="px-6 py-4 font-bold">Subscription Plan</th>
+                <th className="px-6 py-4 text-right font-bold">Plans Sold</th>
+                <th className="px-6 py-4 text-right font-bold">Active / Expired</th>
                 <th className="px-6 py-4 text-right font-bold">Revenue</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.branchId} className="border-t border-slate-100 transition hover:bg-slate-50/70">
-                  <td className="px-6 py-4 font-bold text-slate-900">{row.branchName}</td>
-                  <td className="px-6 py-4 text-right font-semibold text-slate-600">{row.bookingCount}</td>
+                <tr key={row.planId} className="border-t border-slate-100 transition hover:bg-slate-50/70">
+                  <td className="px-6 py-4 font-bold text-slate-900">{row.planName}</td>
+                  <td className="px-6 py-4 text-right font-semibold text-slate-600">{row.soldCount}</td>
+                  <td className="px-6 py-4 text-right font-semibold text-slate-600">{row.activeCount} / {row.expiredCount}</td>
                   <td className="px-6 py-4 text-right font-extrabold text-slate-900">
                     {formatCurrency(row.revenue)}
                   </td>
@@ -273,24 +274,26 @@ function LoadingDetail() {
   )
 }
 
-function RevenueDetail({ rows }: { rows: BranchRevenueRow[] }) {
-  if (rows.length === 0) return <EmptyDetail label="No booking revenue to display." />
+function RevenueDetail({ rows }: { rows: PlanSalesRow[] }) {
+  if (rows.length === 0) return <EmptyDetail label="No subscription revenue to display." />
 
   return (
     <div className="overflow-hidden rounded-2xl ring-1 ring-slate-100">
       <table className="w-full min-w-[620px] text-left text-sm">
         <thead>
           <tr className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400">
-            <th className="px-5 py-4 font-bold">Branch</th>
-            <th className="px-5 py-4 text-right font-bold">Revenue-counted bookings</th>
+            <th className="px-5 py-4 font-bold">Subscription Plan</th>
+            <th className="px-5 py-4 text-right font-bold">Plans Sold</th>
+            <th className="px-5 py-4 text-right font-bold">Active / Expired</th>
             <th className="px-5 py-4 text-right font-bold">Revenue</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.branchId} className="border-t border-slate-100">
-              <td className="px-5 py-4 font-bold text-slate-900">{row.branchName}</td>
-              <td className="px-5 py-4 text-right font-semibold text-slate-600">{row.bookingCount}</td>
+            <tr key={row.planId} className="border-t border-slate-100">
+              <td className="px-5 py-4 font-bold text-slate-900">{row.planName}</td>
+              <td className="px-5 py-4 text-right font-semibold text-slate-600">{row.soldCount}</td>
+              <td className="px-5 py-4 text-right font-semibold text-slate-600">{row.activeCount} / {row.expiredCount}</td>
               <td className="px-5 py-4 text-right font-extrabold text-slate-900">{formatCurrency(row.revenue)}</td>
             </tr>
           ))}
@@ -420,24 +423,16 @@ export function DashboardPage() {
   const [activeModal, setActiveModal] = useState<DetailModal | null>(null)
   const { data, isLoading, isError, error, refetch, isFetching } = useSuperAdminDashboard()
   const {
-    data: bookingRevenue,
-    isLoading: isRevenueLoading,
-    isError: isRevenueError,
-    error: revenueError,
-    refetch: refetchRevenue,
-    isFetching: isRevenueFetching,
-  } = useBookingRevenue()
-  const {
     data: details,
     isLoading: isDetailsLoading,
     isError: isDetailsError,
     error: detailsError,
   } = useSuperAdminDashboardDetails(activeModal !== null && activeModal !== 'revenue')
 
-  const loading = isLoading || isRevenueLoading
-  const fetching = isFetching || isRevenueFetching
-  const hasError = isError || isRevenueError
-  const displayError = (error as Error)?.message || (revenueError as Error)?.message
+  const loading = isLoading
+  const fetching = isFetching
+  const hasError = isError
+  const displayError = (error as Error)?.message
   const subscriptionTotal = (data?.activeSubscriptionCount ?? 0) + (data?.expiredSubscriptionCount ?? 0)
   const activeSubscriptions = useMemo(
     () => details?.subscriptions.filter((item) => item.status === 'ACTIVE') ?? [],
@@ -449,16 +444,16 @@ export function DashboardPage() {
   )
 
   function renderModalContent() {
-    if (!activeModal || !bookingRevenue) return null
+    if (!activeModal || !data) return null
 
     if (activeModal === 'revenue') {
       return (
         <DetailModalShell
-          title="Booking Revenue Details"
-          subtitle={`${bookingRevenue.bookingCount} revenue-counted bookings, total ${formatCurrency(bookingRevenue.totalRevenue)}`}
+          title="Subscription Revenue Details"
+          subtitle={`${data.planSales.reduce((total, plan) => total + plan.soldCount, 0)} plans sold, total ${formatCurrency(data.totalSubscriptionRevenue)}`}
           onClose={() => setActiveModal(null)}
         >
-          <RevenueDetail rows={bookingRevenue.branchRevenue} />
+          <RevenueDetail rows={data.planSales} />
         </DetailModalShell>
       )
     }
@@ -543,7 +538,6 @@ export function DashboardPage() {
         <button
           onClick={() => {
             refetch()
-            refetchRevenue()
           }}
           disabled={fetching}
           style={{ backgroundColor: '#006d38' }}
@@ -566,15 +560,15 @@ export function DashboardPage() {
         </div>
       )}
 
-      {data && bookingRevenue && (
+      {data && (
         <>
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               icon={CircleDollarSign}
               gradient="from-emerald-400 to-teal-600"
-              label="Booking Revenue"
-              value={formatCurrency(bookingRevenue.totalRevenue)}
-              foot={`${bookingRevenue.bookingCount} revenue-counted bookings`}
+              label="Subscription Revenue"
+              value={formatCurrency(data.totalSubscriptionRevenue)}
+              foot={`${data.planSales.reduce((total, plan) => total + plan.soldCount, 0)} plans sold`}
               onClick={() => setActiveModal('revenue')}
             />
             <StatCard
@@ -604,7 +598,7 @@ export function DashboardPage() {
           </div>
 
           <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
-            <RevenueChart data={bookingRevenue.revenueChart} />
+            <RevenueChart data={data.revenueChart} />
             <div className="grid gap-6">
               <SubscriptionRing
                 label="Active Subscriptions"
@@ -623,7 +617,7 @@ export function DashboardPage() {
             </div>
           </div>
 
-          <BranchRevenueTable rows={bookingRevenue.branchRevenue} />
+          <PlanRevenueTable rows={data.planSales} />
         </>
       )}
       {renderModalContent()}

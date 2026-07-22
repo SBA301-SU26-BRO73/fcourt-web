@@ -17,26 +17,6 @@ export interface PlanSalesRow {
   revenue: number
 }
 
-export interface BookingRevenuePoint {
-  month: string
-  revenue: number
-  bookings: number
-}
-
-export interface BranchRevenueRow {
-  branchId: number
-  branchName: string
-  bookingCount: number
-  revenue: number
-}
-
-export interface BookingRevenueStats {
-  totalRevenue: number
-  bookingCount: number
-  revenueChart: BookingRevenuePoint[]
-  branchRevenue: BranchRevenueRow[]
-}
-
 export interface SuperAdminDashboardStats {
   totalSubscriptionRevenue: number
   activeBranchCount: number
@@ -104,7 +84,6 @@ export async function getSuperAdminDashboardStats(): Promise<SuperAdminDashboard
 
   return response.data.data
 }
-
 export async function getSuperAdminDashboardDetails(): Promise<SuperAdminDashboardDetails> {
   const response = await axiosClient.get<ApiResponse<SuperAdminDashboardDetails>>(
     API_ENDPOINTS.superAdminDashboard.details,
@@ -117,14 +96,3 @@ export async function getSuperAdminDashboardDetails(): Promise<SuperAdminDashboa
   return response.data.data
 }
 
-export async function getBookingRevenueStats(): Promise<BookingRevenueStats> {
-  const response = await axiosClient.get<ApiResponse<BookingRevenueStats>>(
-    API_ENDPOINTS.bookings.revenue,
-  )
-
-  if (!response.data.data) {
-    throw new Error(response.data.message || 'Khong the tai thong ke doanh thu booking.')
-  }
-
-  return response.data.data
-}
