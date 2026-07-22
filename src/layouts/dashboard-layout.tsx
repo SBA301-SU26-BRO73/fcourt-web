@@ -6,14 +6,14 @@ import { useAuth } from '@/hooks/use-auth-context'
 import { useUsers } from '@/hooks/use-users'
 
 const NAV = [
-  { section: 'Overview' },
-  { to: '/super-admin', label: 'Dashboard', icon: Grid2X2, end: true },
-  { to: '/super-admin/users', label: 'Users', icon: Users },
-  { section: 'Admin Management' },
-  { to: '/super-admin/pending', label: 'Pending Approval', icon: Inbox, badge: true },
-  { section: 'System Settings' },
-  { to: '/super-admin/court-types', label: 'Court Types', icon: Layers },
-  { to: '/super-admin/plans', label: 'Subscription Plans', icon: Tag },
+  { section: 'Tổng quan' },
+  { to: '/super-admin', label: 'Bảng điều khiển', icon: Grid2X2, end: true },
+  { to: '/super-admin/users', label: 'Người dùng', icon: Users },
+  { section: 'Quản lý chủ sân' },
+  { to: '/super-admin/pending', label: 'Chờ phê duyệt', icon: Inbox, badge: true },
+  { section: 'Cài đặt hệ thống' },
+  { to: '/super-admin/court-types', label: 'Loại sân', icon: Layers },
+  { to: '/super-admin/plans', label: 'Gói thành viên', icon: Tag },
 ] as const
 
 export function DashboardLayout() {
@@ -112,7 +112,7 @@ export function DashboardLayout() {
               type="button"
               onClick={logout}
               className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white hover:text-slate-700 hover:shadow-sm"
-              title="Log out"
+              title="Đăng xuất"
             >
               <LogOut size={15} />
             </button>
