@@ -1,4 +1,4 @@
-import { Grid2X2, Inbox, Layers, LogOut, ShieldCheck, Tag, Users } from 'lucide-react'
+import { Grid2X2, Inbox, Layers, LogOut, Package, ShieldCheck, Tag, Users } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
@@ -14,6 +14,7 @@ const NAV = [
   { section: 'Cài đặt hệ thống' },
   { to: '/super-admin/court-types', label: 'Loại sân', icon: Layers },
   { to: '/super-admin/plans', label: 'Gói thành viên', icon: Tag },
+  { to: '/super-admin/products', label: 'Sản phẩm', icon: Package },
 ] as const
 
 export function DashboardLayout() {
