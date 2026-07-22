@@ -59,6 +59,7 @@ export const API_ENDPOINTS = {
   products: {
     list: joinEndpoint(API_PREFIXES.products),
     detail: (id: string | number) => joinEndpoint(API_PREFIXES.products, id),
+    byBranch: (branchId: string | number) => joinEndpoint(API_PREFIXES.branches, branchId, 'products'),
   },
   orders: {
     list: joinEndpoint(API_PREFIXES.orders),
