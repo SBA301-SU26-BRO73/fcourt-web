@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import type { FormEvent } from 'react'
 
+import { ImageUploadField } from '@/components/ui/image-upload-field'
 import type { CourtTypeData } from '@/types/admin'
 import type { BranchStatus } from '@/types/branch'
 import type { CourtStatus } from '@/types/court'
@@ -15,6 +16,9 @@ type CourtFormProps = {
   isSubmitting: boolean
   submitLabel: string
   onChange: (field: keyof CourtFormValues, value: string) => void
+  imageFile: File | null
+  onImageFileChange: (file: File | null) => void
+  onClearImage: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
 
@@ -39,12 +43,11 @@ export function CourtForm({
   isSubmitting,
   submitLabel,
   onChange,
+  imageFile,
+  onImageFileChange,
+  onClearImage,
   onSubmit,
 }: CourtFormProps) {
-  const [failedImageUrl, setFailedImageUrl] = useState('')
-  const previewImageUrl = values.imageUrl.trim()
-  const imageLoadFailed = failedImageUrl === previewImageUrl
-
   const inputClass = (hasError: boolean) =>
     `w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm outline-none focus:ring-2 ${
       hasError
@@ -62,7 +65,7 @@ export function CourtForm({
 
         <div className="grid gap-5 md:grid-cols-2">
           <label className="block space-y-2">
-            <span className="text-sm font-semibold text-slate-700">Branch *</span>
+            <span className="text-sm font-semibold text-slate-700">Chi nhánh *</span>
             <select
               name="branchId"
               value={values.branchId}
@@ -72,13 +75,13 @@ export function CourtForm({
               onChange={(event) => onChange('branchId', event.target.value)}
               className={`${inputClass(Boolean(errors.branchId))} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`}
             >
-              <option value="">Chọn branch đang hoạt động</option>
+              <option value="">Chọn chi nhánh đang hoạt động</option>
               {branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>{branch.name}</option>
               ))}
             </select>
             <ErrorText id="branchId-error" message={errors.branchId} />
-            {isEdit && <span className="block text-xs text-slate-500">Backend không hỗ trợ chuyển sân sang branch khác.</span>}
+            {isEdit && <span className="block text-xs text-slate-500">Không thể chuyển sân sang chi nhánh khác khi chỉnh sửa.</span>}
           </label>
 
           <label className="block space-y-2">
@@ -141,40 +144,17 @@ export function CourtForm({
             />
           </label>
 
-          <label className="block space-y-2 md:col-span-2">
-            <span className="text-sm font-semibold text-slate-700">Image URL</span>
-            <input
-              name="imageUrl"
-              type="url"
+          <div className="md:col-span-2">
+            <ImageUploadField
+              label="Ảnh sân"
               value={values.imageUrl}
-              placeholder="https://example.com/court.jpg"
-              aria-invalid={Boolean(errors.imageUrl)}
-              aria-describedby={errors.imageUrl ? 'imageUrl-error' : undefined}
-              onChange={(event) => onChange('imageUrl', event.target.value)}
-              className={inputClass(Boolean(errors.imageUrl))}
+              file={imageFile}
+              error={errors.imageUrl}
+              onFileChange={onImageFileChange}
+              onClear={onClearImage}
             />
-            <ErrorText id="imageUrl-error" message={errors.imageUrl} />
-          </label>
-        </div>
-
-        {values.imageUrl && !errors.imageUrl && (
-          <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="mb-3 text-sm font-semibold text-slate-700">Xem trước ảnh</p>
-            {imageLoadFailed ? (
-              <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-700">
-                Không thể tải ảnh từ URL này. Hãy kiểm tra URL có trỏ trực tiếp đến file ảnh công khai và không yêu cầu đăng nhập.
-              </div>
-            ) : (
-              <img
-                src={previewImageUrl}
-                alt="Court preview"
-                className="h-48 w-full rounded-lg border border-slate-200 bg-white object-cover sm:w-80"
-                onLoad={() => setFailedImageUrl('')}
-                onError={() => setFailedImageUrl(previewImageUrl)}
-              />
-            )}
           </div>
-        )}
+        </div>
       </section>
 
       <div className="flex justify-end">

@@ -42,23 +42,15 @@ export function validateCourtForm(values: CourtFormValues): CourtFormErrors {
   const courtTypeId = Number(values.courtTypeId)
 
   if (!values.branchId || !Number.isInteger(branchId) || branchId <= 0) {
-    errors.branchId = 'Branch is required.'
+    errors.branchId = 'Chi nhánh là bắt buộc.'
   }
   if (!values.name.trim()) {
-    errors.name = 'Court name is required.'
+    errors.name = 'Tên sân là bắt buộc.'
   } else if (values.name.trim().length > 150) {
-    errors.name = 'Maximum 150 characters.'
+    errors.name = 'Tên sân không được vượt quá 150 ký tự.'
   }
   if (!values.courtTypeId || !Number.isInteger(courtTypeId) || courtTypeId <= 0) {
-    errors.courtTypeId = 'Court type is required.'
-  }
-  if (values.imageUrl.trim()) {
-    try {
-      const url = new URL(values.imageUrl.trim())
-      if (!['http:', 'https:'].includes(url.protocol)) throw new Error()
-    } catch {
-      errors.imageUrl = 'Enter a valid HTTP or HTTPS URL.'
-    }
+    errors.courtTypeId = 'Loại sân là bắt buộc.'
   }
 
   return errors

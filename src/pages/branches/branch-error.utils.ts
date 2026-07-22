@@ -14,14 +14,14 @@ export function getBranchErrorMessage(error: unknown) {
   if (!axios.isAxiosError<BranchApiErrorData>(error)) {
     return error instanceof Error
       ? error.message
-      : 'An unexpected error occurred. Please try again.'
+      : 'Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.'
   }
 
   if (!error.response) {
-    return 'Cannot connect to the server. Check the backend and try again.'
+    return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend và thử lại.'
   }
 
-  return error.response.data?.message || 'The request could not be completed.'
+  return error.response.data?.message || 'Không thể hoàn tất yêu cầu.'
 }
 
 export function getBranchFieldErrors(error: unknown): BranchFormErrors {
@@ -31,11 +31,19 @@ export function getBranchFieldErrors(error: unknown): BranchFormErrors {
   if (!response) return {}
 
   if (response.errorCode === 'branch_name_already_exists') {
-    return { name: 'Branch name already exists.' }
+    return { name: 'Tên chi nhánh đã tồn tại.' }
   }
 
   if (response.errorCode === 'invalid_input' && response.data) {
-    return response.data as BranchFormErrors
+    const fieldMessages: BranchFormErrors = {}
+    for (const field of Object.keys(response.data) as Array<keyof BranchFormErrors>) {
+      const labels: Partial<Record<keyof BranchFormErrors, string>> = {
+        name: 'Tên chi nhánh', address: 'Địa chỉ', ward: 'Phường/Xã', city: 'Tỉnh/Thành phố',
+        openTime: 'Giờ mở cửa', closeTime: 'Giờ đóng cửa', slotDurationMinutes: 'Thời lượng khung giờ',
+      }
+      fieldMessages[field] = `${labels[field] ?? 'Thông tin này'} không hợp lệ.`
+    }
+    return fieldMessages
   }
 
   return {}

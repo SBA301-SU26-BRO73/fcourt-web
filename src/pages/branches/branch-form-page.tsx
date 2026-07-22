@@ -27,6 +27,7 @@ import {
 import { findLocationCity, findLocationDistrict, sampleLocations } from '@/data/sample-locations'
 
 import { UpgradePlanModal } from '@/components/admin/UpgradePlanModal'
+import { uploadImage } from '@/services/upload/image-upload.api'
 
 type BranchFormPageProps = {
   mode: 'create' | 'edit'
@@ -52,20 +53,20 @@ export function BranchFormPage({ mode }: BranchFormPageProps) {
   if (!hasValidId) return <Navigate to="/admin/branches" replace />
 
   if (detailQuery.isPending) {
-    return <PageMessage title="Loading branch..." />
+    return <PageMessage title="Đang tải thông tin chi nhánh..." />
   }
 
   if (detailQuery.isError) {
     const notFound = getBranchErrorCode(detailQuery.error) === 'branch_not_found'
     return (
       <PageMessage
-        title={notFound ? 'Branch not found' : 'Unable to load branch'}
+        title={notFound ? 'Không tìm thấy chi nhánh' : 'Không thể tải thông tin chi nhánh'}
         description={
           notFound
-            ? 'This branch no longer exists or is inactive.'
+            ? 'Chi nhánh này không còn tồn tại hoặc đã ngừng hoạt động.'
             : getBranchErrorMessage(detailQuery.error)
         }
-        actionLabel="Try again"
+        actionLabel="Thử lại"
         onAction={() => void detailQuery.refetch()}
       />
     )
@@ -94,6 +95,7 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
     branch ? branchToFormValues(branch) : emptyBranchFormValues,
   )
   const [errors, setErrors] = useState<BranchFormErrors>({})
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [submitError, setSubmitError] = useState('')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [limitMessage, setLimitMessage] = useState<string | null>(null)
@@ -115,14 +117,17 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
   ]))
 
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!user || !Number.isInteger(user.id) || user.id <= 0) {
-        throw new Error('Your login session is invalid. Please sign in again.')
+        throw new Error('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.')
       }
+      const bankQrImageUrl = imageFile
+        ? await uploadImage(imageFile, 'branch-qr')
+        : values.bankQrImageUrl
       if (isEdit && branch) {
-        return updateBranch(branch.id, toUpdateBranchPayload(values, user.id))
+        return updateBranch(branch.id, { ...toUpdateBranchPayload(values, user.id), bankQrImageUrl: bankQrImageUrl || null })
       }
-      return createBranch(toCreateBranchPayload(values, user.id))
+      return createBranch({ ...toCreateBranchPayload(values, user.id), bankQrImageUrl: bankQrImageUrl || null })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['branches'] })
@@ -130,8 +135,8 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
         replace: true,
         state: {
           successMessage: isEdit
-            ? 'Branch updated successfully.'
-            : 'Branch created successfully.',
+            ? 'Cập nhật chi nhánh thành công.'
+            : 'Tạo chi nhánh thành công.',
         },
       })
     },
@@ -177,7 +182,7 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
     setSubmitError('')
 
     if (!user) {
-      setSubmitError('You must be signed in to manage branches.')
+      setSubmitError('Bạn cần đăng nhập để quản lý chi nhánh.')
       return
     }
 
@@ -190,19 +195,19 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
         to="/admin/branches"
         className="text-sm font-semibold text-[#059669] hover:text-[#047857]"
       >
-        Back to branches
+        Quay lại danh sách chi nhánh
       </Link>
       <div className="mb-8 mt-4">
         <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#10B981]">
-          Branch management
+          Quản lý chi nhánh
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-          {isEdit ? 'Edit branch' : 'Create branch'}
+          {isEdit ? 'Chỉnh sửa chi nhánh' : 'Thêm chi nhánh mới'}
         </h1>
         <p className="mt-2 text-slate-600">
           {isEdit
-            ? 'Update the complete branch record. The backend uses PUT, so all required fields are submitted.'
-            : 'Add a new active branch to the system.'}
+            ? 'Cập nhật đầy đủ thông tin của chi nhánh.'
+            : 'Thêm một chi nhánh mới vào hệ thống.'}
         </p>
       </div>
 
@@ -219,8 +224,17 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
         values={values}
         errors={errors}
         isSubmitting={mutation.isPending}
-        submitLabel={isEdit ? 'Update branch' : 'Create branch'}
+        submitLabel={isEdit ? 'Cập nhật chi nhánh' : 'Tạo chi nhánh'}
         onChange={handleChange}
+        imageFile={imageFile}
+        onImageFileChange={(file) => {
+          setImageFile(file)
+          setErrors((current) => ({ ...current, bankQrImageUrl: undefined }))
+        }}
+        onClearImage={() => {
+          setImageFile(null)
+          handleChange('bankQrImageUrl', '')
+        }}
         onSubmit={handleSubmit}
         cities={cityOptions}
         districts={districtOptions}
@@ -262,7 +276,7 @@ function PageMessage({ title, description, actionLabel, onAction }: PageMessageP
           to="/admin/branches"
           className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700"
         >
-          Back to list
+          Về danh sách
         </Link>
       </div>
     </div>

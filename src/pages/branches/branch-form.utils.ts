@@ -74,7 +74,8 @@ export function validateBranchForm(values: BranchFormValues): BranchFormErrors {
 
   for (const field of ['name', 'address', 'city', 'district', 'ward'] as const) {
     if (!values[field].trim()) {
-      errors[field] = `${field[0].toUpperCase()}${field.slice(1)} is required.`
+      const labels = { name: 'Tên chi nhánh', address: 'Địa chỉ', city: 'Tỉnh/Thành phố', district: 'Quận/Huyện', ward: 'Phường/Xã' }
+      errors[field] = `${labels[field]} là bắt buộc.`
     }
   }
 
@@ -82,24 +83,15 @@ export function validateBranchForm(values: BranchFormValues): BranchFormErrors {
     [keyof BranchFormValues, number]
   >) {
     if (values[field].trim().length > maxLength) {
-      errors[field] = `Maximum ${maxLength} characters.`
+      errors[field] = `Không được vượt quá ${maxLength} ký tự.`
     }
   }
 
-  if (!values.openTime) errors.openTime = 'Open time is required.'
-  if (!values.closeTime) errors.closeTime = 'Close time is required.'
+  if (!values.openTime) errors.openTime = 'Giờ mở cửa là bắt buộc.'
+  if (!values.closeTime) errors.closeTime = 'Giờ đóng cửa là bắt buộc.'
   if (!['30', '60'].includes(values.slotDurationMinutes)) errors.slotDurationMinutes = 'Chọn 30 hoặc 60 phút.'
   if (values.openTime && values.closeTime && values.openTime >= values.closeTime) {
-    errors.closeTime = 'Close time must be later than open time.'
-  }
-
-  if (values.bankQrImageUrl.trim()) {
-    try {
-      const url = new URL(values.bankQrImageUrl.trim())
-      if (!['http:', 'https:'].includes(url.protocol)) throw new Error()
-    } catch {
-      errors.bankQrImageUrl = 'Enter a valid HTTP or HTTPS URL.'
-    }
+    errors.closeTime = 'Giờ đóng cửa phải sau giờ mở cửa.'
   }
 
   return errors

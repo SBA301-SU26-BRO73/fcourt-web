@@ -20,6 +20,7 @@ import {
 } from './court-form.utils'
 
 import { UpgradePlanModal } from '@/components/admin/UpgradePlanModal'
+import { uploadImage } from '@/services/upload/image-upload.api'
 
 type CourtFormPageProps = { mode: 'create' | 'edit' }
 type CourtNavigationState = {
@@ -103,6 +104,7 @@ function CourtEditor({
         },
   )
   const [errors, setErrors] = useState<CourtFormErrors>({})
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [submitError, setSubmitError] = useState('')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [limitMessage, setLimitMessage] = useState<string | null>(null)
@@ -114,9 +116,12 @@ function CourtEditor({
   const courtTypesQuery = useCourtTypes()
 
   const mutation = useMutation({
-    mutationFn: () => isEdit && court
-      ? updateCourt(court.id, toUpdateCourtPayload(values))
-      : createCourt(toCreateCourtPayload(values)),
+    mutationFn: async () => {
+      const imageUrl = imageFile ? await uploadImage(imageFile, 'courts') : values.imageUrl
+      return isEdit && court
+        ? updateCourt(court.id, { ...toUpdateCourtPayload(values), imageUrl: imageUrl || null })
+        : createCourt({ ...toCreateCourtPayload(values), imageUrl: imageUrl || null })
+    },
     onSuccess: async (savedCourt) => {
       await queryClient.invalidateQueries({ queryKey: ['courts'] })
       navigate(returnTo ?? '/admin/courts', {
@@ -202,15 +207,15 @@ function CourtEditor({
           Quay lại
         </Link>
         <div className="mb-8 mt-4">
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#10B981]">Court management</p>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#10B981]">Quản lý sân</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">{isEdit ? 'Chỉnh sửa sân' : 'Thêm sân mới'}</h1>
-          <p className="mt-2 text-slate-600">{isEdit ? 'Cập nhật thông tin và trạng thái sân.' : 'Tạo sân mới trong một branch đang hoạt động.'}</p>
+          <p className="mt-2 text-slate-600">{isEdit ? 'Cập nhật thông tin và trạng thái sân.' : 'Tạo sân mới trong một chi nhánh đang hoạt động.'}</p>
         </div>
 
-        {branchesQuery.isError && <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Không thể tải danh sách branch. {getCourtErrorMessage(branchesQuery.error)}</div>}
+        {branchesQuery.isError && <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Không thể tải danh sách chi nhánh. {getCourtErrorMessage(branchesQuery.error)}</div>}
         {submitError && <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{submitError}</div>}
 
-        {courtTypesQuery.isError && <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Khong the tai danh sach loai san. {getCourtErrorMessage(courtTypesQuery.error)}</div>}
+        {courtTypesQuery.isError && <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Không thể tải danh sách loại sân. {getCourtErrorMessage(courtTypesQuery.error)}</div>}
 
         <CourtForm
           values={values}
@@ -222,6 +227,15 @@ function CourtEditor({
           isSubmitting={mutation.isPending || branchesQuery.isPending || courtTypesQuery.isPending}
           submitLabel={isEdit ? 'Cập nhật sân' : 'Tạo sân'}
           onChange={handleChange}
+          imageFile={imageFile}
+          onImageFileChange={(file) => {
+            setImageFile(file)
+            setErrors((current) => ({ ...current, imageUrl: undefined }))
+          }}
+          onClearImage={() => {
+            setImageFile(null)
+            handleChange('imageUrl', '')
+          }}
           onSubmit={handleSubmit}
         />
 

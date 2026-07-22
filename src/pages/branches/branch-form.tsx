@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react'
 
+import { ImageUploadField } from '@/components/ui/image-upload-field'
 import type {
   BranchFormErrors,
   BranchFormValues,
@@ -11,6 +12,9 @@ type BranchFormProps = {
   isSubmitting: boolean
   submitLabel: string
   onChange: (field: keyof BranchFormValues, value: string) => void
+  imageFile: File | null
+  onImageFileChange: (file: File | null) => void
+  onClearImage: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   cities: string[]
   districts: string[]
@@ -53,7 +57,7 @@ function SelectField({
             : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-100'
         }`}
       >
-        <option value="">Select {label.toLowerCase()}</option>
+        <option value="">Chọn {label.toLowerCase()}</option>
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
       {error && <span className="block text-sm text-red-600">{error}</span>}
@@ -119,6 +123,9 @@ export function BranchForm({
   isSubmitting,
   submitLabel,
   onChange,
+  imageFile,
+  onImageFileChange,
+  onClearImage,
   onSubmit,
   cities,
   districts,
@@ -128,15 +135,15 @@ export function BranchForm({
     <form onSubmit={onSubmit} noValidate className="space-y-8">
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5">
-          <h2 className="text-lg font-bold text-slate-950">Branch information</h2>
+          <h2 className="text-lg font-bold text-slate-950">Thông tin chi nhánh</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Fields marked with * are required.
+            Các trường có dấu * là bắt buộc.
           </p>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2">
           <Field
-            label="Branch name"
+            label="Tên chi nhánh"
             name="name"
             value={values.name}
             error={errors.name}
@@ -146,7 +153,7 @@ export function BranchForm({
           />
           <div className="md:col-span-2">
             <Field
-              label="Address"
+              label="Địa chỉ"
               name="address"
               value={values.address}
               error={errors.address}
@@ -156,7 +163,7 @@ export function BranchForm({
             />
           </div>
           <SelectField
-            label="City"
+            label="Tỉnh/Thành phố"
             name="city"
             value={values.city}
             error={errors.city}
@@ -165,7 +172,7 @@ export function BranchForm({
             onChange={onChange}
           />
           <SelectField
-            label="District"
+            label="Quận/Huyện"
             name="district"
             value={values.district}
             error={errors.district}
@@ -175,7 +182,7 @@ export function BranchForm({
             onChange={onChange}
           />
           <SelectField
-            label="Ward"
+            label="Phường/Xã"
             name="ward"
             value={values.ward}
             error={errors.ward}
@@ -185,7 +192,7 @@ export function BranchForm({
             onChange={onChange}
           />
           <Field
-            label="Phone"
+            label="Số điện thoại"
             name="phone"
             value={values.phone}
             error={errors.phone}
@@ -194,7 +201,7 @@ export function BranchForm({
           />
           <div className="grid grid-cols-2 gap-4">
             <Field
-              label="Open time"
+              label="Giờ mở cửa"
               name="openTime"
               value={values.openTime}
               error={errors.openTime}
@@ -203,7 +210,7 @@ export function BranchForm({
               onChange={onChange}
             />
             <Field
-              label="Close time"
+              label="Giờ đóng cửa"
               name="closeTime"
               value={values.closeTime}
               error={errors.closeTime}
@@ -213,7 +220,7 @@ export function BranchForm({
             />
           </div>
           <SelectField
-            label="Độ dài slot đặt sân"
+            label="Thời lượng mỗi khung giờ"
             name="slotDurationMinutes"
             value={values.slotDurationMinutes}
             error={errors.slotDurationMinutes}
@@ -226,11 +233,11 @@ export function BranchForm({
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="text-lg font-bold text-slate-950">Bank information</h2>
-        <p className="mt-1 text-sm text-slate-500">All fields are optional.</p>
+        <h2 className="text-lg font-bold text-slate-950">Thông tin ngân hàng</h2>
+        <p className="mt-1 text-sm text-slate-500">Tất cả các trường trong phần này đều không bắt buộc.</p>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <Field
-            label="Account number"
+            label="Số tài khoản"
             name="bankAccountNumber"
             value={values.bankAccountNumber}
             error={errors.bankAccountNumber}
@@ -238,7 +245,7 @@ export function BranchForm({
             onChange={onChange}
           />
           <Field
-            label="Account name"
+            label="Tên chủ tài khoản"
             name="bankAccountName"
             value={values.bankAccountName}
             error={errors.bankAccountName}
@@ -246,36 +253,24 @@ export function BranchForm({
             onChange={onChange}
           />
           <Field
-            label="Bank name"
+            label="Tên ngân hàng"
             name="bankName"
             value={values.bankName}
             error={errors.bankName}
             maxLength={100}
             onChange={onChange}
           />
-          <Field
-            label="QR image URL"
-            name="bankQrImageUrl"
-            value={values.bankQrImageUrl}
-            error={errors.bankQrImageUrl}
-            type="url"
-            placeholder="https://example.com/qr.png"
-            onChange={onChange}
-          />
-        </div>
-        {values.bankQrImageUrl && !errors.bankQrImageUrl && (
-          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="mb-3 text-sm font-semibold text-slate-700">QR preview</p>
-            <img
-              src={values.bankQrImageUrl}
-              alt="Bank QR preview"
-              className="h-36 w-36 rounded-lg border border-slate-200 bg-white object-contain"
-              onError={(event) => {
-                event.currentTarget.style.display = 'none'
-              }}
+          <div className="md:col-span-2">
+            <ImageUploadField
+              label="Ảnh mã QR thanh toán"
+              value={values.bankQrImageUrl}
+              file={imageFile}
+              error={errors.bankQrImageUrl}
+              onFileChange={onImageFileChange}
+              onClear={onClearImage}
             />
           </div>
-        )}
+        </div>
       </section>
 
       <div className="flex justify-end">
@@ -284,7 +279,7 @@ export function BranchForm({
           disabled={isSubmitting}
           className="rounded-xl bg-[#10B981] px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#059669] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? 'Saving...' : submitLabel}
+          {isSubmitting ? 'Đang lưu...' : submitLabel}
         </button>
       </div>
     </form>

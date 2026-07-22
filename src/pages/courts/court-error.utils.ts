@@ -14,12 +14,12 @@ export function getCourtErrorMessage(error: unknown) {
   if (!axios.isAxiosError<CourtApiErrorData>(error)) {
     return error instanceof Error
       ? error.message
-      : 'An unexpected error occurred. Please try again.'
+      : 'Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.'
   }
   if (!error.response) {
-    return 'Cannot connect to the server. Check the backend and try again.'
+    return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend và thử lại.'
   }
-  return error.response.data?.message || 'The request could not be completed.'
+  return error.response.data?.message || 'Không thể hoàn tất yêu cầu.'
 }
 
 export function getCourtFieldErrors(error: unknown): CourtFormErrors {
@@ -28,18 +28,25 @@ export function getCourtFieldErrors(error: unknown): CourtFormErrors {
   if (!response) return {}
 
   if (response.errorCode === 'invalid_input' && response.data) {
-    return response.data as CourtFormErrors
+    const fieldMessages: CourtFormErrors = {}
+    for (const field of Object.keys(response.data) as Array<keyof CourtFormErrors>) {
+      const labels: Partial<Record<keyof CourtFormErrors, string>> = {
+        branchId: 'Chi nhánh', name: 'Tên sân', courtTypeId: 'Loại sân', description: 'Mô tả', imageUrl: 'Ảnh sân', status: 'Trạng thái',
+      }
+      fieldMessages[field] = `${labels[field] ?? 'Thông tin này'} không hợp lệ.`
+    }
+    return fieldMessages
   }
 
   const message = response.message?.toLowerCase() ?? ''
   if (message.includes('court name already exists') || message.includes('must not be blank')) {
-    return { name: response.message }
+    return { name: 'Tên sân đã tồn tại hoặc chưa được nhập.' }
   }
   if (message.includes('branch not found')) {
-    return { branchId: response.message }
+    return { branchId: 'Không tìm thấy chi nhánh đã chọn.' }
   }
   if (message.includes('court type not found')) {
-    return { courtTypeId: response.message }
+    return { courtTypeId: 'Không tìm thấy loại sân đã chọn.' }
   }
   return {}
 }
