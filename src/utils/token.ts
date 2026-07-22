@@ -6,8 +6,8 @@ const USER_KEY = 'fcourt_user'
 const LAST_ROLE_KEY = 'fcourt_last_role'
 const USER_ROLES = ['CUSTOMER', 'ADMIN', 'SUPER_ADMIN', 'STAFF'] as const
 
-function setCookie(name: string, value: string, days = 7) {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString()
+function setCookie(name: string, value: string, expiresAtMs: number) {
+  const expires = new Date(expiresAtMs).toUTCString()
   document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict`
 }
 
@@ -32,10 +32,8 @@ export function decodeJwt(token: string): AuthUser {
 
 export const tokenStorage = {
   setTokens(tokens: TokenResponse): void {
-    const msLeft = tokens.expiresIn - Date.now()
-    const days = msLeft > 0 ? Math.ceil(msLeft / 86400000) : 1
-    setCookie(ACCESS_KEY, tokens.accessToken, days)
-    setCookie(REFRESH_KEY, tokens.refreshToken, 7)
+    setCookie(ACCESS_KEY, tokens.accessToken, tokens.expiresIn)
+    setCookie(REFRESH_KEY, tokens.refreshToken, Date.now() + 7 * 864e5)
     try {
       this.setUser(decodeJwt(tokens.accessToken))
     } catch {

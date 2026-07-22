@@ -49,11 +49,11 @@ export function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, isLoggedIn, clearAuth } = useAuth()
-  const hasAccessToken = !!tokenStorage.getAccessToken()
+  const hasRecoverableSession = !!tokenStorage.getAccessToken() || !!tokenStorage.getRefreshToken()
 
   useEffect(() => {
-    if (!isLoggedIn || !hasAccessToken) {
-      if (isLoggedIn && !hasAccessToken) clearAuth()
+    if (!isLoggedIn || !hasRecoverableSession) {
+      if (isLoggedIn && !hasRecoverableSession) clearAuth()
       navigate('/auth/login?role=admin', { replace: true })
       return
     }
@@ -66,9 +66,9 @@ export function AdminLayout() {
     if (user?.role !== 'ADMIN') {
       navigate('/403', { replace: true })
     }
-  }, [clearAuth, hasAccessToken, isLoggedIn, navigate, user])
+  }, [clearAuth, hasRecoverableSession, isLoggedIn, navigate, user])
 
-  if (!isLoggedIn || !hasAccessToken || user?.role !== 'ADMIN') return null
+  if (!isLoggedIn || !hasRecoverableSession || user?.role !== 'ADMIN') return null
 
   const currentTitle = PAGE_TITLES[location.pathname] || 'Trang Quản trị Admin'
 

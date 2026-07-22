@@ -48,10 +48,14 @@ function Toast({ msg }: { msg: string }) {
 export function ProfilePage() {
   const navigate = useNavigate()
   const { user, isLoggedIn, clearAuth } = useAuth()
+  const hasRecoverableSession = !!tokenStorage.getAccessToken() || !!tokenStorage.getRefreshToken()
 
   useEffect(() => {
-    if (!isLoggedIn) navigate(getProfileLoginPath(user?.role), { replace: true })
-  }, [isLoggedIn, navigate, user?.role])
+    if (!isLoggedIn || !hasRecoverableSession) {
+      if (isLoggedIn && !hasRecoverableSession) clearAuth()
+      navigate(getProfileLoginPath(user?.role), { replace: true })
+    }
+  }, [clearAuth, hasRecoverableSession, isLoggedIn, navigate, user?.role])
 
   const [editing, setEditing] = useState(false)
   const [toast, setToast] = useState('')
@@ -143,7 +147,7 @@ export function ProfilePage() {
     navigate('/auth/role-pick')
   }
 
-  if (!isLoggedIn || !user) return null
+  if (!isLoggedIn || !hasRecoverableSession || !user) return null
 
   const infoRows = [
     { label: 'Họ và tên', val: f.name, icon: User },

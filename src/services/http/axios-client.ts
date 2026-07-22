@@ -27,8 +27,17 @@ axiosClient.interceptors.request.use((config) => {
   return config
 })
 
+const NO_REFRESH_ENDPOINTS = [
+  API_ENDPOINTS.auth.login,
+  API_ENDPOINTS.auth.register,
+  API_ENDPOINTS.auth.registerCustomer,
+  API_ENDPOINTS.auth.registerCourtOwner,
+  API_ENDPOINTS.auth.refresh,
+]
+
 function isAuthEndpoint(url?: string) {
-  return Boolean(url?.includes('/auth/'))
+  if (!url) return false
+  return NO_REFRESH_ENDPOINTS.some((endpoint) => url.includes(endpoint))
 }
 
 async function requestTokenRefresh(refreshToken: string) {
