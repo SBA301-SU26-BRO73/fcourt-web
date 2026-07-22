@@ -24,6 +24,8 @@ import { BranchListPage } from '@/pages/branches/branch-list-page'
 import { CourtDetailPage } from '@/pages/courts/court-detail-page'
 import { CourtFormPage } from '@/pages/courts/court-form-page'
 import { CourtListPage } from '@/pages/courts/court-list-page'
+import { ProductFormPage } from '@/pages/products/product-form-page'
+import { ProductListPage } from '@/pages/products/product-list-page'
 import { NotFoundPage } from '@/pages/not-found/not-found-page'
 import { MyBookingsPage } from '@/pages/booking/my-bookings-page'
 import { BookingLookupPage } from '@/pages/booking/booking-lookup-page'
@@ -173,6 +175,18 @@ export const router = createBrowserRouter([
       {
         path: 'courts/:courtId/edit',
         element: <CourtFormPage mode="edit" />,
+      },
+      {
+        path: 'products',
+        element: <ProductListPage />,
+      },
+      {
+        path: 'products/new',
+        element: <ProductFormPage mode="create" />,
+      },
+      {
+        path: 'products/:productId/edit',
+        element: <ProductFormPage mode="edit" />,
       },
       {
         path: 'time-slots',

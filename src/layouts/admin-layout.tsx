@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
+  Package,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth-context'
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { id: 'dashboard', to: '/admin/dashboard', icon: Home, label: 'Tổng quan' },
   { id: 'bookings', to: '/admin/bookings', icon: Calendar, label: 'Đặt sân' },
   { id: 'courts', to: '/admin/courts', icon: Layout, label: 'Danh sách sân' },
+  { id: 'products', to: '/admin/products', icon: Package, label: 'Sản phẩm' },
   { id: 'staff', to: '/admin/staff', icon: Users, label: 'Nhân viên' },
 ] as const
 
@@ -35,6 +37,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/dashboard': 'Tổng quan hệ thống',
   '/admin/bookings': 'Duyệt thanh toán & Đặt sân',
   '/admin/courts': 'Quản lý sân thể thao',
+  '/admin/products': 'Quản lý sản phẩm POS',
   '/admin/staff': 'Quản lý tài khoản nhân viên',
   '/admin/branches': 'Quản lý cơ sở chi nhánh',
   '/admin/vouchers': 'Quản lý mã giảm giá',
