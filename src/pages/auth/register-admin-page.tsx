@@ -1,4 +1,4 @@
-import { CheckCircle, Clock, Mail, Phone } from 'lucide-react'
+import { CheckCircle, Clock, Mail, Phone, User } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -15,7 +15,7 @@ import { useRegisterCourtOwner } from '@/hooks/use-auth'
 import { validators } from '@/utils/validators'
 
 export function RegisterAdminPage() {
-  const [f, setF] = useState({ email: '', phone: '', password: '', confirm: '' })
+  const [f, setF] = useState({ fullName: '', email: '', phone: '', password: '', confirm: '' })
   const [docs, setDocs] = useState<File[]>([])
   const [photos, setPhotos] = useState<File[]>([])
   const [errs, setErrs] = useState<Record<string, string>>({})
@@ -30,6 +30,7 @@ export function RegisterAdminPage() {
 
   function validate() {
     const e: Record<string, string> = {}
+    if (!f.fullName.trim()) e.fullName = 'Vui lòng nhập họ và tên'
     if (!f.email.trim()) e.email = 'Vui lòng nhập email'
     else if (!validators.email(f.email)) e.email = 'Email không đúng định dạng'
     if (!f.phone.trim()) e.phone = 'Vui lòng nhập số điện thoại'
@@ -46,6 +47,7 @@ export function RegisterAdminPage() {
     const e = validate()
     if (Object.keys(e).length) { setErrs(e); return }
     const data = new FormData()
+    data.append('fullName', f.fullName.trim())
     data.append('email', f.email)
     data.append('phone', f.phone)
     data.append('password', f.password)
@@ -142,6 +144,19 @@ export function RegisterAdminPage() {
             </div>
           </div>
           <form onSubmit={submit} noValidate>
+            <Field label="Họ và tên" error={errs.fullName}>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                <User size={15} />
+              </span>
+              <TextInput
+                hasIcon
+                placeholder="Nguyễn Văn A"
+                value={f.fullName}
+                onChange={(e) => set('fullName', e.target.value)}
+                error={errs.fullName}
+                autoComplete="name"
+              />
+            </Field>
             <div className="grid grid-cols-2 gap-x-3.5">
               <Field label="Email" error={errs.email}>
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
