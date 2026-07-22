@@ -79,7 +79,7 @@ export async function getSuperAdminDashboardStats(): Promise<SuperAdminDashboard
   )
 
   if (!response.data.data) {
-    throw new Error(response.data.message || 'Khong the tai thong ke dashboard.')
+    throw new Error(response.data.message || 'Không thể tải thống kê bảng điều khiển.')
   }
 
   return response.data.data
@@ -90,7 +90,7 @@ export async function getSuperAdminDashboardDetails(): Promise<SuperAdminDashboa
   )
 
   if (!response.data.data) {
-    throw new Error(response.data.message || 'Khong the tai chi tiet dashboard.')
+    throw new Error(response.data.message || 'Không thể tải chi tiết bảng điều khiển.')
   }
 
   return response.data.data

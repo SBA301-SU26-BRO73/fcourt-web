@@ -26,7 +26,7 @@ import type {
 type DetailModal = 'revenue' | 'branches' | 'courts' | 'subscriptions'
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND',
     maximumFractionDigits: 0,
@@ -35,7 +35,7 @@ function formatCurrency(value: number) {
 
 function formatMonth(month: string) {
   const [year, monthIndex] = month.split('-').map(Number)
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('vi-VN', {
     month: 'short',
     year: '2-digit',
   }).format(new Date(year, monthIndex - 1, 1))
@@ -69,7 +69,7 @@ function StatCard({
           <Icon size={21} className="text-white" />
         </span>
         <span className="rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 transition group-hover:bg-emerald-50 group-hover:text-emerald-600">
-          Details
+          Chi tiết
         </span>
       </div>
       <div className="mb-1 text-[28px] font-extrabold leading-tight text-slate-900">{value}</div>
@@ -86,9 +86,9 @@ function RevenueChart({ data }: { data: RevenuePoint[] }) {
     <div className="rounded-[20px] bg-white p-6 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold text-slate-900">Booking Revenue</h2>
+          <h2 className="text-base font-bold text-slate-900">Doanh thu gói thành viên</h2>
           <p className="mt-1 text-[12.5px] font-medium text-slate-400">
-            Confirmed bookings by month
+            Tổng hợp lượt đăng ký và doanh thu theo tháng
           </p>
         </div>
         <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 shadow-lg shadow-emerald-100">
@@ -110,7 +110,7 @@ function RevenueChart({ data }: { data: RevenuePoint[] }) {
                   <div className="absolute -top-14 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded-2xl bg-slate-900 px-3 py-2 text-[12px] font-bold text-white shadow-xl group-hover:block">
                     {formatCurrency(item.revenue)}
                     <div className="mt-0.5 text-center text-[10px] font-medium text-slate-300">
-                      {item.subscriptions} subscriptions
+                      {item.subscriptions} lượt đăng ký
                     </div>
                     <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900" />
                   </div>
@@ -178,9 +178,9 @@ function PlanRevenueTable({ rows }: { rows: PlanSalesRow[] }) {
   return (
     <div className="overflow-hidden rounded-[20px] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100">
       <div className="border-b border-slate-100 px-6 py-5">
-        <h2 className="text-base font-bold text-slate-900">Revenue by Subscription Plan</h2>
+        <h2 className="text-base font-bold text-slate-900">Doanh thu theo gói thành viên</h2>
         <p className="mt-1 text-[12.5px] font-medium text-slate-400">
-          Calculated from subscription plans registered by court owners.
+          Tổng hợp từ các gói thành viên do chủ sân đăng ký.
         </p>
       </div>
 
@@ -189,9 +189,9 @@ function PlanRevenueTable({ rows }: { rows: PlanSalesRow[] }) {
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-slate-100 to-emerald-50 text-emerald-600 shadow-inner">
             <BarChart3 className="h-8 w-8" />
           </div>
-          <div className="text-[14px] font-bold text-slate-700">No subscription revenue yet.</div>
+          <div className="text-[14px] font-bold text-slate-700">Chưa có doanh thu gói thành viên.</div>
           <div className="mt-1 max-w-sm text-[12.5px] font-medium text-slate-400">
-            Data will appear after court owners register subscription plans.
+            Dữ liệu sẽ xuất hiện sau khi chủ sân đăng ký gói thành viên.
           </div>
         </div>
       ) : (
@@ -199,10 +199,10 @@ function PlanRevenueTable({ rows }: { rows: PlanSalesRow[] }) {
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
               <tr className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-400">
-                <th className="px-6 py-4 font-bold">Subscription Plan</th>
-                <th className="px-6 py-4 text-right font-bold">Plans Sold</th>
-                <th className="px-6 py-4 text-right font-bold">Active / Expired</th>
-                <th className="px-6 py-4 text-right font-bold">Revenue</th>
+                <th className="px-6 py-4 font-bold">Gói thành viên</th>
+                <th className="px-6 py-4 text-right font-bold">Đã bán</th>
+                <th className="px-6 py-4 text-right font-bold">Còn hạn / Hết hạn</th>
+                <th className="px-6 py-4 text-right font-bold">Doanh thu</th>
               </tr>
             </thead>
             <tbody>
@@ -531,9 +531,9 @@ export function DashboardPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-slate-400">
-            Overview
+            Tổng quan
           </p>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Dashboard Super Admin</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Bảng điều khiển Super Admin</h1>
         </div>
         <button
           onClick={() => {
@@ -544,19 +544,19 @@ export function DashboardPage() {
           className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:opacity-90 active:scale-95 disabled:opacity-60"
         >
           <RefreshCw className={`h-4 w-4 text-white ${fetching ? 'animate-spin' : ''}`} />
-          Refresh
+          Làm mới
         </button>
       </div>
 
       {loading && (
         <div className="rounded-[20px] bg-white p-10 text-center text-sm font-medium text-slate-500 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100">
-          Loading dashboard metrics...
+          Đang tải số liệu tổng quan...
         </div>
       )}
 
       {hasError && (
         <div className="rounded-[20px] bg-red-50 p-5 text-sm font-semibold text-red-700 shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-red-100">
-          {displayError || 'Unable to load the dashboard.'}
+          {displayError || 'Không thể tải bảng điều khiển.'}
         </div>
       )}
 
@@ -566,33 +566,33 @@ export function DashboardPage() {
             <StatCard
               icon={CircleDollarSign}
               gradient="from-emerald-400 to-teal-600"
-              label="Subscription Revenue"
+              label="Doanh thu gói thành viên"
               value={formatCurrency(data.totalSubscriptionRevenue)}
-              foot={`${data.planSales.reduce((total, plan) => total + plan.soldCount, 0)} plans sold`}
+              foot={`${data.planSales.reduce((total, plan) => total + plan.soldCount, 0)} lượt đăng ký gói`}
               onClick={() => setActiveModal('revenue')}
             />
             <StatCard
               icon={Building2}
               gradient="from-sky-400 to-blue-600"
-              label="Active Branches"
+              label="Chi nhánh hoạt động"
               value={data.activeBranchCount}
-              foot="Branches currently operating"
+              foot="Chi nhánh đang vận hành"
               onClick={() => setActiveModal('branches')}
             />
             <StatCard
               icon={Layers}
               gradient="from-violet-400 to-purple-600"
-              label="Total Courts"
+              label="Tổng số sân"
               value={data.totalCourtCount}
-              foot="Courts not soft-deleted"
+              foot="Sân hiện có trong hệ thống"
               onClick={() => setActiveModal('courts')}
             />
             <StatCard
               icon={CalendarCheck2}
               gradient="from-amber-400 to-orange-600"
-              label="Active / Expired Subscriptions"
+              label="Gói còn hạn / hết hạn"
               value={`${data.activeSubscriptionCount} / ${data.expiredSubscriptionCount}`}
-              foot={`${data.newSubscriptionsThisMonth} new plans this month`}
+              foot={`${data.newSubscriptionsThisMonth} lượt đăng ký mới trong tháng`}
               onClick={() => setActiveModal('subscriptions')}
             />
           </div>
@@ -601,18 +601,18 @@ export function DashboardPage() {
             <RevenueChart data={data.revenueChart} />
             <div className="grid gap-6">
               <SubscriptionRing
-                label="Active Subscriptions"
+                label="Gói còn hiệu lực"
                 value={data.activeSubscriptionCount}
                 total={subscriptionTotal}
                 accent="#10b981"
-                foot="End date is today or later"
+                foot="Ngày hết hạn từ hôm nay trở đi"
               />
               <SubscriptionRing
-                label="Expired Subscriptions"
+                label="Gói đã hết hạn"
                 value={data.expiredSubscriptionCount}
                 total={subscriptionTotal}
                 accent="#f59e0b"
-                foot="End date is before today"
+                foot="Ngày hết hạn trước hôm nay"
               />
             </div>
           </div>
