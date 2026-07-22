@@ -1,6 +1,6 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type { ApiResponse, LoginRequest, RegisterCustomerRequest, TokenResponse, UpdateProfileRequest, UserProfile } from '@/types/auth'
+import type { ApiResponse, ChangePasswordRequest, LoginRequest, RegisterCustomerRequest, TokenResponse, UpdateProfileRequest, UserProfile } from '@/types/auth'
 
 export async function login(data: LoginRequest): Promise<ApiResponse<TokenResponse>> {
   const response = await axiosClient.post(API_ENDPOINTS.auth.login, data)
@@ -33,5 +33,10 @@ export async function getProfile(): Promise<ApiResponse<UserProfile>> {
 
 export async function updateProfile(data: UpdateProfileRequest): Promise<ApiResponse<UserProfile>> {
   const response = await axiosClient.patch(API_ENDPOINTS.auth.profile, data)
+  return response.data
+}
+
+export async function changePassword(data: ChangePasswordRequest): Promise<ApiResponse<void>> {
+  const response = await axiosClient.patch(API_ENDPOINTS.auth.changePassword, data)
   return response.data
 }

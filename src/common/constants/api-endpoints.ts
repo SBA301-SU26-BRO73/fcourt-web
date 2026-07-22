@@ -32,6 +32,7 @@ export const API_ENDPOINTS = {
     login: joinEndpoint(API_PREFIXES.auth, 'login'),
     register: joinEndpoint(API_PREFIXES.auth, 'register'),
     profile: joinEndpoint(API_PREFIXES.auth, 'profile'),
+    changePassword: joinEndpoint(API_PREFIXES.auth, 'password'),
     registerCustomer: joinEndpoint(API_PREFIXES.auth, 'register/customer'),
     registerCourtOwner: joinEndpoint(API_PREFIXES.auth, 'register/court-owner'),
     refresh: joinEndpoint(API_PREFIXES.auth, 'refresh'),

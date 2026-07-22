@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Building2, ChevronRight, LogOut, Mail, Pencil, Phone, Trophy, User, X } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronRight, KeyRound, LogOut, Mail, Pencil, Phone, Trophy, User, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { Button, Field, TextInput } from '@/components/auth/auth-ui'
+import { Button, Field, PasswordInput, TextInput } from '@/components/auth/auth-ui'
+import { getApiErrorMessage } from '@/common/utils/api-error'
 import { useAdminDashboard } from '@/hooks/use-admin-dashboard'
 import { useAuth } from '@/hooks/use-auth-context'
 import type { UserRole } from '@/types/auth'
-import { getProfile, updateProfile } from '@/services/auth/auth.service'
+import { changePassword, getProfile, updateProfile } from '@/services/auth/auth.service'
 import { getCourts } from '@/services/court/court.api'
 import type { Court, CourtStatus } from '@/types/court'
 import { tokenStorage } from '@/utils/token'
@@ -70,7 +71,13 @@ export function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [showCourts, setShowCourts] = useState(false)
 
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [pw, setPw] = useState({ current: '', next: '', confirm: '' })
+  const [pwErrs, setPwErrs] = useState<Record<string, string>>({})
+  const [pwSaving, setPwSaving] = useState(false)
+
   const setField = (k: string, v: string) => { setF((x) => ({ ...x, [k]: v })); setErrs((e) => ({ ...e, [k]: '' })) }
+  const setPwField = (k: string, v: string) => { setPw((x) => ({ ...x, [k]: v })); setPwErrs((e) => ({ ...e, [k]: '' })) }
 
   const initials = f.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
   const roleLabel = user ? (ROLE_LABEL[user.role] ?? user.role) : ''
@@ -139,6 +146,27 @@ export function ProfilePage() {
       setErrs({ form: error instanceof Error ? error.message : 'Không thể cập nhật thông tin.' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function savePassword(ev: React.FormEvent) {
+    ev.preventDefault()
+    const e: Record<string, string> = {}
+    if (!pw.current) e.current = 'Vui lòng nhập mật khẩu hiện tại'
+    if (pw.next.length < 6) e.next = 'Mật khẩu mới phải từ 6 ký tự'
+    if (pw.confirm !== pw.next) e.confirm = 'Xác nhận mật khẩu không khớp'
+    if (Object.keys(e).length) { setPwErrs(e); return }
+
+    setPwSaving(true)
+    try {
+      await changePassword({ currentPassword: pw.current, newPassword: pw.next })
+      setPw({ current: '', next: '', confirm: '' })
+      setChangingPassword(false)
+      showToast('Đổi mật khẩu thành công!')
+    } catch (error) {
+      setPwErrs({ form: getApiErrorMessage(error, 'Không thể đổi mật khẩu.') })
+    } finally {
+      setPwSaving(false)
     }
   }
 
@@ -298,6 +326,38 @@ export function ProfilePage() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+
+        {/* Change password */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2 font-bold text-[15px] text-slate-900">
+              <KeyRound size={17} className="text-green-600" /> Đổi mật khẩu
+            </div>
+            {!changingPassword && (
+              <Button variant="ghost" onClick={() => { setChangingPassword(true); setPwErrs({}) }}>
+                <Pencil size={14} /> Đổi mật khẩu
+              </Button>
+            )}
+          </div>
+          {changingPassword && (
+            <form onSubmit={savePassword} noValidate>
+              {pwErrs.form && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{pwErrs.form}</div>}
+              <Field label="Mật khẩu hiện tại" error={pwErrs.current}>
+                <PasswordInput value={pw.current} onChange={(e) => setPwField('current', e.target.value)} error={pwErrs.current} placeholder="Nhập mật khẩu hiện tại" />
+              </Field>
+              <Field label="Mật khẩu mới" error={pwErrs.next}>
+                <PasswordInput value={pw.next} onChange={(e) => setPwField('next', e.target.value)} error={pwErrs.next} placeholder="Tối thiểu 6 ký tự" />
+              </Field>
+              <Field label="Xác nhận mật khẩu mới" error={pwErrs.confirm}>
+                <PasswordInput value={pw.confirm} onChange={(e) => setPwField('confirm', e.target.value)} error={pwErrs.confirm} placeholder="Nhập lại mật khẩu mới" />
+              </Field>
+              <div className="flex gap-2.5 justify-end">
+                <Button type="button" variant="ghost" onClick={() => { setChangingPassword(false); setPw({ current: '', next: '', confirm: '' }); setPwErrs({}) }}>Huỷ</Button>
+                <Button type="submit" loading={pwSaving}>Đổi mật khẩu</Button>
+              </div>
+            </form>
           )}
         </div>
 
