@@ -11,6 +11,7 @@ import { CourtTypesPage } from '@/pages/super-admin/court-types-page'
 import { DashboardPage } from '@/pages/super-admin/dashboard-page'
 import { PendingPage } from '@/pages/super-admin/pending-page'
 import { PlansPage } from '@/pages/super-admin/plans-page'
+import { SuperAdminProductsPage } from '@/pages/super-admin/products-page'
 import { UserManagementPage } from '@/pages/super-admin/user-management-page'
 import { ForgotPage } from '@/pages/auth/forgot-page'
 import { LoginPage } from '@/pages/auth/login-page'
@@ -265,6 +266,7 @@ export const router = createBrowserRouter([
       { path: 'pending', element: <PendingPage /> },
       { path: 'court-types', element: <CourtTypesPage /> },
       { path: 'plans', element: <PlansPage /> },
+      { path: 'products', element: <SuperAdminProductsPage /> },
     ],
   },
   { path: 'profile', element: <ProfilePage /> },
