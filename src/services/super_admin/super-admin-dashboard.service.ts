@@ -95,4 +95,3 @@ export async function getSuperAdminDashboardDetails(): Promise<SuperAdminDashboa
 
   return response.data.data
 }
-
