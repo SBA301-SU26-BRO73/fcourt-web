@@ -1,6 +1,6 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type { PageResponse, UserAdminItem } from '@/types/admin'
+import type { PageResponse, UserAdminItem, UserDetailItem } from '@/types/admin'
 import type { ApiResponse, UserRole, UserStatus } from '@/types/auth'
 
 export interface UserListParams {
@@ -63,6 +63,11 @@ export async function getUsers(params: UserListParams): Promise<ApiResponse<User
     ...res.data,
     data: res.data.data ? normalizeUserManagementPage(res.data.data) : undefined,
   }
+}
+
+export async function getUserDetail(id: number): Promise<ApiResponse<UserDetailItem>> {
+  const res = await axiosClient.get(API_ENDPOINTS.users.detail(id))
+  return res.data
 }
 
 export async function approveUser(id: number): Promise<ApiResponse<UserAdminItem>> {

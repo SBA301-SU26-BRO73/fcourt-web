@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   approveUser,
   getPendingUsers,
+  getUserDetail,
   getUsers,
   lockUser,
   rejectUser,
@@ -14,6 +15,14 @@ const QUERY_KEY = ['users', 'pending']
 
 export function useUsers() {
   return useQuery({ queryKey: QUERY_KEY, queryFn: getPendingUsers })
+}
+
+export function useUserDetail(id: number | null) {
+  return useQuery({
+    queryKey: ['users', 'detail', id],
+    queryFn: () => getUserDetail(id as number),
+    enabled: id !== null,
+  })
 }
 
 export function useApproveUser() {

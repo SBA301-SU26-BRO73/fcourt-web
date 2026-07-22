@@ -1,9 +1,71 @@
-import { Check, Mail, Phone, X } from 'lucide-react'
+import { Check, FileText, ImageOff, Mail, Phone, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
-import { useApproveUser, useRejectUser, useUsers } from '@/hooks/use-users'
-import type { UserAdminItem } from '@/types/admin'
+import { useApproveUser, useRejectUser, useUserDetail, useUsers } from '@/hooks/use-users'
+import type { UserAdminItem, UserDocumentItem } from '@/types/admin'
+
+const DOC_TYPE_LABEL: Record<UserDocumentItem['docType'], string> = {
+  LEGAL: 'Giấy tờ pháp lý',
+  COURT_IMAGE: 'Ảnh sân',
+}
+
+function isImageUrl(url: string) {
+  return /\.(png|jpe?g|gif|webp|avif)$/i.test(url)
+}
+
+function DocumentGallery({ documents }: { documents: UserDocumentItem[] }) {
+  if (documents.length === 0) {
+    return (
+      <div className="mt-5 p-4 rounded-xl bg-slate-50 border border-slate-100 text-[13px] text-slate-500 flex items-center gap-2">
+        <ImageOff size={15} className="text-slate-400" /> Chưa có hồ sơ giấy tờ/ảnh sân nào được nộp.
+      </div>
+    )
+  }
+
+  const groups = documents.reduce<Record<string, UserDocumentItem[]>>((acc, doc) => {
+    (acc[doc.docType] ??= []).push(doc)
+    return acc
+  }, {})
+
+  return (
+    <div className="mt-5 space-y-4">
+      {Object.entries(groups).map(([docType, docs]) => (
+        <div key={docType}>
+          <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+            {DOC_TYPE_LABEL[docType as UserDocumentItem['docType']] ?? docType}
+          </h4>
+          <div className="grid grid-cols-3 gap-2.5">
+            {docs.map((doc) =>
+              isImageUrl(doc.url) ? (
+                <a
+                  key={doc.id}
+                  href={doc.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block aspect-square rounded-xl overflow-hidden border border-slate-200 hover:ring-2 hover:ring-green-500/40 transition"
+                >
+                  <img src={doc.url} alt={DOC_TYPE_LABEL[doc.docType] ?? doc.docType} className="w-full h-full object-cover" />
+                </a>
+              ) : (
+                <a
+                  key={doc.id}
+                  href={doc.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="aspect-square rounded-xl border border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-1.5 text-slate-500 hover:bg-slate-100 transition"
+                >
+                  <FileText size={20} />
+                  <span className="text-[11px] font-medium">Xem tệp</span>
+                </a>
+              ),
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function Toast({ msg }: { msg: string }) {
   return (
@@ -55,6 +117,7 @@ function RegDrawer({
   const [confirmReject, setConfirmReject] = useState(false)
   const { isPending: isApproving } = useApproveUser()
   const { isPending: isRejecting } = useRejectUser()
+  const { data: detail, isLoading: isLoadingDetail } = useUserDetail(item?.id ?? null)
 
   useEffect(() => {
     if (!item) return
@@ -102,9 +165,11 @@ function RegDrawer({
             </div>
           ))}
 
-          <div className="mt-5 p-4 rounded-xl bg-amber-50 border border-amber-100 text-[13px] text-amber-700">
-            Hồ sơ giấy tờ và ảnh sân sẽ được hiển thị ở đây khi BE hỗ trợ endpoint chi tiết.
-          </div>
+          {isLoadingDetail ? (
+            <div className="mt-5 py-8 text-center text-sm text-slate-400">Đang tải hồ sơ…</div>
+          ) : (
+            <DocumentGallery documents={detail?.data?.documents ?? []} />
+          )}
         </div>
 
         {/* Footer */}

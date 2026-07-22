@@ -13,6 +13,18 @@ export interface UserAdminItem {
   updatedAt: string
 }
 
+export type UserDocType = 'LEGAL' | 'COURT_IMAGE'
+
+export interface UserDocumentItem {
+  id: number
+  url: string
+  docType: UserDocType
+}
+
+export interface UserDetailItem extends UserAdminItem {
+  documents: UserDocumentItem[]
+}
+
 export interface CourtTypeData {
   id: number
   name: string
