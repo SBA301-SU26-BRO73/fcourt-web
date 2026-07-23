@@ -5,7 +5,7 @@ import { Ban, Calendar, CreditCard, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { useAuth } from '@/hooks/use-auth-context'
-import { cancelBooking, getMyBookings } from '@/services/booking/booking.api'
+import { cancelBooking, getMyBookings, getPaymentDetails } from '@/services/booking/booking.api'
 import { getApiErrorMessage } from '@/common/utils/api-error'
 import { StatusBadge } from '@/components/admin/StatusBadge'
 import { CheckinQrCard } from '@/components/booking/CheckinQrCard'
@@ -14,6 +14,11 @@ import {
   canCustomerCancelBooking,
 } from '@/components/booking/CancelBookingDialog'
 import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
+import {
+  calculateRefundAmount,
+  getCancelSuccessDescription,
+  isPaidCancellation,
+} from '@/pages/booking/cancel-booking.helpers'
 
 export function MyBookingsPage() {
   const navigate = useNavigate()
@@ -21,6 +26,9 @@ export function MyBookingsPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [cancelTarget, setCancelTarget] = useState<BookingResponse | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [refundAmount, setRefundAmount] = useState<number | null>(null)
+  const [refundPreviewLoading, setRefundPreviewLoading] = useState(false)
+  const [refundPreviewError, setRefundPreviewError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isLoggedIn) navigate('/auth/login', { replace: true })
@@ -42,10 +50,7 @@ export function MyBookingsPage() {
     try {
       await cancelBooking(cancelTarget.id, payload)
       toast.success('Đã hủy đặt sân', {
-        description:
-          cancelTarget.status === 'CONFIRMED'
-            ? 'Yêu cầu hoàn 80% đã được gửi cho admin xử lý.'
-            : 'Booking chưa thanh toán đã được hủy.',
+        description: getCancelSuccessDescription(cancelTarget),
       })
       setCancelTarget(null)
       await refetch()
@@ -53,6 +58,28 @@ export function MyBookingsPage() {
       toast.error(getApiErrorMessage(err, 'Không thể hủy booking'))
     } finally {
       setCancelling(false)
+    }
+  }
+
+  async function openCancelDialog(booking: BookingResponse) {
+    setCancelTarget(booking)
+    setRefundAmount(null)
+    setRefundPreviewError(null)
+
+    if (!isPaidCancellation(booking)) return
+    if (!booking.paymentId) {
+      setRefundPreviewError('Không tìm thấy mã thanh toán, số tiền hiển thị đang tạm tính theo giá booking.')
+      return
+    }
+
+    setRefundPreviewLoading(true)
+    try {
+      const payment = await getPaymentDetails(booking.paymentId)
+      setRefundAmount(calculateRefundAmount(payment.amount))
+    } catch {
+      setRefundPreviewError('Không tải được payment, số tiền hiển thị đang tạm tính theo giá booking.')
+    } finally {
+      setRefundPreviewLoading(false)
     }
   }
 
@@ -128,7 +155,7 @@ export function MyBookingsPage() {
                   {canCustomerCancelBooking(booking) && (
                     <button
                       type="button"
-                      onClick={() => setCancelTarget(booking)}
+                      onClick={() => openCancelDialog(booking)}
                       className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100"
                     >
                       <Ban size={16} />
@@ -145,6 +172,9 @@ export function MyBookingsPage() {
       <CancelBookingDialog
         booking={cancelTarget}
         open={!!cancelTarget}
+        refundAmount={refundAmount}
+        refundPreviewLoading={refundPreviewLoading}
+        refundPreviewError={refundPreviewError}
         submitting={cancelling}
         onClose={() => setCancelTarget(null)}
         onConfirm={handleCancel}
