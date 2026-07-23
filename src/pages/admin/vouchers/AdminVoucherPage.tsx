@@ -20,6 +20,7 @@ import { getBranches } from '@/services/branch/branch.api'
 import { getPayments } from '@/services/payment/payment.api'
 import type { Voucher } from '@/types/voucher'
 import VoucherFormModal from '@/components/admin/VoucherFormModal'
+import { getApiErrorMessage } from '@/common/utils/api-error'
 
 export default function AdminVoucherPage() {
   const queryClient = useQueryClient()
@@ -36,6 +37,7 @@ export default function AdminVoucherPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null)
 
@@ -68,7 +70,11 @@ export default function AdminVoucherPage() {
         setPage((curr) => curr - 1)
       }
       await queryClient.invalidateQueries({ queryKey: ['vouchers'] })
+      setDeleteError(null)
       triggerSuccessMessage('Xóa mã giảm giá thành công.')
+    },
+    onError: (error) => {
+      setDeleteError(getApiErrorMessage(error, 'Không thể xóa mã giảm giá.'))
     },
   })
 
@@ -205,6 +211,11 @@ export default function AdminVoucherPage() {
             className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800"
           >
             {successMessage}
+          </div>
+        )}
+        {deleteError && (
+          <div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+            {deleteError}
           </div>
         )}
 

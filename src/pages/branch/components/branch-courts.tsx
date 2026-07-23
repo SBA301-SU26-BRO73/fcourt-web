@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { branchApi, type CourtResponse, type DailySlotResponse } from "../../../services/branch/branch.api";
+import { getApiErrorMessage } from "@/common/utils/api-error";
 
 interface BranchCourtsProps {
   courts: CourtResponse[];
@@ -12,6 +13,7 @@ export default function BranchCourts({ courts, isLoading, branchId }: BranchCour
   const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState<string>("Tất cả");
   const [todaySchedules, setTodaySchedules] = useState<Record<number, DailySlotResponse[]>>({});
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   const handleViewAvailability = (courtId: number) => {
     navigate(`/slot-booking?branchId=${branchId}&courtId=${courtId}`);
@@ -24,10 +26,16 @@ export default function BranchCourts({ courts, isLoading, branchId }: BranchCour
 
     Promise.all(courts.map(async (court) => [court.id, await branchApi.getDailyCourtSchedule(court.id, date)] as const))
       .then((entries) => {
-        if (!cancelled) setTodaySchedules(Object.fromEntries(entries));
+        if (!cancelled) {
+          setTodaySchedules(Object.fromEntries(entries));
+          setScheduleError(null);
+        }
       })
-      .catch(() => {
-        if (!cancelled) setTodaySchedules({});
+      .catch((error) => {
+        if (!cancelled) {
+          setTodaySchedules({});
+          setScheduleError(getApiErrorMessage(error, "Không thể tải lịch sân."));
+        }
       });
 
     return () => {
@@ -80,6 +88,11 @@ export default function BranchCourts({ courts, isLoading, branchId }: BranchCour
           ))}
         </div>
       </div>
+      {scheduleError && (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {scheduleError}
+        </div>
+      )}
       
       <div className="space-y-stack-md">
         {filteredCourts.length === 0 ? (

@@ -135,6 +135,31 @@ export function MyBookingsPage() {
                 <StatusBadge status={group.status} />
               </button>
 
+              {needsPayment && (
+                <div className="mt-4 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Đơn chưa được thanh toán</p>
+                    <p className="mt-0.5 text-xs text-amber-700">
+                      Vui lòng hoàn tất thanh toán trước khi thời gian giữ sân kết thúc.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/payment?bookingId=${booking.id}`)}
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                  >
+                    <CreditCard size={16} />
+                    Tiếp tục thanh toán
+                  </button>
+                </div>
+              )}
+
+              {awaitingConfirmation && (
+                <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
+                  Bạn đã gửi thanh toán. Đơn đang chờ nhân viên xác nhận.
+                </div>
+              )}
+
               {expanded && (
                 <div className="mt-4 space-y-4 border-t border-slate-100 pt-4">
                   <div className="grid gap-3 text-sm sm:grid-cols-2">

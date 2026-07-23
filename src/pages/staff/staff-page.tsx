@@ -8,6 +8,7 @@ import { StaffFormModal } from './components/staff-form-modal'
 import { getStaffByBranch, deleteStaff } from '@/services/staff/staff.api'
 import { getBranches } from '@/services/branch/branch.api'
 import type { StaffResponse, UserStatus } from '@/types/staff'
+import { getApiErrorMessage } from '@/common/utils/api-error'
 
 type StatusFilter = 'all' | UserStatus
 
@@ -26,6 +27,7 @@ export function StaffPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingStaff, setEditingStaff] = useState<StaffResponse | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null)
 
   const PAGE_SIZE = 20
@@ -56,6 +58,11 @@ export function StaffPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff', branchId] })
       setDeletingId(null)
+      setDeleteError(null)
+    },
+    onError: (error) => {
+      setDeletingId(null)
+      setDeleteError(getApiErrorMessage(error, 'Không thể xoá nhân viên.'))
     },
   })
 
@@ -148,6 +155,12 @@ export function StaffPage() {
           </Button>
         </div>
       </div>
+
+      {deleteError && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+          {deleteError}
+        </div>
+      )}
 
       {/* Card */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

@@ -22,6 +22,7 @@ import type {
   PlanSalesRow,
   RevenuePoint,
 } from '@/services/super_admin/super-admin-dashboard.service'
+import { getApiErrorMessage } from '@/common/utils/api-error'
 
 type DetailModal = 'revenue' | 'branches' | 'courts' | 'subscriptions'
 
@@ -432,7 +433,7 @@ export function DashboardPage() {
   const loading = isLoading
   const fetching = isFetching
   const hasError = isError
-  const displayError = (error as Error)?.message
+  const displayError = getApiErrorMessage(error, 'Không thể tải bảng điều khiển.')
   const subscriptionTotal = (data?.activeSubscriptionCount ?? 0) + (data?.expiredSubscriptionCount ?? 0)
   const activeSubscriptions = useMemo(
     () => details?.subscriptions.filter((item) => item.status === 'ACTIVE') ?? [],
@@ -474,7 +475,7 @@ export function DashboardPage() {
       return (
         <DetailModalShell
           title="Không thể tải chi tiết"
-          subtitle={(detailsError as Error)?.message || 'Vui lòng thử lại sau.'}
+          subtitle={getApiErrorMessage(detailsError, 'Vui lòng thử lại sau.')}
           onClose={() => setActiveModal(null)}
         >
           <EmptyDetail label="Không thể tải dữ liệu chi tiết." />

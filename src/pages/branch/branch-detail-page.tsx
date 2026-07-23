@@ -7,6 +7,7 @@ import BranchInfo from "./components/branch-info";
 import BranchCourts from "./components/branch-courts";
 import BranchReviews from "./components/branch-reviews";
 import BookingPanel from "./components/booking-panel";
+import { getApiErrorMessage } from "@/common/utils/api-error";
 
 export default function BranchDetailPage() {
   const { id } = useParams<{ id: string }>(); 
@@ -14,6 +15,7 @@ export default function BranchDetailPage() {
   const [courts, setCourts] = useState<CourtResponse[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLoadingCourts, setIsLoadingCourts] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchBranchDetail = async () => {
@@ -21,13 +23,16 @@ export default function BranchDetailPage() {
       try {
         setIsLoading(true);
         setIsLoadingCourts(true);
+        setLoadError(null);
         const data = await branchApi.getById(id);
         setBranch(data);
         
         const courtsData = await branchApi.getCourtsByBranch(id);
         setCourts(courtsData);
       } catch (error) {
-        console.error("Lỗi khi tải chi tiết Branch:", error);
+        setBranch(null);
+        setCourts([]);
+        setLoadError(getApiErrorMessage(error, "Không thể tải thông tin cơ sở."));
       } finally {
         setIsLoading(false);
         setIsLoadingCourts(false);
@@ -47,7 +52,7 @@ export default function BranchDetailPage() {
   }
 
   if (!branch) {
-    return <div className="text-center py-24 text-headline-md">Không tìm thấy cơ sở này.</div>;
+    return <div role="alert" className="px-4 py-24 text-center text-headline-md text-red-700">{loadError ?? 'Không tìm thấy cơ sở này.'}</div>;
   }
 
   return (
