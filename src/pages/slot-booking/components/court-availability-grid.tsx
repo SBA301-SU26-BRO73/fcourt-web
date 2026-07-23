@@ -69,13 +69,7 @@ export default function CourtAvailabilityGrid({
 
   // Check if a slot is selected
   const isSelected = (courtId: number, timeStr: string) => {
-    const normalizedTime = normalizeTime(timeStr);
-    return selectedSlots.some(
-      (slot) =>
-        slot.courtId === courtId &&
-        normalizeTime(slot.startTime) === normalizedTime &&
-        slot.date === selectedDate,
-    );
+    return selectedSlots.some(s => s.courtId === courtId && s.startTime === timeStr && s.date === selectedDate);
   };
 
   return (
@@ -276,11 +270,6 @@ export default function CourtAvailabilityGrid({
       </div>
     </div>
   );
-}
-
-function normalizeTime(time: string) {
-  const [hour = '00', minute = '00'] = time.split(':');
-  return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:00`;
 }
 
 function getNext8Days() {

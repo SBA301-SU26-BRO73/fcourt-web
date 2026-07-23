@@ -92,10 +92,7 @@ export default function BookingPanel({ selectedSlots, venueName, onBook, require
           
           <button 
             disabled={isSubmitting}
-            onClick={() => {
-              if (isSubmitting) return;
-              onBook(requiresGuestPhone ? guestPhone : undefined);
-            }}
+            onClick={() => onBook(requiresGuestPhone ? guestPhone : undefined)}
             className="primary-gradient w-full shrink-0 cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all duration-200 hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6 sm:text-body-sm"
           >
             {isSubmitting ? 'Đang giữ khung giờ...' : 'Đặt khung giờ đã chọn'}
