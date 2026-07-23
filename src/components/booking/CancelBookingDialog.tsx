@@ -3,7 +3,6 @@ import { AlertTriangle, Ban, Loader2 } from 'lucide-react'
 
 import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
 import {
-  calculateRefundAmount,
   canCancelFromCustomerView,
   formatVnd,
   isPaidCancellation,
@@ -47,8 +46,8 @@ export function CancelBookingDialog({
   }, [open])
 
   const previewRefundAmount = useMemo(
-    () => providedRefundAmount ?? calculateRefundAmount(booking?.totalPrice ?? 0),
-    [booking?.totalPrice, providedRefundAmount],
+    () => providedRefundAmount ?? booking?.refundAmount ?? null,
+    [booking?.refundAmount, providedRefundAmount],
   )
 
   if (!open || !booking) return null
@@ -83,7 +82,14 @@ export function CancelBookingDialog({
             <>
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 Booking đã thanh toán. Sau khi hủy, sân được giải phóng ngay và admin sẽ hoàn{' '}
-                <strong>{refundPreviewLoading ? 'đang tính...' : formatVnd(previewRefundAmount)}</strong> qua chuyển khoản thủ công.
+                <strong>
+                  {refundPreviewLoading
+                    ? 'đang tính...'
+                    : previewRefundAmount == null
+                      ? 'chưa có dữ liệu'
+                      : formatVnd(previewRefundAmount)}
+                </strong>{' '}
+                qua chuyển khoản thủ công.
                 {refundPreviewError && (
                   <div className="mt-1 text-xs text-amber-700">{refundPreviewError}</div>
                 )}

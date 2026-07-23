@@ -70,6 +70,8 @@ export interface BookingResponse {
   date: string
   status: BookingStatus
   totalPrice: number
+  paymentAmount: number | null
+  refundAmount: number | null
   slots: BookingSlotResponse[]
   paymentId: number | null
   branchId: number

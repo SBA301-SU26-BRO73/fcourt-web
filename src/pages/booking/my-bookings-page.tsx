@@ -63,12 +63,14 @@ export function MyBookingsPage() {
 
   async function openCancelDialog(booking: BookingResponse) {
     setCancelTarget(booking)
-    setRefundAmount(null)
+    setRefundAmount(booking.refundAmount ?? null)
     setRefundPreviewError(null)
 
     if (!isPaidCancellation(booking)) return
     if (!booking.paymentId) {
-      setRefundPreviewError('Không tìm thấy mã thanh toán, số tiền hiển thị đang tạm tính theo giá booking.')
+      if (booking.refundAmount == null) {
+        setRefundPreviewError('Không tìm thấy dữ liệu thanh toán để tính số tiền hoàn.')
+      }
       return
     }
 
@@ -77,7 +79,9 @@ export function MyBookingsPage() {
       const payment = await getPaymentDetails(booking.paymentId)
       setRefundAmount(calculateRefundAmount(payment.amount))
     } catch {
-      setRefundPreviewError('Không tải được payment, số tiền hiển thị đang tạm tính theo giá booking.')
+      if (booking.refundAmount == null) {
+        setRefundPreviewError('Không tải được dữ liệu thanh toán để tính số tiền hoàn.')
+      }
     } finally {
       setRefundPreviewLoading(false)
     }
@@ -131,6 +135,9 @@ export function MyBookingsPage() {
                   </div>
                   <div className="mt-1 font-mono text-xs text-slate-400">
                     Mã đơn: {booking.bookingCode}
+                  </div>
+                  <div className="mt-1 text-xs font-medium text-emerald-700">
+                    {expanded ? 'Ẩn chi tiết' : 'Bấm để xem chi tiết'}
                   </div>
                 </div>
                 <StatusBadge status={booking.status} />

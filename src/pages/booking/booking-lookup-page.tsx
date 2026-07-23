@@ -68,12 +68,14 @@ export function BookingLookupPage() {
   async function openCancelDialog() {
     if (!booking) return
     setCancelOpen(true)
-    setRefundAmount(null)
+    setRefundAmount(booking.refundAmount ?? null)
     setRefundPreviewError(null)
 
     if (!isPaidCancellation(booking)) return
     if (!booking.paymentId) {
-      setRefundPreviewError('Không tìm thấy mã thanh toán, số tiền hiển thị đang tạm tính theo giá booking.')
+      if (booking.refundAmount == null) {
+        setRefundPreviewError('Không tìm thấy dữ liệu thanh toán để tính số tiền hoàn.')
+      }
       return
     }
 
@@ -82,7 +84,9 @@ export function BookingLookupPage() {
       const payment = await getPaymentDetails(booking.paymentId)
       setRefundAmount(calculateRefundAmount(payment.amount))
     } catch {
-      setRefundPreviewError('Không tải được payment, số tiền hiển thị đang tạm tính theo giá booking.')
+      if (booking.refundAmount == null) {
+        setRefundPreviewError('Không tải được dữ liệu thanh toán để tính số tiền hoàn.')
+      }
     } finally {
       setRefundPreviewLoading(false)
     }

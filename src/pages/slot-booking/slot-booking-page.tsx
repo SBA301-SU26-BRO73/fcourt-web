@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import CourtAvailabilityGrid from './components/court-availability-grid';
 import type { Court } from './components/court-availability-grid';
@@ -28,6 +28,7 @@ export default function SlotBookingPage() {
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [isBooking, setIsBooking] = useState<boolean>(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
+  const bookingInFlightRef = useRef(false);
   
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [courts, setCourts] = useState<Court[]>([]);
@@ -194,6 +195,8 @@ export default function SlotBookingPage() {
   };
 
   const handleBook = async (guestPhone?: string) => {
+    if (bookingInFlightRef.current) return;
+
     setBookingError(null);
     const trimmedPhone = guestPhone?.trim() ?? '';
     if (!isAuthenticatedCustomer && !/^[0-9]{9,11}$/.test(trimmedPhone)) {
@@ -202,6 +205,7 @@ export default function SlotBookingPage() {
     }
 
     try {
+      bookingInFlightRef.current = true;
       setIsBooking(true);
       const response = await createBookings({
         ...(isAuthenticatedCustomer ? {} : { guestPhone: trimmedPhone }),
@@ -212,6 +216,7 @@ export default function SlotBookingPage() {
       const message = error instanceof Error ? error.message : 'Không thể tạo booking.';
       setBookingError(message);
     } finally {
+      bookingInFlightRef.current = false;
       setIsBooking(false);
     }
   };
@@ -331,4 +336,3 @@ function buildBookingItems(selectedSlots: SelectedSlot[]) {
     }));
   });
 }
-
