@@ -169,30 +169,40 @@ export default function SlotBookingPage() {
   };
 
   const handleSlotClick = (court: Court, timeStr: string, price: number, endTimeStr: string) => {
+    const startTime = normalizeTime(timeStr);
+    const endTime = normalizeTime(endTimeStr);
 
-    const isAlreadySelected = selectedSlots.some(
-      (s) => s.courtId === court.id && s.startTime === timeStr && s.date === selectedDate
-    );
-
-    if (isAlreadySelected) {
-      setSelectedSlots(
-        selectedSlots.filter(
-          (s) => !(s.courtId === court.id && s.startTime === timeStr && s.date === selectedDate)
-        )
+    setSelectedSlots((current) => {
+      const isAlreadySelected = current.some(
+        (slot) =>
+          slot.courtId === court.id &&
+          normalizeTime(slot.startTime) === startTime &&
+          slot.date === selectedDate,
       );
-    } else {
-      setSelectedSlots([
-        ...selectedSlots,
+
+      if (isAlreadySelected) {
+        return current.filter(
+          (slot) =>
+            !(
+              slot.courtId === court.id &&
+              normalizeTime(slot.startTime) === startTime &&
+              slot.date === selectedDate
+            ),
+        );
+      }
+
+      return [
+        ...current,
         {
           courtId: court.id,
           courtName: court.name,
-          startTime: timeStr,
-          endTime: endTimeStr,
+          startTime,
+          endTime,
           price,
           date: selectedDate,
         },
-      ]);
-    }
+      ];
+    });
   };
 
   const handleBook = async (guestPhone?: string) => {
@@ -318,11 +328,12 @@ function buildBookingItems(selectedSlots: SelectedSlot[]) {
 
   return Array.from(grouped.values()).map((slots) => {
     const ordered = [...slots].sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
+    const slotStarts = Array.from(new Set(ordered.map((slot) => normalizeTime(slot.startTime))));
 
     return {
       courtId: ordered[0].courtId,
       date: ordered[0].date,
-      slotStarts: ordered.map((slot) => normalizeTime(slot.startTime)),
+      slotStarts,
     };
   });
 }
