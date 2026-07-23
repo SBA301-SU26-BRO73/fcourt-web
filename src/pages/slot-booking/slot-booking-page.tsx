@@ -316,23 +316,13 @@ function buildBookingItems(selectedSlots: SelectedSlot[]) {
     grouped.set(key, [...(grouped.get(key) ?? []), slot]);
   });
 
-  return Array.from(grouped.values()).flatMap((slots) => {
+  return Array.from(grouped.values()).map((slots) => {
     const ordered = [...slots].sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
-    const runs: SelectedSlot[][] = [];
-    ordered.forEach((slot) => {
-      const lastRun = runs[runs.length - 1];
-      const previous = lastRun?.[lastRun.length - 1];
-      if (!previous || normalizeTime(previous.endTime) !== normalizeTime(slot.startTime)) {
-        runs.push([slot]);
-      } else {
-        lastRun.push(slot);
-      }
-    });
 
-    return runs.map((run) => ({
-      courtId: run[0].courtId,
-      date: run[0].date,
-      slotStarts: run.map((slot) => normalizeTime(slot.startTime)),
-    }));
+    return {
+      courtId: ordered[0].courtId,
+      date: ordered[0].date,
+      slotStarts: ordered.map((slot) => normalizeTime(slot.startTime)),
+    };
   });
 }
