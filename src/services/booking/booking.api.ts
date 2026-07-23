@@ -4,6 +4,7 @@ import type { ApiResponse } from '@/types/auth'
 import type { SpringPage } from '@/types/court'
 import type {
   BookingResponse,
+  CancelBookingRequest,
   CreateBookingsRequest,
   CreateBookingsResponse,
   PaymentResponse,
@@ -64,6 +65,14 @@ export async function getBookingDetails(bookingId: number) {
   return requireData(data)
 }
 
+export async function cancelBooking(bookingId: number, payload: CancelBookingRequest) {
+  const { data } = await axiosClient.post<ApiResponse<BookingResponse>>(
+    API_ENDPOINTS.bookings.cancel(bookingId),
+    payload,
+  )
+  return requireData(data)
+}
+
 /** Booking history for the logged-in member. */
 export async function getMyBookings(page = 0, size = 20) {
   const { data } = await axiosClient.get<ApiResponse<SpringPage<BookingResponse>>>(
@@ -81,5 +90,4 @@ export async function lookupBooking(bookingCode: string, phone: string) {
   )
   return requireData(data)
 }
-
 

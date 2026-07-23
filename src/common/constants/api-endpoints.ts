@@ -14,6 +14,7 @@ export const API_PREFIXES = {
   vouchers: '/vouchers',
   bookings: '/bookings',
   payments: '/payments',
+  refundRequests: '/refund-requests',
   superAdminDashboard: '/super-admin/dashboard',
   subscriptions: '/subscriptions',
   adminDashboard: '/admin/dashboard',
@@ -112,10 +113,15 @@ export const API_ENDPOINTS = {
     my: joinEndpoint(API_PREFIXES.bookings, 'my'),
     lookup: joinEndpoint(API_PREFIXES.bookings, 'lookup'),
     revenue: joinEndpoint(API_PREFIXES.bookings, 'revenue'),
+    cancel: (id: string | number) => joinEndpoint(API_PREFIXES.bookings, id, 'cancel'),
   },
   payments: {
     list: joinEndpoint(API_PREFIXES.payments),
     detail: (id: string | number) => joinEndpoint(API_PREFIXES.payments, id),
+  },
+  refundRequests: {
+    list: joinEndpoint(API_PREFIXES.refundRequests),
+    confirm: (id: string | number) => joinEndpoint(API_PREFIXES.refundRequests, id, 'confirm'),
   },
   subscriptions: {
     plans: joinEndpoint(API_PREFIXES.subscriptions, 'plans'),

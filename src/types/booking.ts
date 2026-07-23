@@ -83,6 +83,14 @@ export interface BookingResponse {
   updatedAt: string
 }
 
+export interface CancelBookingRequest {
+  guestPhone?: string
+  reason?: string
+  refundBankName?: string
+  refundBankAccountNumber?: string
+  refundBankAccountName?: string
+}
+
 export interface CreateBookingsRequest {
   guestPhone?: string
   bookings: Array<{
@@ -131,4 +139,27 @@ export interface PaymentResponse {
   updatedAt: string
 }
 
+export type RefundRequestStatus = 'PENDING' | 'CONFIRMED'
+
+export interface RefundRequestResponse {
+  id: number
+  bookingId: number
+  bookingCode: string
+  paymentId: number | null
+  branchId: number
+  branchName: string
+  customerId: number | null
+  customerEmail: string | null
+  guestPhone: string | null
+  amount: number
+  reason: string
+  refundBankName: string
+  refundBankAccountNumber: string
+  refundBankAccountName: string
+  status: RefundRequestStatus
+  confirmedAt: string | null
+  confirmedById: number | null
+  createdAt: string
+  updatedAt: string
+}
 
