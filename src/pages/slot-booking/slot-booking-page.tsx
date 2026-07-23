@@ -9,6 +9,7 @@ import type { DailySlotResponse } from '@/services/branch/branch.api';
 import { createBookings } from '@/services/booking/booking.api';
 import { useAuth } from '@/hooks/use-auth-context';
 import { formatLocalDate } from '@/common/utils/local-date';
+import { getApiErrorMessage } from '@/common/utils/api-error';
 
 export default function SlotBookingPage() {
   const navigate = useNavigate();
@@ -213,8 +214,7 @@ export default function SlotBookingPage() {
       });
       navigate(`/payment?bookingId=${response.bookings[0].id}`, { state: { booking: response } });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Không thể tạo booking.';
-      setBookingError(message);
+      setBookingError(getApiErrorMessage(error, 'Không thể tạo booking.'));
     } finally {
       bookingInFlightRef.current = false;
       setIsBooking(false);
