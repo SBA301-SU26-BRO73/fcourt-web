@@ -74,6 +74,7 @@ export const bookingService = {
             params: {
                 page,
                 size,
+                sort: ['createdAt,desc', 'id,desc'],
             },
         })
 
