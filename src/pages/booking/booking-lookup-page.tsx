@@ -13,6 +13,7 @@ import {
 import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
 import {
   getCancelSuccessDescription,
+  hasConfirmedRefund,
   hasPendingRefund,
   isPaidCancellation,
 } from '@/pages/booking/cancel-booking.helpers'
@@ -138,7 +139,9 @@ export function BookingLookupPage() {
             </div>
             <StatusBadge status={booking.status} />
           </div>
-          {hasPendingRefund(booking) ? (
+          {hasConfirmedRefund(booking) ? (
+            <RefundCompletedNotice booking={booking} />
+          ) : hasPendingRefund(booking) ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               Booking đã được hủy và đang chờ admin chuyển khoản hoàn tiền
               {booking.refundAmount != null ? ` ${formatCurrency(booking.refundAmount)}` : ''}, sau đó xác nhận hoàn tất.
@@ -170,6 +173,33 @@ export function BookingLookupPage() {
         onClose={() => setCancelOpen(false)}
         onConfirm={handleCancel}
       />
+    </div>
+  )
+}
+
+function RefundCompletedNotice({ booking }: { booking: BookingResponse }) {
+  return (
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+      <div className="font-semibold">
+        Admin đã hoàn tiền chuyển khoản
+        {booking.refundAmount != null ? ` ${formatCurrency(booking.refundAmount)}` : ''}.
+      </div>
+      {booking.refundProofImageUrl ? (
+        <a
+          href={booking.refundProofImageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 block overflow-hidden rounded-lg border border-emerald-200 bg-white"
+        >
+          <img
+            src={booking.refundProofImageUrl}
+            alt="Chứng từ hoàn tiền"
+            className="max-h-72 w-full object-contain"
+          />
+        </a>
+      ) : (
+        <div className="mt-2 text-xs text-emerald-700">Chưa có ảnh chứng từ hoàn tiền.</div>
+      )}
     </div>
   )
 }

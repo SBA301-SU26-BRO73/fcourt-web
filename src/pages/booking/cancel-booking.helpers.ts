@@ -19,6 +19,10 @@ export function hasPendingRefund(booking: BookingResponse | null) {
   return booking?.status === 'CANCELLED' && booking.refundStatus === 'PENDING'
 }
 
+export function hasConfirmedRefund(booking: BookingResponse | null) {
+  return booking?.status === 'CANCELLED' && booking.refundStatus === 'CONFIRMED'
+}
+
 export function calculateRefundAmount(amount: number) {
   return Math.round(amount * refundRate)
 }
