@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import CourtAvailabilityGrid from './components/court-availability-grid';
 import type { Court } from './components/court-availability-grid';
@@ -29,6 +29,7 @@ export default function SlotBookingPage() {
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [isBooking, setIsBooking] = useState<boolean>(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
+  const bookingInFlightRef = useRef(false);
   
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [courts, setCourts] = useState<Court[]>([]);
@@ -169,35 +170,45 @@ export default function SlotBookingPage() {
   };
 
   const handleSlotClick = (court: Court, timeStr: string, price: number, endTimeStr: string) => {
-    const displayStartTime = toDisplayTime(timeStr);
-    const displayEndTime = toDisplayTime(endTimeStr);
+    const startTime = normalizeTime(timeStr);
+    const endTime = normalizeTime(endTimeStr);
 
-    const isAlreadySelected = selectedSlots.some(
-      (s) => s.courtId === court.id && s.startTime === displayStartTime && s.date === selectedDate
-    );
-
-    if (isAlreadySelected) {
-      setSelectedSlots(
-        selectedSlots.filter(
-          (s) => !(s.courtId === court.id && s.startTime === displayStartTime && s.date === selectedDate)
-        )
+    setSelectedSlots((current) => {
+      const isAlreadySelected = current.some(
+        (slot) =>
+          slot.courtId === court.id &&
+          normalizeTime(slot.startTime) === startTime &&
+          slot.date === selectedDate,
       );
-    } else {
-      setSelectedSlots([
-        ...selectedSlots,
+
+      if (isAlreadySelected) {
+        return current.filter(
+          (slot) =>
+            !(
+              slot.courtId === court.id &&
+              normalizeTime(slot.startTime) === startTime &&
+              slot.date === selectedDate
+            ),
+        );
+      }
+
+      return [
+        ...current,
         {
           courtId: court.id,
           courtName: court.name,
-          startTime: displayStartTime,
-          endTime: displayEndTime,
+          startTime,
+          endTime,
           price,
           date: selectedDate,
         },
-      ]);
-    }
+      ];
+    });
   };
 
   const handleBook = async (guestPhone?: string) => {
+    if (bookingInFlightRef.current) return;
+
     setBookingError(null);
     const trimmedPhone = guestPhone?.trim() ?? '';
     if (!isAuthenticatedCustomer && !/^[0-9]{9,11}$/.test(trimmedPhone)) {
@@ -206,6 +217,7 @@ export default function SlotBookingPage() {
     }
 
     try {
+      bookingInFlightRef.current = true;
       setIsBooking(true);
       const response = await createBookings({
         ...(isAuthenticatedCustomer ? {} : { guestPhone: trimmedPhone }),
@@ -215,6 +227,7 @@ export default function SlotBookingPage() {
     } catch (error) {
       setBookingError(getApiErrorMessage(error, 'Không thể tạo booking.'));
     } finally {
+      bookingInFlightRef.current = false;
       setIsBooking(false);
     }
   };
@@ -319,23 +332,14 @@ function buildBookingItems(selectedSlots: SelectedSlot[]) {
     grouped.set(key, [...(grouped.get(key) ?? []), slot]);
   });
 
-  return Array.from(grouped.values()).flatMap((slots) => {
+  return Array.from(grouped.values()).map((slots) => {
     const ordered = [...slots].sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
-    const runs: SelectedSlot[][] = [];
-    ordered.forEach((slot) => {
-      const lastRun = runs[runs.length - 1];
-      const previous = lastRun?.[lastRun.length - 1];
-      if (!previous || normalizeTime(previous.endTime) !== normalizeTime(slot.startTime)) {
-        runs.push([slot]);
-      } else {
-        lastRun.push(slot);
-      }
-    });
+    const slotStarts = Array.from(new Set(ordered.map((slot) => normalizeTime(slot.startTime))));
 
-    return runs.map((run) => ({
-      courtId: run[0].courtId,
-      date: run[0].date,
-      slotStarts: run.map((slot) => normalizeTime(slot.startTime)),
-    }));
+    return {
+      courtId: ordered[0].courtId,
+      date: ordered[0].date,
+      slotStarts,
+    };
   });
 }

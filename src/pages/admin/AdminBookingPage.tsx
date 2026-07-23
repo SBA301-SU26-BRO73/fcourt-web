@@ -9,8 +9,10 @@ import {
   ChevronRight,
   SlidersHorizontal,
   InboxIcon,
+  HandCoins,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   bookingService,
@@ -22,8 +24,9 @@ import { BookingDetailModal } from '../../components/admin/BookingDetailModal';
 import { ConfirmModal } from '../../components/admin/ConfirmModal';
 import { getApiErrorMessage } from '@/common/utils/api-error';
 
-type TabFilter = 'all' | 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+type TabFilter = 'all' | 'PENDING' | 'CONFIRMED' | 'REFUND' | 'CANCELLED';
 type ConfirmAction = 'approve' | 'reject' | 'reject_payment';
+type BookingRowItem = Booking & { groupItems?: Booking[] };
 
 const PAGE_SIZE = 5;
 
@@ -68,20 +71,28 @@ export function AdminBookingPage() {
   }, [fetchBookings]);
 
   // Filtered & searched bookings
-  const filtered = bookings.filter((b) => {
+  const groupedBookings = groupBookingsByPayment(bookings);
+  const filtered = groupedBookings.filter((b) => {
     const status = getBookingStatus(b);
     const matchTab =
       tab === 'all' ||
       (tab === 'PENDING' && isReviewableStatus(status)) ||
       (tab === 'CONFIRMED' && status === 'CONFIRMED') ||
+      (tab === 'REFUND' && isPendingRefund(b)) ||
       (tab === 'CANCELLED' && status === 'CANCELLED');
     const q = search.toLowerCase();
     const matchSearch =
         !q ||
         String(b.id).includes(q) ||
+        String(b.paymentId ?? '').includes(q) ||
         b.customerEmail?.toLowerCase().includes(q) ||
         b.guestPhone?.toLowerCase().includes(q) ||
-        b.courtName?.toLowerCase().includes(q);
+        b.courtName?.toLowerCase().includes(q) ||
+        b.groupItems?.some((item) =>
+          item.courtName?.toLowerCase().includes(q) ||
+          item.guestPhone?.toLowerCase().includes(q) ||
+          item.customerEmail?.toLowerCase().includes(q)
+        );
 
     return matchTab && matchSearch;
   });
@@ -92,10 +103,11 @@ export function AdminBookingPage() {
 
   // Stat counts
   const stats = {
-    pending: bookings.filter((b) => isReviewableStatus(getBookingStatus(b))).length,
-    approved: bookings.filter((b) => getBookingStatus(b) === 'CONFIRMED').length,
-    rejected: bookings.filter((b) => getBookingStatus(b) === 'CANCELLED').length,
-    total: bookings.length,
+    pending: groupedBookings.filter((b) => isReviewableStatus(getBookingStatus(b))).length,
+    approved: groupedBookings.filter((b) => getBookingStatus(b) === 'CONFIRMED').length,
+    refundPending: groupedBookings.filter(isPendingRefund).length,
+    rejected: groupedBookings.filter((b) => getBookingStatus(b) === 'CANCELLED').length,
+    total: groupedBookings.length,
   };
 
   const handleRefresh = async () => {
@@ -211,6 +223,7 @@ export function AdminBookingPage() {
     { key: 'all', label: 'Tất cả', count: stats.total },
     { key: 'PENDING', label: 'Chờ duyệt', count: stats.pending },
     { key: 'CONFIRMED', label: 'Đã xác nhận', count: stats.approved },
+    { key: 'REFUND', label: 'Chờ hoàn', count: stats.refundPending },
     { key: 'CANCELLED', label: 'Đã hủy', count: stats.rejected },
   ];
 
@@ -259,12 +272,34 @@ export function AdminBookingPage() {
               color="bg-emerald-50 border-emerald-200 text-emerald-600"
             />
             <StatCard
+              label="Chờ hoàn tiền"
+              value={stats.refundPending}
+              icon={<HandCoins className="w-5 h-5" />}
+              color="bg-amber-50 border-amber-200 text-amber-600"
+              urgent={stats.refundPending > 0}
+            />
+            <StatCard
               label="Đã hủy"
               value={stats.rejected}
               icon={<XCircle className="w-5 h-5" />}
               color="bg-red-50 border-red-200 text-red-500"
             />
           </div>
+
+          {stats.refundPending > 0 && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+              <div className="font-semibold">
+                Có {stats.refundPending} booking đã hủy đang chờ admin chuyển khoản hoàn tiền.
+              </div>
+              <Link
+                to="/admin/refund-requests"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700"
+              >
+                <HandCoins className="h-4 w-4" />
+                Xử lý hoàn tiền
+              </Link>
+            </div>
+          )}
 
           {/* Table card */}
           <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
@@ -474,11 +509,12 @@ function BookingRow({
   booking,
   onView,
 }: {
-  booking: Booking;
+  booking: BookingRowItem;
   onView: () => void;
 }) {
   const status = getBookingStatus(booking);
   const canReview = isReviewableStatus(status);
+  const groupCount = booking.groupItems?.length ?? 1;
 
   return (
     <tr className="hover:bg-muted/30 transition-colors">
@@ -486,6 +522,11 @@ function BookingRow({
         <code className="text-xs font-mono bg-muted px-2 py-1 rounded">
           {getBookingCode(booking)}
         </code>
+        {groupCount > 1 && (
+          <div className="mt-1 text-[11px] font-medium text-muted-foreground">
+            {groupCount} booking
+          </div>
+        )}
       </td>
 
       <td className="px-5 py-4">
@@ -502,7 +543,7 @@ function BookingRow({
           {booking.courtName}
         </div>
         <div className="text-xs text-muted-foreground">
-          Court ID: {booking.courtId}
+          {groupCount > 1 ? 'Nhiều sân/khung giờ' : `Court ID: ${booking.courtId}`}
         </div>
       </td>
 
@@ -519,6 +560,12 @@ function BookingRow({
 
       <td className="px-5 py-4">
         <StatusBadge status={status} />
+        {isPendingRefund(booking) && (
+          <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+            <HandCoins className="h-3 w-3" />
+            Chờ hoàn tiền
+          </div>
+        )}
       </td>
 
       <td className="px-5 py-4">
@@ -530,15 +577,15 @@ function BookingRow({
       <td className="px-5 py-4">
         <button
           onClick={onView}
-          style={canReview ? { backgroundColor: '#006d38' } : undefined}
+          style={canReview || isPendingRefund(booking) ? { backgroundColor: '#006d38' } : undefined}
           className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-            canReview
+            canReview || isPendingRefund(booking)
               ? 'text-white shadow-sm hover:opacity-90 active:scale-95'
               : 'border border-border text-foreground hover:bg-muted'
           }`}
-          aria-label={`${canReview ? 'Xử lý' : 'Xem'} ${getBookingCode(booking)}`}
+          aria-label={`${canReview || isPendingRefund(booking) ? 'Xử lý' : 'Xem'} ${getBookingCode(booking)}`}
         >
-          {canReview ? 'Xử lý' : 'Xem'}
+          {canReview || isPendingRefund(booking) ? 'Xử lý' : 'Xem'}
         </button>
       </td>
     </tr>
@@ -551,6 +598,10 @@ function getBookingStatus(booking: Booking): BookingStatus {
 
 function isReviewableStatus(status: BookingStatus) {
   return status === 'PENDING_PAYMENT' || status === 'AWAITING_CONFIRMATION';
+}
+
+function isPendingRefund(booking: Booking) {
+  return getBookingStatus(booking) === 'CANCELLED' && booking.refundStatus === 'PENDING';
 }
 
 function normalizeBookingStatus(
@@ -568,7 +619,14 @@ function normalizeBookingStatus(
 }
 
 function getBookingCode(booking: Booking) {
-  return `BK-${booking.id}`;
+  return booking.paymentId ? `PAY-${booking.paymentId}` : `BK-${booking.id}`;
+}
+
+function groupBookingsByPayment(items: Booking[]): BookingRowItem[] {
+  return items.map((booking) => ({
+    ...booking,
+    groupItems: [booking],
+  }));
 }
 
 const statusOrder: Record<BookingStatus, number> = {

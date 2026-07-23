@@ -8,6 +8,7 @@ import {
   Mail,
   CheckCircle2,
   XCircle,
+  HandCoins,
 } from 'lucide-react';
 import type { Booking, BookingStatus } from '@/services/admin/booking.service';
 import { StatusBadge } from './StatusBadge';
@@ -111,16 +112,24 @@ export function BookingDetailModal({
                       <div className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0">
                         <Clock className="w-4 h-4" />
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <div className="text-xs text-muted-foreground">Khung giờ đặt</div>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        <div className="mt-1.5 overflow-hidden rounded-xl border border-border">
                           {booking.slots.map((slot) => {
                             const start = slot.slotStart.slice(0, 5);
                             const end = slot.slotEnd.slice(0, 5);
                             return (
-                              <span key={slot.id} className="inline-flex items-center px-2 py-0.5 rounded bg-muted text-xs font-mono font-medium border border-border text-foreground">
-                                {start} - {end}
-                              </span>
+                              <div
+                                key={`${slot.courtId}-${slot.bookingDate}-${slot.slotStart}`}
+                                className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 last:border-b-0"
+                              >
+                                <span className="font-mono text-xs font-medium text-foreground">
+                                  {start} - {end}
+                                </span>
+                                <span className="text-xs font-semibold text-foreground">
+                                  {formatAmount(slot.priceAtBooking)}
+                                </span>
+                              </div>
                             );
                           })}
                         </div>
@@ -139,7 +148,7 @@ export function BookingDetailModal({
                 </h4>
                 <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex justify-between items-center">
                   <span className="text-sm font-medium text-foreground">
-                    Tổng thanh toán
+                    Tổng tiền khách cần thanh toán
                   </span>
                   <span className="text-xl font-bold text-primary">
                     {formatAmount(booking.totalPrice)}
@@ -149,6 +158,49 @@ export function BookingDetailModal({
                   Cập nhật lần cuối {formatDateTime(booking.updatedAt)}
                 </div>
               </section>
+
+              {booking.refundStatus && (
+                <>
+                  <div className="border-t border-border" />
+
+                  <section>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                      Yêu cầu hủy & hoàn tiền
+                    </h4>
+                    <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="inline-flex items-center gap-2 font-bold">
+                          <HandCoins className="h-4 w-4" />
+                          {booking.refundStatus === 'PENDING'
+                            ? 'Đang chờ admin hoàn tiền'
+                            : 'Đã xác nhận hoàn tiền'}
+                        </span>
+                        {booking.refundAmount != null && (
+                          <span className="font-bold">{formatAmount(booking.refundAmount)}</span>
+                        )}
+                      </div>
+                      <InfoRow icon={<XCircle className="w-4 h-4" />} label="Lý do khách gửi" value={booking.refundReason || 'Chưa có'} />
+                      <InfoRow icon={<HandCoins className="w-4 h-4" />} label="Ngân hàng nhận hoàn" value={booking.refundBankName || 'Chưa có'} />
+                      <InfoRow icon={<HandCoins className="w-4 h-4" />} label="Số tài khoản" value={booking.refundBankAccountNumber || 'Chưa có'} />
+                      <InfoRow icon={<User className="w-4 h-4" />} label="Tên chủ tài khoản" value={booking.refundBankAccountName || 'Chưa có'} />
+                      {booking.refundProofImageUrl && (
+                        <a
+                          href={booking.refundProofImageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block overflow-hidden rounded-xl border border-amber-200 bg-white"
+                        >
+                          <img
+                            src={booking.refundProofImageUrl}
+                            alt="Chứng từ hoàn tiền"
+                            className="max-h-72 w-full object-contain"
+                          />
+                        </a>
+                      )}
+                    </div>
+                  </section>
+                </>
+              )}
             </div>
 
             <div className="p-8 flex flex-col">

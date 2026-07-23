@@ -70,7 +70,17 @@ export interface BookingResponse {
   date: string
   status: BookingStatus
   totalPrice: number
+  paymentAmount: number | null
+  refundAmount: number | null
+  refundRequestId: number | null
+  refundStatus: RefundRequestStatus | null
+  refundReason: string | null
+  refundBankName: string | null
+  refundBankAccountNumber: string | null
+  refundBankAccountName: string | null
+  refundProofImageUrl: string | null
   slots: BookingSlotResponse[]
+  paymentId: number | null
   branchId: number
   branchName: string
   branchAddress: string
@@ -81,6 +91,14 @@ export interface BookingResponse {
   expiredAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+export interface CancelBookingRequest {
+  guestPhone?: string
+  reason?: string
+  refundBankName?: string
+  refundBankAccountNumber?: string
+  refundBankAccountName?: string
 }
 
 export interface CreateBookingsRequest {
@@ -131,4 +149,27 @@ export interface PaymentResponse {
   updatedAt: string
 }
 
+export type RefundRequestStatus = 'PENDING' | 'CONFIRMED'
 
+export interface RefundRequestResponse {
+  id: number
+  bookingId: number
+  bookingCode: string
+  paymentId: number | null
+  branchId: number
+  branchName: string
+  customerId: number | null
+  customerEmail: string | null
+  guestPhone: string | null
+  amount: number
+  reason: string
+  refundBankName: string
+  refundBankAccountNumber: string
+  refundBankAccountName: string
+  refundProofImageUrl: string | null
+  status: RefundRequestStatus
+  confirmedAt: string | null
+  confirmedById: number | null
+  createdAt: string
+  updatedAt: string
+}
