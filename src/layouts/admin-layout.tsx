@@ -13,6 +13,7 @@ import {
   LogOut,
   ShieldCheck,
   Package,
+  HandCoins,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth-context'
@@ -21,6 +22,7 @@ import { tokenStorage } from '@/utils/token'
 const NAV_ITEMS = [
   { id: 'dashboard', to: '/admin/dashboard', icon: Home, label: 'Tổng quan' },
   { id: 'bookings', to: '/admin/bookings', icon: Calendar, label: 'Đặt sân' },
+  { id: 'refund-requests', to: '/admin/refund-requests', icon: HandCoins, label: 'Hoàn tiền' },
   { id: 'courts', to: '/admin/courts', icon: Layout, label: 'Danh sách sân' },
   { id: 'products', to: '/admin/products', icon: Package, label: 'Sản phẩm' },
   { id: 'staff', to: '/admin/staff', icon: Users, label: 'Nhân viên' },
@@ -36,6 +38,7 @@ const NAV_SYSTEM = [
 const PAGE_TITLES: Record<string, string> = {
   '/admin/dashboard': 'Tổng quan hệ thống',
   '/admin/bookings': 'Duyệt thanh toán & Đặt sân',
+  '/admin/refund-requests': 'Yêu cầu hoàn tiền',
   '/admin/courts': 'Quản lý sân thể thao',
   '/admin/products': 'Quản lý sản phẩm POS',
   '/admin/staff': 'Quản lý tài khoản nhân viên',
