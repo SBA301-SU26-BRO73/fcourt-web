@@ -1,25 +1,32 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Calendar, CreditCard, MapPin } from 'lucide-react'
+import { Ban, Calendar, CreditCard, MapPin } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { useAuth } from '@/hooks/use-auth-context'
-import { getMyBookings } from '@/services/booking/booking.api'
+import { cancelBooking, getMyBookings } from '@/services/booking/booking.api'
 import { getApiErrorMessage } from '@/common/utils/api-error'
 import { StatusBadge } from '@/components/admin/StatusBadge'
 import { CheckinQrCard } from '@/components/booking/CheckinQrCard'
-import type { BookingResponse } from '@/types/booking'
+import {
+  CancelBookingDialog,
+  canCustomerCancelBooking,
+} from '@/components/booking/CancelBookingDialog'
+import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
 
 export function MyBookingsPage() {
   const navigate = useNavigate()
   const { isLoggedIn } = useAuth()
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<BookingResponse | null>(null)
+  const [cancelling, setCancelling] = useState(false)
 
   useEffect(() => {
     if (!isLoggedIn) navigate('/auth/login', { replace: true })
   }, [isLoggedIn, navigate])
 
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['my-bookings'],
     queryFn: () => getMyBookings(0, 50),
     enabled: isLoggedIn,
@@ -28,6 +35,26 @@ export function MyBookingsPage() {
   if (!isLoggedIn) return null
 
   const bookings = data?.content ?? []
+
+  async function handleCancel(payload: CancelBookingRequest) {
+    if (!cancelTarget) return
+    setCancelling(true)
+    try {
+      await cancelBooking(cancelTarget.id, payload)
+      toast.success('Đã hủy đặt sân', {
+        description:
+          cancelTarget.status === 'CONFIRMED'
+            ? 'Yêu cầu hoàn 80% đã được gửi cho admin xử lý.'
+            : 'Booking chưa thanh toán đã được hủy.',
+      })
+      setCancelTarget(null)
+      await refetch()
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Không thể hủy booking'))
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10 pb-24">
@@ -98,12 +125,30 @@ export function MyBookingsPage() {
                       Tiếp tục thanh toán
                     </button>
                   )}
+                  {canCustomerCancelBooking(booking) && (
+                    <button
+                      type="button"
+                      onClick={() => setCancelTarget(booking)}
+                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100"
+                    >
+                      <Ban size={16} />
+                      Hủy đặt sân
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           )
         })}
       </div>
+
+      <CancelBookingDialog
+        booking={cancelTarget}
+        open={!!cancelTarget}
+        submitting={cancelling}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleCancel}
+      />
     </div>
   )
 }

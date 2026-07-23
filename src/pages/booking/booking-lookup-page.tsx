@@ -1,11 +1,16 @@
 import { useState, type FormEvent } from 'react'
-import { Search, Calendar, MapPin } from 'lucide-react'
+import { Ban, Search, Calendar, MapPin } from 'lucide-react'
+import { toast } from 'sonner'
 
-import { lookupBooking } from '@/services/booking/booking.api'
+import { cancelBooking, lookupBooking } from '@/services/booking/booking.api'
 import { getApiErrorMessage } from '@/common/utils/api-error'
 import { StatusBadge } from '@/components/admin/StatusBadge'
 import { CheckinQrCard } from '@/components/booking/CheckinQrCard'
-import type { BookingResponse } from '@/types/booking'
+import {
+  CancelBookingDialog,
+  canCustomerCancelBooking,
+} from '@/components/booking/CancelBookingDialog'
+import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
 
 /** Public guest lookup — no login required, just the booking code + phone. */
 export function BookingLookupPage() {
@@ -14,6 +19,8 @@ export function BookingLookupPage() {
   const [booking, setBooking] = useState<BookingResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -27,6 +34,29 @@ export function BookingLookupPage() {
       setError(getApiErrorMessage(err, 'Không tìm thấy đơn đặt sân. Kiểm tra lại mã đơn và số điện thoại.'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleCancel(payload: CancelBookingRequest) {
+    if (!booking) return
+    setCancelling(true)
+    try {
+      const updated = await cancelBooking(booking.id, {
+        ...payload,
+        guestPhone: phone.trim(),
+      })
+      setBooking(updated)
+      setCancelOpen(false)
+      toast.success('Đã hủy đặt sân', {
+        description:
+          booking.status === 'CONFIRMED'
+            ? 'Yêu cầu hoàn 80% đã được gửi cho admin xử lý.'
+            : 'Booking chưa thanh toán đã được hủy.',
+      })
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Không thể hủy booking'))
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -91,8 +121,27 @@ export function BookingLookupPage() {
             <StatusBadge status={booking.status} />
           </div>
           <CheckinQrCard checkinCode={booking.checkinCode} bookingCode={booking.bookingCode} />
+          {canCustomerCancelBooking(booking) && (
+            <button
+              type="button"
+              onClick={() => setCancelOpen(true)}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100"
+            >
+              <Ban size={16} />
+              Hủy đặt sân
+            </button>
+          )}
         </div>
       )}
+
+      <CancelBookingDialog
+        booking={booking}
+        open={cancelOpen}
+        guestPhone={phone.trim()}
+        submitting={cancelling}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={handleCancel}
+      />
     </div>
   )
 }
