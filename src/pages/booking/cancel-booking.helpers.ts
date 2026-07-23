@@ -3,15 +3,20 @@ import type { BookingResponse } from '@/types/booking'
 export const refundRate = 0.8
 
 export function isPaidCancellation(booking: BookingResponse | null) {
-  return booking?.status === 'CONFIRMED'
+  return booking?.status === 'AWAITING_CONFIRMATION' || booking?.status === 'CONFIRMED'
 }
 
 export function canCancelFromCustomerView(booking: BookingResponse | null) {
   return (
-    booking?.status === 'PENDING_PAYMENT' ||
-    booking?.status === 'AWAITING_CONFIRMATION' ||
-    booking?.status === 'CONFIRMED'
+    booking?.refundStatus !== 'PENDING' &&
+    (booking?.status === 'PENDING_PAYMENT' ||
+      booking?.status === 'AWAITING_CONFIRMATION' ||
+      booking?.status === 'CONFIRMED')
   )
+}
+
+export function hasPendingRefund(booking: BookingResponse | null) {
+  return booking?.status === 'CANCELLED' && booking.refundStatus === 'PENDING'
 }
 
 export function calculateRefundAmount(amount: number) {
@@ -26,11 +31,8 @@ export function formatVnd(amount: number) {
 }
 
 export function getCancelSuccessDescription(booking: BookingResponse) {
-  if (booking.status === 'CONFIRMED') {
+  if (isPaidCancellation(booking)) {
     return 'Yêu cầu hoàn 80% đã được gửi cho admin xử lý.'
-  }
-  if (booking.status === 'AWAITING_CONFIRMATION') {
-    return 'Booking chưa được admin xác nhận nên đã được hủy ngay.'
   }
   return 'Booking chưa thanh toán đã được hủy.'
 }

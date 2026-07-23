@@ -5,7 +5,7 @@ import { Ban, Calendar, CreditCard, MapPin, ReceiptText } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { useAuth } from '@/hooks/use-auth-context'
-import { cancelBooking, getMyBookings, getPaymentDetails } from '@/services/booking/booking.api'
+import { cancelBooking, getMyBookings } from '@/services/booking/booking.api'
 import { getApiErrorMessage } from '@/common/utils/api-error'
 import { StatusBadge } from '@/components/admin/StatusBadge'
 import { CheckinQrCard } from '@/components/booking/CheckinQrCard'
@@ -15,8 +15,8 @@ import {
 } from '@/components/booking/CancelBookingDialog'
 import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
 import {
-  calculateRefundAmount,
   getCancelSuccessDescription,
+  hasPendingRefund,
   isPaidCancellation,
 } from '@/pages/booking/cancel-booking.helpers'
 
@@ -63,30 +63,16 @@ export function MyBookingsPage() {
     }
   }
 
-  async function openCancelDialog(booking: BookingResponse) {
+  function openCancelDialog(booking: BookingResponse) {
     setCancelTarget(booking)
     setRefundAmount(booking.refundAmount ?? null)
-    setRefundPreviewError(null)
+    setRefundPreviewLoading(false)
 
-    if (!isPaidCancellation(booking)) return
-    if (!booking.paymentId) {
-      if (booking.refundAmount == null) {
-        setRefundPreviewError('Không tìm thấy dữ liệu thanh toán để tính số tiền hoàn.')
-      }
-      return
-    }
-
-    setRefundPreviewLoading(true)
-    try {
-      const payment = await getPaymentDetails(booking.paymentId)
-      setRefundAmount(calculateRefundAmount(payment.amount))
-    } catch {
-      if (booking.refundAmount == null) {
-        setRefundPreviewError('Không tải được dữ liệu thanh toán để tính số tiền hoàn.')
-      }
-    } finally {
-      setRefundPreviewLoading(false)
-    }
+    setRefundPreviewError(
+      isPaidCancellation(booking) && booking.refundAmount == null
+        ? 'Không tìm thấy dữ liệu thanh toán để tính số tiền hoàn.'
+        : null,
+    )
   }
 
   return (
@@ -135,7 +121,7 @@ export function MyBookingsPage() {
                       <MapPin size={13} /> {group.branchName}
                     </span>
                     <span className="flex items-center gap-1">
-                      <ReceiptText size={13} /> {group.items.length} lượt đặt
+                      <ReceiptText size={13} /> {group.slotCount} khung giờ
                     </span>
                   </div>
                   <div className="mt-1 font-mono text-xs text-slate-400">
@@ -178,10 +164,14 @@ export function MyBookingsPage() {
                       </div>
 
                       <div className="mt-4">
-                        <CheckinQrCard
-                          checkinCode={booking.checkinCode}
-                          bookingCode={booking.bookingCode}
-                        />
+                        {hasPendingRefund(booking) ? (
+                          <RefundPendingNotice refundAmount={booking.refundAmount} />
+                        ) : (
+                          <CheckinQrCard
+                            checkinCode={booking.checkinCode}
+                            bookingCode={booking.bookingCode}
+                          />
+                        )}
                       </div>
 
                       <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -237,36 +227,33 @@ interface BookingGroup {
   dateLabel: string
   status: BookingResponse['status']
   totalPrice: number
+  slotCount: number
   items: BookingResponse[]
 }
 
 function groupBookings(bookings: BookingResponse[]): BookingGroup[] {
-  const groups = new Map<string, BookingResponse[]>()
-
-  bookings.forEach((booking) => {
-    const key = booking.paymentId
-      ? `payment:${booking.paymentId}`
-      : `single:${booking.id}`
-    groups.set(key, [...(groups.get(key) ?? []), booking])
-  })
-
-  return Array.from(groups.values()).map((items) => {
-    const ordered = [...items].sort((a, b) => a.id - b.id)
-    const first = ordered[0]
-    const courtNames = Array.from(new Set(ordered.map((booking) => booking.courtName))).join(', ')
-    const dates = Array.from(new Set(ordered.map((booking) => booking.date)))
-
+  return bookings.map((booking) => {
     return {
-      id: first.paymentId ?? first.id,
-      paymentId: first.paymentId,
-      title: courtNames,
-      branchName: first.branchName,
-      dateLabel: dates.length === 1 ? dates[0] : `${dates.length} ngày`,
-      status: first.status,
-      totalPrice: ordered.reduce((sum, booking) => sum + booking.totalPrice, 0),
-      items: ordered,
+      id: booking.id,
+      paymentId: booking.paymentId,
+      title: booking.courtName,
+      branchName: booking.branchName,
+      dateLabel: booking.date,
+      status: booking.status,
+      totalPrice: booking.totalPrice,
+      slotCount: booking.slots.length,
+      items: [booking],
     }
   })
+}
+
+function RefundPendingNotice({ refundAmount }: { refundAmount: number | null }) {
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      Booking đã được hủy và đang chờ admin chuyển khoản hoàn tiền
+      {refundAmount != null ? ` ${formatCurrency(refundAmount)}` : ''}, sau đó xác nhận hoàn tất.
+    </div>
+  )
 }
 
 function Detail({ label, value }: { label: string; value: string }) {

@@ -72,6 +72,8 @@ export interface BookingResponse {
   totalPrice: number
   paymentAmount: number | null
   refundAmount: number | null
+  refundRequestId: number | null
+  refundStatus: RefundRequestStatus | null
   slots: BookingSlotResponse[]
   paymentId: number | null
   branchId: number

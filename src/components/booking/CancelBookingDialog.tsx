@@ -81,7 +81,7 @@ export function CancelBookingDialog({
           {requiresRefundInfo ? (
             <>
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                Booking đã thanh toán. Sau khi hủy, sân được giải phóng ngay và admin sẽ hoàn{' '}
+                Booking đã gửi thanh toán. Sau khi hủy, sân được giải phóng ngay và admin sẽ hoàn{' '}
                 <strong>
                   {refundPreviewLoading
                     ? 'đang tính...'
@@ -138,7 +138,7 @@ export function CancelBookingDialog({
             </>
           ) : (
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              Booking chưa được admin xác nhận nên sẽ hủy ngay, giải phóng sân và không phát sinh yêu cầu hoàn tiền.
+              Booking chưa thanh toán nên sẽ hủy ngay, giải phóng sân và không phát sinh yêu cầu hoàn tiền.
             </div>
           )}
         </div>

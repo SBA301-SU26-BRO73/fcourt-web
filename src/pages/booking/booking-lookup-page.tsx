@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Ban, Search, Calendar, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { cancelBooking, getPaymentDetails, lookupBooking } from '@/services/booking/booking.api'
+import { cancelBooking, lookupBooking } from '@/services/booking/booking.api'
 import { getApiErrorMessage } from '@/common/utils/api-error'
 import { StatusBadge } from '@/components/admin/StatusBadge'
 import { CheckinQrCard } from '@/components/booking/CheckinQrCard'
@@ -12,8 +12,8 @@ import {
 } from '@/components/booking/CancelBookingDialog'
 import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
 import {
-  calculateRefundAmount,
   getCancelSuccessDescription,
+  hasPendingRefund,
   isPaidCancellation,
 } from '@/pages/booking/cancel-booking.helpers'
 
@@ -65,31 +65,17 @@ export function BookingLookupPage() {
     }
   }
 
-  async function openCancelDialog() {
+  function openCancelDialog() {
     if (!booking) return
     setCancelOpen(true)
     setRefundAmount(booking.refundAmount ?? null)
-    setRefundPreviewError(null)
+    setRefundPreviewLoading(false)
 
-    if (!isPaidCancellation(booking)) return
-    if (!booking.paymentId) {
-      if (booking.refundAmount == null) {
-        setRefundPreviewError('Không tìm thấy dữ liệu thanh toán để tính số tiền hoàn.')
-      }
-      return
-    }
-
-    setRefundPreviewLoading(true)
-    try {
-      const payment = await getPaymentDetails(booking.paymentId)
-      setRefundAmount(calculateRefundAmount(payment.amount))
-    } catch {
-      if (booking.refundAmount == null) {
-        setRefundPreviewError('Không tải được dữ liệu thanh toán để tính số tiền hoàn.')
-      }
-    } finally {
-      setRefundPreviewLoading(false)
-    }
+    setRefundPreviewError(
+      isPaidCancellation(booking) && booking.refundAmount == null
+        ? 'Không tìm thấy dữ liệu thanh toán để tính số tiền hoàn.'
+        : null,
+    )
   }
 
   return (
@@ -152,7 +138,14 @@ export function BookingLookupPage() {
             </div>
             <StatusBadge status={booking.status} />
           </div>
-          <CheckinQrCard checkinCode={booking.checkinCode} bookingCode={booking.bookingCode} />
+          {hasPendingRefund(booking) ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Booking đã được hủy và đang chờ admin chuyển khoản hoàn tiền
+              {booking.refundAmount != null ? ` ${formatCurrency(booking.refundAmount)}` : ''}, sau đó xác nhận hoàn tất.
+            </div>
+          ) : (
+            <CheckinQrCard checkinCode={booking.checkinCode} bookingCode={booking.bookingCode} />
+          )}
           {canCustomerCancelBooking(booking) && (
             <button
               type="button"
@@ -179,4 +172,12 @@ export function BookingLookupPage() {
       />
     </div>
   )
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(value)
 }
