@@ -4,6 +4,7 @@ import DetailedBranchCard from "../../../components/ui/detailed-branch-card";
 import SkeletonCard from "../../../components/ui/skeleton-card";
 import { branchApi, type Branch, type BranchFilterRequest } from "../../../services/branch/branch.api";
 import { findLocationDistrict } from "@/data/sample-locations";
+import { getApiErrorMessage } from "@/common/utils/api-error";
 
 export default function BranchList() {
   const { globalFilters } = useOutletContext<{ globalFilters: BranchFilterRequest }>();
@@ -23,6 +24,7 @@ export default function BranchList() {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const pageSize = 6;
   const isFetchingRef = useRef(false);
 
@@ -34,6 +36,7 @@ export default function BranchList() {
       isFetchingRef.current = true;
       try {
         setIsLoading(true);
+        setLoadError(null);
         const combinedFilters: BranchFilterRequest = {
           ...globalFilters,
           courtTypeName: courtTypeName || undefined,
@@ -53,7 +56,10 @@ export default function BranchList() {
         setTotalElements(data.totalElements);
         setTotalPages(data.totalPages);
       } catch (error) {
-        console.error("Lỗi khi tải danh sách Branch:", error);
+        setBranches([]);
+        setTotalElements(0);
+        setTotalPages(0);
+        setLoadError(getApiErrorMessage(error, "Không thể tải danh sách cơ sở."));
       } finally {
         isFetchingRef.current = false;
         setIsLoading(false);
@@ -70,6 +76,11 @@ export default function BranchList() {
           <p className="text-sm text-slate-500">Hiển thị {totalElements} cơ sở phù hợp</p>
         </div>
       </div>
+      {loadError && (
+        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {isLoading && branches.length === 0 ? Array.from({ length: 6 }, (_, index) => <SkeletonCard key={index} />) : branches.length > 0 ? branches.map((branch) => (
           <DetailedBranchCard

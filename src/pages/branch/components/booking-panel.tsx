@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { branchApi, type Branch, type CourtResponse, type DailySlotResponse } from '../../../services/branch/branch.api';
 import { findDistrictForWard } from '@/data/sample-locations';
+import { getApiErrorMessage } from '@/common/utils/api-error';
 
 interface BookingPanelProps {
   branch: Branch;
@@ -17,6 +18,7 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [schedule, setSchedule] = useState<DailySlotResponse[]>([]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeCourts.length > 0 && !activeCourts.some((court) => court.id === selectedCourtId)) {
@@ -33,6 +35,7 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
 
     let cancelled = false;
     setIsLoadingSchedule(true);
+    setScheduleError(null);
     branchApi.getDailyCourtSchedule(selectedCourtId, selectedDate)
       .then((slots) => {
         if (cancelled) return;
@@ -41,10 +44,11 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
           ? current
           : slots.find((slot) => slot.status === 'AVAILABLE')?.startTime ?? '');
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
           setSchedule([]);
           setSelectedTime('');
+          setScheduleError(getApiErrorMessage(error, 'Không thể tải lịch sân.'));
         }
       })
       .finally(() => {
@@ -62,7 +66,8 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
       branchId: branch.id.toString(),
       courtId: selectedCourtId.toString(),
       date: selectedDate,
-      startTime: selectedTime,
+      // Keep the slot-booking page URL in the same HH:mm format as its grid.
+      startTime: selectedTime.slice(0, 5),
     });
     navigate(`/slot-booking?${params.toString()}`);
   };
@@ -128,6 +133,11 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
                   </select>
                 </div>
               </div>
+              {scheduleError && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {scheduleError}
+                </div>
+              )}
 
               {/* Checkout details */}
               <div className="border-t border-outline-variant/30 pt-stack-md mt-stack-md space-y-stack-xs text-on-surface">

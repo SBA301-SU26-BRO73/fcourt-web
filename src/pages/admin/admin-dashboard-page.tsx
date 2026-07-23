@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 
 import { useAdminDashboard } from '@/hooks/use-admin-dashboard'
+import { getApiErrorMessage } from '@/common/utils/api-error'
 import type {
   AdminDashboardStats,
   AdminPeakHourPoint,
@@ -44,7 +45,7 @@ export function AdminDashboardPage() {
         <div className="rounded-2xl border border-rose-200 bg-white p-6 shadow-sm">
           <div className="text-sm font-semibold text-rose-700">Không thể tải dữ liệu Bảng điều khiển Admin</div>
           <p className="mt-2 text-sm text-slate-500">
-            {(error as Error)?.message || 'Vui lòng thử lại sau.'}
+            {getApiErrorMessage(error, 'Vui lòng thử lại sau.')}
           </p>
           <button
             type="button"

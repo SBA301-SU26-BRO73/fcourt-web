@@ -20,6 +20,7 @@ import {
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { BookingDetailModal } from '../../components/admin/BookingDetailModal';
 import { ConfirmModal } from '../../components/admin/ConfirmModal';
+import { getApiErrorMessage } from '@/common/utils/api-error';
 
 type TabFilter = 'all' | 'PENDING' | 'CONFIRMED' | 'CANCELLED';
 type ConfirmAction = 'approve' | 'reject' | 'reject_payment';
@@ -55,7 +56,7 @@ export function AdminBookingPage() {
       return true;
     } catch (error) {
       console.error(error);
-      toast.error('Không thể tải danh sách booking');
+      toast.error(getApiErrorMessage(error, 'Không thể tải danh sách booking'));
       return false;
     } finally {
       setLoading(false);
@@ -198,7 +199,7 @@ export function AdminBookingPage() {
       }
     } catch (error) {
       console.error(error);
-      toast.error('Không thể cập nhật trạng thái booking', {
+      toast.error(getApiErrorMessage(error, 'Không thể cập nhật trạng thái booking'), {
         description: `Mã đơn: ${confirmState.bookingCode}`,
       });
     } finally {

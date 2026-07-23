@@ -9,6 +9,7 @@ import type { DailySlotResponse } from '@/services/branch/branch.api';
 import { createBookings } from '@/services/booking/booking.api';
 import { useAuth } from '@/hooks/use-auth-context';
 import { formatLocalDate } from '@/common/utils/local-date';
+import { getApiErrorMessage } from '@/common/utils/api-error';
 
 export default function SlotBookingPage() {
   const navigate = useNavigate();
@@ -77,6 +78,7 @@ export default function SlotBookingPage() {
         }
       } catch (err) {
         console.error('Error fetching branch details and courts:', err);
+        setScheduleError(getApiErrorMessage(err, 'Không thể tải thông tin cơ sở.'));
       }
     };
     
@@ -110,7 +112,7 @@ export default function SlotBookingPage() {
       } catch (err) {
         console.error('Error in fetching schedules:', err);
         setCourtSchedules({});
-        setScheduleError('Không thể tải lịch sân. Vui lòng thử lại sau.');
+        setScheduleError(getApiErrorMessage(err, 'Không thể tải lịch sân. Vui lòng thử lại sau.'));
       } finally {
         setIsLoading(false);
       }
@@ -129,8 +131,8 @@ export default function SlotBookingPage() {
     setSelectedSlots([{
       courtId: court.id,
       courtName: court.name,
-      startTime: slot.startTime,
-      endTime: slot.endTime,
+      startTime: toDisplayTime(slot.startTime),
+      endTime: toDisplayTime(slot.endTime),
       price: slot.price,
       date: selectedDate,
     }]);
@@ -167,15 +169,17 @@ export default function SlotBookingPage() {
   };
 
   const handleSlotClick = (court: Court, timeStr: string, price: number, endTimeStr: string) => {
+    const displayStartTime = toDisplayTime(timeStr);
+    const displayEndTime = toDisplayTime(endTimeStr);
 
     const isAlreadySelected = selectedSlots.some(
-      (s) => s.courtId === court.id && s.startTime === timeStr && s.date === selectedDate
+      (s) => s.courtId === court.id && s.startTime === displayStartTime && s.date === selectedDate
     );
 
     if (isAlreadySelected) {
       setSelectedSlots(
         selectedSlots.filter(
-          (s) => !(s.courtId === court.id && s.startTime === timeStr && s.date === selectedDate)
+          (s) => !(s.courtId === court.id && s.startTime === displayStartTime && s.date === selectedDate)
         )
       );
     } else {
@@ -184,8 +188,8 @@ export default function SlotBookingPage() {
         {
           courtId: court.id,
           courtName: court.name,
-          startTime: timeStr,
-          endTime: endTimeStr,
+          startTime: displayStartTime,
+          endTime: displayEndTime,
           price,
           date: selectedDate,
         },
@@ -209,8 +213,7 @@ export default function SlotBookingPage() {
       });
       navigate(`/payment?bookingId=${response.bookings[0].id}`, { state: { booking: response } });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Không thể tạo booking.';
-      setBookingError(message);
+      setBookingError(getApiErrorMessage(error, 'Không thể tạo booking.'));
     } finally {
       setIsBooking(false);
     }
@@ -299,6 +302,11 @@ function normalizeTime(time: string) {
   return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:00`;
 }
 
+/** The booking UI stores and compares all slot times as HH:mm. */
+function toDisplayTime(time: string) {
+  return time.slice(0, 5);
+}
+
 function toMinutes(time: string) {
   const [hour = '0', minute = '0'] = time.split(':');
   return Number(hour) * 60 + Number(minute);
@@ -331,4 +339,3 @@ function buildBookingItems(selectedSlots: SelectedSlot[]) {
     }));
   });
 }
-

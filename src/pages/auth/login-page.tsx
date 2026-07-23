@@ -77,6 +77,11 @@ export function LoginPage() {
 
   const [f, setF] = useState({ email: '', password: '', remember: false })
   const [errs, setErrs] = useState<Record<string, string>>({})
+  const [redirectMessage] = useState<string | null>(() => {
+    const message = sessionStorage.getItem('fcourt.auth.redirectMessage')
+    if (message) sessionStorage.removeItem('fcourt.auth.redirectMessage')
+    return message
+  })
   const login = useLogin()
 
   const set = (k: string, v: string | boolean) => {
@@ -133,6 +138,11 @@ export function LoginPage() {
             </h1>
             <p className="text-sm text-slate-500">Đăng nhập vào tài khoản FCourt của bạn</p>
           </div>
+          {redirectMessage && (
+            <div role="alert" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+              {redirectMessage}
+            </div>
+          )}
           <form onSubmit={submit} noValidate>
             <Field label="Email" error={errs.email}>
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">

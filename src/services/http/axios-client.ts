@@ -69,6 +69,10 @@ function getSharedRefreshRequest(refreshToken: string) {
 }
 
 function redirectToLogin() {
+  sessionStorage.setItem(
+    'fcourt.auth.redirectMessage',
+    'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.',
+  )
   tokenStorage.clear()
   window.location.href = '/auth/login'
 }
