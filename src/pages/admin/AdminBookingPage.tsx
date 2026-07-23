@@ -585,45 +585,10 @@ function getBookingCode(booking: Booking) {
 }
 
 function groupBookingsByPayment(items: Booking[]): BookingRowItem[] {
-  const grouped = new Map<string, Booking[]>();
-
-  items.forEach((booking) => {
-    const key = booking.paymentId ? `payment:${booking.paymentId}` : `booking:${booking.id}`;
-    grouped.set(key, [...(grouped.get(key) ?? []), booking]);
-  });
-
-  return Array.from(grouped.values()).map((group) => {
-    const ordered = [...group].sort((a, b) => a.id - b.id);
-    const first = ordered[0];
-    const courtName = Array.from(new Set(ordered.map((item) => item.courtName))).join(', ');
-    const totalPrice = ordered.reduce((sum, item) => sum + item.totalPrice, 0);
-    const status = getGroupStatus(ordered);
-
-    return {
-      ...first,
-      courtName,
-      totalPrice,
-      status,
-      bookingStatus: status,
-      bookingstatus: status,
-      updatedAt: ordered
-        .map((item) => item.updatedAt)
-        .sort((a, b) => getDateTime(b) - getDateTime(a))[0] ?? first.updatedAt,
-      groupItems: ordered,
-    };
-  });
-}
-
-function getGroupStatus(items: Booking[]): BookingStatus {
-  const statuses = items.map(getBookingStatus);
-  if (statuses.includes('AWAITING_CONFIRMATION')) return 'AWAITING_CONFIRMATION';
-  if (statuses.includes('PENDING_PAYMENT')) return 'PENDING_PAYMENT';
-  if (statuses.every((status) => status === 'CONFIRMED')) return 'CONFIRMED';
-  if (statuses.every((status) => status === 'CANCELLED')) return 'CANCELLED';
-  if (statuses.includes('CHECKED_IN')) return 'CHECKED_IN';
-  if (statuses.includes('COMPLETED')) return 'COMPLETED';
-  if (statuses.includes('CONFIRMED')) return 'CONFIRMED';
-  return statuses[0] ?? 'PENDING_PAYMENT';
+  return items.map((booking) => ({
+    ...booking,
+    groupItems: [booking],
+  }));
 }
 
 const statusOrder: Record<BookingStatus, number> = {
