@@ -22,6 +22,13 @@ export interface Booking {
     bookingStatus?: BookingStatus
     bookingstatus?: BookingStatus
     totalPrice: number
+    refundAmount?: number | null
+    refundRequestId?: number | null
+    refundStatus?: 'PENDING' | 'CONFIRMED' | null
+    refundReason?: string | null
+    refundBankName?: string | null
+    refundBankAccountNumber?: string | null
+    refundBankAccountName?: string | null
     createdAt: string
     updatedAt: string
     slots?: BookingSlotResponse[]
