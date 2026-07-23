@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Ban, Calendar, CreditCard, MapPin } from 'lucide-react'
+import { Ban, Calendar, CreditCard, MapPin, ReceiptText } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { useAuth } from '@/hooks/use-auth-context'
@@ -43,6 +43,7 @@ export function MyBookingsPage() {
   if (!isLoggedIn) return null
 
   const bookings = data?.content ?? []
+  const bookingGroups = groupBookings(bookings)
 
   async function handleCancel(payload: CancelBookingRequest) {
     if (!cancelTarget) return
@@ -111,64 +112,101 @@ export function MyBookingsPage() {
       )}
 
       <div className="flex flex-col gap-3">
-        {bookings.map((booking: BookingResponse) => {
-          const expanded = expandedId === booking.id
+        {bookingGroups.map((group) => {
+          const expanded = expandedId === group.id
           return (
             <div
-              key={booking.id}
+              key={group.id}
               className="rounded-xl border border-slate-200 bg-white p-4"
             >
               <button
                 type="button"
                 className="flex w-full items-center justify-between text-left"
-                onClick={() => setExpandedId(expanded ? null : booking.id)}
+                onClick={() => setExpandedId(expanded ? null : group.id)}
               >
                 <div>
-                  <div className="font-semibold text-slate-900">{booking.courtName}</div>
-                  <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
+                  <div className="font-semibold text-slate-900">{group.title}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
                     <span className="flex items-center gap-1">
-                      <Calendar size={13} /> {booking.date}
+                      <Calendar size={13} /> {group.dateLabel}
                     </span>
                     <span className="flex items-center gap-1">
-                      <MapPin size={13} /> {booking.branchName}
+                      <MapPin size={13} /> {group.branchName}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ReceiptText size={13} /> {group.items.length} lượt đặt
                     </span>
                   </div>
                   <div className="mt-1 font-mono text-xs text-slate-400">
-                    Mã đơn: {booking.bookingCode}
+                    {group.paymentId ? `Thanh toán #${group.paymentId}` : `Mã đơn: ${group.items[0].bookingCode}`}
                   </div>
                   <div className="mt-1 text-xs font-medium text-emerald-700">
                     {expanded ? 'Ẩn chi tiết' : 'Bấm để xem chi tiết'}
                   </div>
                 </div>
-                <StatusBadge status={booking.status} />
+                <StatusBadge status={group.status} />
               </button>
 
               {expanded && (
-                <div className="mt-4 border-t border-slate-100 pt-4">
-                  <CheckinQrCard
-                    checkinCode={booking.checkinCode}
-                    bookingCode={booking.bookingCode}
-                  />
-                  {booking.status === 'PENDING_PAYMENT' && (
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/payment?bookingId=${booking.id}`)}
-                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-                    >
-                      <CreditCard size={16} />
-                      Tiếp tục thanh toán
-                    </button>
-                  )}
-                  {canCustomerCancelBooking(booking) && (
-                    <button
-                      type="button"
-                      onClick={() => openCancelDialog(booking)}
-                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100"
-                    >
-                      <Ban size={16} />
-                      Hủy đặt sân
-                    </button>
-                  )}
+                <div className="mt-4 space-y-4 border-t border-slate-100 pt-4">
+                  <div className="grid gap-3 text-sm sm:grid-cols-2">
+                    <Detail label="Cơ sở" value={group.branchName} />
+                    <Detail label="Tổng tiền" value={formatCurrency(group.totalPrice)} />
+                  </div>
+
+                  {group.items.map((booking) => (
+                    <div key={booking.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="font-semibold text-slate-900">{booking.courtName}</div>
+                          <div className="mt-1 font-mono text-xs text-slate-500">
+                            Mã booking: {booking.bookingCode}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+                            {booking.slots.map((slot) => (
+                              <span
+                                key={slot.id}
+                                className="rounded-full border border-slate-200 bg-white px-2.5 py-1"
+                              >
+                                {formatTime(slot.slotStart)} - {formatTime(slot.slotEnd)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <StatusBadge status={booking.status} />
+                      </div>
+
+                      <div className="mt-4">
+                        <CheckinQrCard
+                          checkinCode={booking.checkinCode}
+                          bookingCode={booking.bookingCode}
+                        />
+                      </div>
+
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {booking.status === 'PENDING_PAYMENT' && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/payment?bookingId=${booking.id}`)}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                          >
+                            <CreditCard size={16} />
+                            Tiếp tục thanh toán
+                          </button>
+                        )}
+                        {canCustomerCancelBooking(booking) && (
+                          <button
+                            type="button"
+                            onClick={() => openCancelDialog(booking)}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100"
+                          >
+                            <Ban size={16} />
+                            Yêu cầu hủy booking
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -188,4 +226,65 @@ export function MyBookingsPage() {
       />
     </div>
   )
+}
+
+interface BookingGroup {
+  id: number
+  paymentId: number | null
+  title: string
+  branchName: string
+  dateLabel: string
+  status: BookingResponse['status']
+  totalPrice: number
+  items: BookingResponse[]
+}
+
+function groupBookings(bookings: BookingResponse[]): BookingGroup[] {
+  const groups = new Map<string, BookingResponse[]>()
+
+  bookings.forEach((booking) => {
+    const key = booking.paymentId
+      ? `payment:${booking.paymentId}`
+      : `single:${booking.id}`
+    groups.set(key, [...(groups.get(key) ?? []), booking])
+  })
+
+  return Array.from(groups.values()).map((items) => {
+    const ordered = [...items].sort((a, b) => a.id - b.id)
+    const first = ordered[0]
+    const courtNames = Array.from(new Set(ordered.map((booking) => booking.courtName))).join(', ')
+    const dates = Array.from(new Set(ordered.map((booking) => booking.date)))
+
+    return {
+      id: first.paymentId ?? first.id,
+      paymentId: first.paymentId,
+      title: courtNames,
+      branchName: first.branchName,
+      dateLabel: dates.length === 1 ? dates[0] : `${dates.length} ngày`,
+      status: first.status,
+      totalPrice: ordered.reduce((sum, booking) => sum + booking.totalPrice, 0),
+      items: ordered,
+    }
+  })
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+      <div className="text-xs text-slate-400">{label}</div>
+      <div className="mt-0.5 font-semibold text-slate-800">{value}</div>
+    </div>
+  )
+}
+
+function formatTime(value: string) {
+  return value.slice(0, 5)
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(value)
 }
