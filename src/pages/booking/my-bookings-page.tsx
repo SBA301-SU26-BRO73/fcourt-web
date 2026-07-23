@@ -38,6 +38,7 @@ export function MyBookingsPage() {
     queryKey: ['my-bookings'],
     queryFn: () => getMyBookings(0, 50),
     enabled: isLoggedIn,
+    refetchInterval: 5000,
   })
 
   if (!isLoggedIn) return null

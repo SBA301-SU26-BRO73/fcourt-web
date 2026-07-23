@@ -23,6 +23,7 @@ import { ConfirmModal } from '../../components/admin/ConfirmModal';
 
 type TabFilter = 'all' | 'PENDING' | 'CONFIRMED' | 'CANCELLED';
 type ConfirmAction = 'approve' | 'reject' | 'reject_payment';
+type BookingRowItem = Booking & { groupItems?: Booking[] };
 
 const PAGE_SIZE = 5;
 
@@ -67,7 +68,8 @@ export function AdminBookingPage() {
   }, [fetchBookings]);
 
   // Filtered & searched bookings
-  const filtered = bookings.filter((b) => {
+  const groupedBookings = groupBookingsByPayment(bookings);
+  const filtered = groupedBookings.filter((b) => {
     const status = getBookingStatus(b);
     const matchTab =
       tab === 'all' ||
@@ -78,9 +80,15 @@ export function AdminBookingPage() {
     const matchSearch =
         !q ||
         String(b.id).includes(q) ||
+        String(b.paymentId ?? '').includes(q) ||
         b.customerEmail?.toLowerCase().includes(q) ||
         b.guestPhone?.toLowerCase().includes(q) ||
-        b.courtName?.toLowerCase().includes(q);
+        b.courtName?.toLowerCase().includes(q) ||
+        b.groupItems?.some((item) =>
+          item.courtName?.toLowerCase().includes(q) ||
+          item.guestPhone?.toLowerCase().includes(q) ||
+          item.customerEmail?.toLowerCase().includes(q)
+        );
 
     return matchTab && matchSearch;
   });
@@ -91,10 +99,10 @@ export function AdminBookingPage() {
 
   // Stat counts
   const stats = {
-    pending: bookings.filter((b) => isReviewableStatus(getBookingStatus(b))).length,
-    approved: bookings.filter((b) => getBookingStatus(b) === 'CONFIRMED').length,
-    rejected: bookings.filter((b) => getBookingStatus(b) === 'CANCELLED').length,
-    total: bookings.length,
+    pending: groupedBookings.filter((b) => isReviewableStatus(getBookingStatus(b))).length,
+    approved: groupedBookings.filter((b) => getBookingStatus(b) === 'CONFIRMED').length,
+    rejected: groupedBookings.filter((b) => getBookingStatus(b) === 'CANCELLED').length,
+    total: groupedBookings.length,
   };
 
   const handleRefresh = async () => {
@@ -473,11 +481,12 @@ function BookingRow({
   booking,
   onView,
 }: {
-  booking: Booking;
+  booking: BookingRowItem;
   onView: () => void;
 }) {
   const status = getBookingStatus(booking);
   const canReview = isReviewableStatus(status);
+  const groupCount = booking.groupItems?.length ?? 1;
 
   return (
     <tr className="hover:bg-muted/30 transition-colors">
@@ -485,6 +494,11 @@ function BookingRow({
         <code className="text-xs font-mono bg-muted px-2 py-1 rounded">
           {getBookingCode(booking)}
         </code>
+        {groupCount > 1 && (
+          <div className="mt-1 text-[11px] font-medium text-muted-foreground">
+            {groupCount} booking
+          </div>
+        )}
       </td>
 
       <td className="px-5 py-4">
@@ -501,7 +515,7 @@ function BookingRow({
           {booking.courtName}
         </div>
         <div className="text-xs text-muted-foreground">
-          Court ID: {booking.courtId}
+          {groupCount > 1 ? 'Nhiều sân/khung giờ' : `Court ID: ${booking.courtId}`}
         </div>
       </td>
 
@@ -567,7 +581,49 @@ function normalizeBookingStatus(
 }
 
 function getBookingCode(booking: Booking) {
-  return `BK-${booking.id}`;
+  return booking.paymentId ? `PAY-${booking.paymentId}` : `BK-${booking.id}`;
+}
+
+function groupBookingsByPayment(items: Booking[]): BookingRowItem[] {
+  const grouped = new Map<string, Booking[]>();
+
+  items.forEach((booking) => {
+    const key = booking.paymentId ? `payment:${booking.paymentId}` : `booking:${booking.id}`;
+    grouped.set(key, [...(grouped.get(key) ?? []), booking]);
+  });
+
+  return Array.from(grouped.values()).map((group) => {
+    const ordered = [...group].sort((a, b) => a.id - b.id);
+    const first = ordered[0];
+    const courtName = Array.from(new Set(ordered.map((item) => item.courtName))).join(', ');
+    const totalPrice = ordered.reduce((sum, item) => sum + item.totalPrice, 0);
+    const status = getGroupStatus(ordered);
+
+    return {
+      ...first,
+      courtName,
+      totalPrice,
+      status,
+      bookingStatus: status,
+      bookingstatus: status,
+      updatedAt: ordered
+        .map((item) => item.updatedAt)
+        .sort((a, b) => getDateTime(b) - getDateTime(a))[0] ?? first.updatedAt,
+      groupItems: ordered,
+    };
+  });
+}
+
+function getGroupStatus(items: Booking[]): BookingStatus {
+  const statuses = items.map(getBookingStatus);
+  if (statuses.includes('AWAITING_CONFIRMATION')) return 'AWAITING_CONFIRMATION';
+  if (statuses.includes('PENDING_PAYMENT')) return 'PENDING_PAYMENT';
+  if (statuses.every((status) => status === 'CONFIRMED')) return 'CONFIRMED';
+  if (statuses.every((status) => status === 'CANCELLED')) return 'CANCELLED';
+  if (statuses.includes('CHECKED_IN')) return 'CHECKED_IN';
+  if (statuses.includes('COMPLETED')) return 'COMPLETED';
+  if (statuses.includes('CONFIRMED')) return 'CONFIRMED';
+  return statuses[0] ?? 'PENDING_PAYMENT';
 }
 
 const statusOrder: Record<BookingStatus, number> = {

@@ -138,7 +138,7 @@ export function CancelBookingDialog({
             </>
           ) : (
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              Booking chưa được xác nhận thanh toán nên sẽ hủy ngay và không phát sinh hoàn tiền.
+              Booking chưa được admin xác nhận nên sẽ hủy ngay, giải phóng sân và không phát sinh yêu cầu hoàn tiền.
             </div>
           )}
         </div>
