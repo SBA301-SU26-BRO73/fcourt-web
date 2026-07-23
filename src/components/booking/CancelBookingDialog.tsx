@@ -2,25 +2,32 @@ import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Ban, Loader2 } from 'lucide-react'
 
 import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
+import {
+  calculateRefundAmount,
+  canCancelFromCustomerView,
+  formatVnd,
+  isPaidCancellation,
+} from '@/pages/booking/cancel-booking.helpers'
 
 interface CancelBookingDialogProps {
   booking: BookingResponse | null
   open: boolean
   guestPhone?: string
+  refundAmount?: number | null
+  refundPreviewLoading?: boolean
+  refundPreviewError?: string | null
   submitting?: boolean
   onClose: () => void
   onConfirm: (payload: CancelBookingRequest) => Promise<void> | void
 }
 
-const currency = new Intl.NumberFormat('vi-VN', {
-  style: 'currency',
-  currency: 'VND',
-})
-
 export function CancelBookingDialog({
   booking,
   open,
   guestPhone,
+  refundAmount: providedRefundAmount,
+  refundPreviewLoading = false,
+  refundPreviewError,
   submitting = false,
   onClose,
   onConfirm,
@@ -39,16 +46,17 @@ export function CancelBookingDialog({
     }
   }, [open])
 
-  const refundAmount = useMemo(
-    () => Math.round((booking?.totalPrice ?? 0) * 0.8),
-    [booking?.totalPrice],
+  const previewRefundAmount = useMemo(
+    () => providedRefundAmount ?? calculateRefundAmount(booking?.totalPrice ?? 0),
+    [booking?.totalPrice, providedRefundAmount],
   )
 
   if (!open || !booking) return null
 
-  const requiresRefundInfo = booking.status === 'CONFIRMED'
+  const requiresRefundInfo = isPaidCancellation(booking)
   const disabled =
     submitting ||
+    !canCancelFromCustomerView(booking) ||
     (requiresRefundInfo &&
       (!reason.trim() ||
         !refundBankName.trim() ||
@@ -75,7 +83,10 @@ export function CancelBookingDialog({
             <>
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 Booking đã thanh toán. Sau khi hủy, sân được giải phóng ngay và admin sẽ hoàn{' '}
-                <strong>{currency.format(refundAmount)}</strong> qua chuyển khoản thủ công.
+                <strong>{refundPreviewLoading ? 'đang tính...' : formatVnd(previewRefundAmount)}</strong> qua chuyển khoản thủ công.
+                {refundPreviewError && (
+                  <div className="mt-1 text-xs text-amber-700">{refundPreviewError}</div>
+                )}
               </div>
               <label className="block text-sm font-semibold text-slate-700">
                 Lý do hủy
@@ -101,7 +112,9 @@ export function CancelBookingDialog({
                   Số tài khoản
                   <input
                     value={refundBankAccountNumber}
-                    onChange={(event) => setRefundBankAccountNumber(event.target.value)}
+                    onChange={(event) =>
+                      setRefundBankAccountNumber(event.target.value.replace(/\D/g, ''))
+                    }
                     className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500"
                     placeholder="Nhập số tài khoản"
                   />
@@ -157,5 +170,5 @@ export function CancelBookingDialog({
 }
 
 export function canCustomerCancelBooking(booking: BookingResponse) {
-  return booking.status === 'PENDING_PAYMENT' || booking.status === 'CONFIRMED'
+  return canCancelFromCustomerView(booking)
 }
