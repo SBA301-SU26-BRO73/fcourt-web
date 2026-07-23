@@ -183,6 +183,20 @@ export function BookingDetailModal({
                       <InfoRow icon={<HandCoins className="w-4 h-4" />} label="Ngân hàng nhận hoàn" value={booking.refundBankName || 'Chưa có'} />
                       <InfoRow icon={<HandCoins className="w-4 h-4" />} label="Số tài khoản" value={booking.refundBankAccountNumber || 'Chưa có'} />
                       <InfoRow icon={<User className="w-4 h-4" />} label="Tên chủ tài khoản" value={booking.refundBankAccountName || 'Chưa có'} />
+                      {booking.refundProofImageUrl && (
+                        <a
+                          href={booking.refundProofImageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block overflow-hidden rounded-xl border border-amber-200 bg-white"
+                        >
+                          <img
+                            src={booking.refundProofImageUrl}
+                            alt="Chứng từ hoàn tiền"
+                            className="max-h-72 w-full object-contain"
+                          />
+                        </a>
+                      )}
                     </div>
                   </section>
                 </>

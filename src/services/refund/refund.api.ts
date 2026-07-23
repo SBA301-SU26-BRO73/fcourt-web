@@ -30,9 +30,18 @@ export async function getRefundRequests(params: {
   return requireData(data)
 }
 
-export async function confirmRefundRequest(refundRequestId: number) {
+export async function confirmRefundRequest(params: { refundRequestId: number; proofImage: File }) {
+  const formData = new FormData()
+  formData.append('proofImage', params.proofImage)
+
   const { data } = await axiosClient.post<ApiResponse<RefundRequestResponse>>(
-    API_ENDPOINTS.refundRequests.confirm(refundRequestId),
+    API_ENDPOINTS.refundRequests.confirm(params.refundRequestId),
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
   )
   return requireData(data)
 }

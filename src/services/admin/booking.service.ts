@@ -29,6 +29,7 @@ export interface Booking {
     refundBankName?: string | null
     refundBankAccountNumber?: string | null
     refundBankAccountName?: string | null
+    refundProofImageUrl?: string | null
     createdAt: string
     updatedAt: string
     slots?: BookingSlotResponse[]

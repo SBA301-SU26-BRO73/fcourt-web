@@ -74,6 +74,11 @@ export interface BookingResponse {
   refundAmount: number | null
   refundRequestId: number | null
   refundStatus: RefundRequestStatus | null
+  refundReason: string | null
+  refundBankName: string | null
+  refundBankAccountNumber: string | null
+  refundBankAccountName: string | null
+  refundProofImageUrl: string | null
   slots: BookingSlotResponse[]
   paymentId: number | null
   branchId: number
@@ -161,6 +166,7 @@ export interface RefundRequestResponse {
   refundBankName: string
   refundBankAccountNumber: string
   refundBankAccountName: string
+  refundProofImageUrl: string | null
   status: RefundRequestStatus
   confirmedAt: string | null
   confirmedById: number | null
