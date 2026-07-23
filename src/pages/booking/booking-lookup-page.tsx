@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Ban, Search, Calendar, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { cancelBooking, lookupBooking } from '@/services/booking/booking.api'
+import { cancelBooking, getPaymentDetails, lookupBooking } from '@/services/booking/booking.api'
 import { getApiErrorMessage } from '@/common/utils/api-error'
 import { StatusBadge } from '@/components/admin/StatusBadge'
 import { CheckinQrCard } from '@/components/booking/CheckinQrCard'
@@ -11,6 +11,11 @@ import {
   canCustomerCancelBooking,
 } from '@/components/booking/CancelBookingDialog'
 import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
+import {
+  calculateRefundAmount,
+  getCancelSuccessDescription,
+  isPaidCancellation,
+} from '@/pages/booking/cancel-booking.helpers'
 
 /** Public guest lookup — no login required, just the booking code + phone. */
 export function BookingLookupPage() {
@@ -21,6 +26,9 @@ export function BookingLookupPage() {
   const [loading, setLoading] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [refundAmount, setRefundAmount] = useState<number | null>(null)
+  const [refundPreviewLoading, setRefundPreviewLoading] = useState(false)
+  const [refundPreviewError, setRefundPreviewError] = useState<string | null>(null)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -48,15 +56,35 @@ export function BookingLookupPage() {
       setBooking(updated)
       setCancelOpen(false)
       toast.success('Đã hủy đặt sân', {
-        description:
-          booking.status === 'CONFIRMED'
-            ? 'Yêu cầu hoàn 80% đã được gửi cho admin xử lý.'
-            : 'Booking chưa thanh toán đã được hủy.',
+        description: getCancelSuccessDescription(booking),
       })
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Không thể hủy booking'))
     } finally {
       setCancelling(false)
+    }
+  }
+
+  async function openCancelDialog() {
+    if (!booking) return
+    setCancelOpen(true)
+    setRefundAmount(null)
+    setRefundPreviewError(null)
+
+    if (!isPaidCancellation(booking)) return
+    if (!booking.paymentId) {
+      setRefundPreviewError('Không tìm thấy mã thanh toán, số tiền hiển thị đang tạm tính theo giá booking.')
+      return
+    }
+
+    setRefundPreviewLoading(true)
+    try {
+      const payment = await getPaymentDetails(booking.paymentId)
+      setRefundAmount(calculateRefundAmount(payment.amount))
+    } catch {
+      setRefundPreviewError('Không tải được payment, số tiền hiển thị đang tạm tính theo giá booking.')
+    } finally {
+      setRefundPreviewLoading(false)
     }
   }
 
@@ -124,7 +152,7 @@ export function BookingLookupPage() {
           {canCustomerCancelBooking(booking) && (
             <button
               type="button"
-              onClick={() => setCancelOpen(true)}
+              onClick={openCancelDialog}
               className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100"
             >
               <Ban size={16} />
@@ -138,6 +166,9 @@ export function BookingLookupPage() {
         booking={booking}
         open={cancelOpen}
         guestPhone={phone.trim()}
+        refundAmount={refundAmount}
+        refundPreviewLoading={refundPreviewLoading}
+        refundPreviewError={refundPreviewError}
         submitting={cancelling}
         onClose={() => setCancelOpen(false)}
         onConfirm={handleCancel}
