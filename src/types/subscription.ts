@@ -25,6 +25,12 @@ export interface UpcomingSubscription {
   endDate: string;
 }
 
+/** Current resource usage of the owner; null/absent when facility-service is unavailable. */
+export interface SubscriptionUsage {
+  branchesUsed: number;
+  courtsUsed: number;
+}
+
 export interface Subscription {
   id: number;
   adminId: number;
@@ -38,6 +44,7 @@ export interface Subscription {
   /** The free subscription given before any purchase. */
   starter: boolean;
   upcoming: UpcomingSubscription[];
+  usage?: SubscriptionUsage | null;
 }
 
 export interface SubscribeRequest {
