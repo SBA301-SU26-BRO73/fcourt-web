@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query'
 
 import {
   getPublicBranch,
@@ -8,7 +8,7 @@ import {
   getPublicCourtSlots,
   searchPublicBranches,
 } from '@/services/branch/public-branch.api'
-import type { PublicBranchSearchParams } from '@/types/public-branch'
+import type { CourtSlot, PublicBranchSearchParams } from '@/types/public-branch'
 
 export const publicBranchKeys = {
   all: ['public-branches'] as const,
@@ -67,4 +67,24 @@ export function usePublicCourtSlots(courtId: number | null, date: string) {
     queryFn: () => getPublicCourtSlots(courtId as number, date),
     enabled: courtId !== null,
   })
+}
+
+/** Slots of every court of a branch for one day, keyed by court id. Shares the cache with usePublicCourtSlots. */
+export function usePublicCourtsSlots(courtIds: number[], date: string) {
+  const results = useQueries({
+    queries: courtIds.map((courtId) => ({
+      queryKey: publicBranchKeys.slots(courtId, date),
+      queryFn: () => getPublicCourtSlots(courtId, date),
+    })),
+  })
+  const slotsByCourt: Record<number, CourtSlot[]> = {}
+  courtIds.forEach((courtId, index) => {
+    slotsByCourt[courtId] = results[index]?.data ?? []
+  })
+  return {
+    slotsByCourt,
+    isLoading: results.some((result) => result.isLoading),
+    error: results.find((result) => result.error)?.error ?? null,
+    refetch: () => Promise.all(results.map((result) => result.refetch())),
+  }
 }

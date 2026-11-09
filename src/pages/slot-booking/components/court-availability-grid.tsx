@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import type { DailySlotResponse } from '@/services/branch/branch.api';
+import type { CourtSlot } from '@/types/public-branch';
 import type { SelectedSlot } from './booking-panel';
 import { formatLocalDate, parseLocalDate } from '@/common/utils/local-date';
 
@@ -13,8 +13,10 @@ interface CourtAvailabilityGridProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
   selectedSlots: SelectedSlot[];
-  onSlotClick: (court: Court, timeStr: string, price: number, endTime: string, isPeak: boolean) => void;
-  courtSchedules: Record<number, DailySlotResponse[]>;
+  onSlotClick: (court: Court, slot: CourtSlot) => void;
+  courtSchedules: Record<number, CourtSlot[]>;
+  /** While a hold is active the selection is frozen: release the hold to pick other slots. */
+  locked?: boolean;
   courts: Court[];
   timeSlots: string[];
 }
@@ -27,6 +29,7 @@ export default function CourtAvailabilityGrid({
   courtSchedules,
   courts,
   timeSlots,
+  locked = false,
 }: CourtAvailabilityGridProps) {
   const dateInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,15 +71,11 @@ export default function CourtAvailabilityGrid({
   };
 
   // Check if a slot is selected
-  const isSelected = (courtId: number, timeStr: string) => {
-    const normalizedTime = normalizeTime(timeStr);
-    return selectedSlots.some(
-      (slot) =>
-        slot.courtId === courtId &&
-        normalizeTime(slot.startTime) === normalizedTime &&
-        slot.date === selectedDate,
+  const isSelected = (courtId: number, slotId: number | undefined) =>
+    slotId !== undefined &&
+    selectedSlots.some(
+      (slot) => slot.courtId === courtId && slot.slotId === slotId && slot.date === selectedDate,
     );
-  };
 
   return (
     <div className="space-y-6">
@@ -187,23 +186,30 @@ export default function CourtAvailabilityGrid({
                     {/* Time Cells */}
                     {timeSlots.map((time) => {
                       // Find API schedule slot
-                      const timeWithSec = `${time}:00`;
-                      const apiSlot = schedule.find(s => s.startTime === timeWithSec);
-                      
-                      // Status and pricing details
+                      const apiSlot = schedule.find(s => s.startTime.slice(0, 5) === time);
+
+                      // Status details
                       const status = apiSlot?.status ?? 'UNAVAILABLE';
-                      const price = apiSlot?.price ?? 0;
-                      const selected = isSelected(court.id, time);
+                      const selected = isSelected(court.id, apiSlot?.slotId);
 
                       // eslint-disable-next-line no-useless-assignment
                       let cellStyle = '';
                       let content = null;
-                      let disabled = false;
+                      let disabled: boolean;
 
-                      if (status === 'UNAVAILABLE' || status === 'EXPIRED' || status === 'BOOKED') {
+                      if (selected) {
+                        // A selected slot may already show HOLD once it is held by this customer.
+                        cellStyle = 'primary-gradient text-white border-primary/20 shadow-inner scale-[0.98]';
+                        disabled = locked;
+                        content = (
+                          <span className="material-symbols-outlined text-white text-[20px] font-bold animate-scale-in">
+                            check
+                          </span>
+                        );
+                      } else if (status === 'UNAVAILABLE' || status === 'EXPIRED' || status === 'BOOKED' || status === 'OUT_OF_SERVICE') {
                         cellStyle = 'bg-gray-300 border-gray-300/50 text-on-surface-variant/30 cursor-not-allowed';
                         disabled = true;
-                      } else if (status === 'HOLDING') {
+                      } else if (status === 'HOLD') {
                         cellStyle = 'bg-[#FFF7ED] border-[#FED7AA] text-[#C2410C]/40 cursor-not-allowed';
                         disabled = true;
                         content = (
@@ -213,16 +219,10 @@ export default function CourtAvailabilityGrid({
                         );
                       } else {
                         // AVAILABLE
-                        if (selected) {
-                          cellStyle = 'primary-gradient text-white border-primary/20 shadow-inner scale-[0.98]';
-                          content = (
-                            <span className="material-symbols-outlined text-white text-[20px] font-bold animate-scale-in">
-                              check
-                            </span>
-                          );
-                        } else {
-                          cellStyle = 'bg-white hover:bg-primary/5 hover:border-primary/20 border-outline-variant/10 cursor-pointer';
-                        }
+                        cellStyle = locked
+                          ? 'bg-white border-outline-variant/10 opacity-60 cursor-not-allowed'
+                          : 'bg-white hover:bg-primary/5 hover:border-primary/20 border-outline-variant/10 cursor-pointer';
+                        disabled = locked;
                       }
 
                       return (
@@ -232,7 +232,8 @@ export default function CourtAvailabilityGrid({
                         >
                           <button
                             disabled={disabled}
-                            onClick={() => onSlotClick(court, time, price, apiSlot?.endTime ?? time, isPeakHour(time))}
+                            title={apiSlot?.restriction?.publicReason ?? undefined}
+                            onClick={() => apiSlot && onSlotClick(court, apiSlot)}
                             className={`w-full h-full rounded-xl border flex items-center justify-center transition-all duration-150 select-none ${cellStyle}`}
                           >
                             {content}
@@ -277,11 +278,6 @@ export default function CourtAvailabilityGrid({
       </div>
     </div>
   );
-}
-
-function normalizeTime(time: string) {
-  const [hour = '00', minute = '00'] = time.split(':');
-  return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:00`;
 }
 
 function getNext8Days() {

@@ -48,3 +48,13 @@ describe('validators.passwordStrength', () => {
     expect(validators.passwordStrength(password)).toBe(score)
   })
 })
+
+describe("validators.vnMobile", () => {
+  it("matches the booking services phone pattern", () => {
+    expect(validators.vnMobile("0912345678")).toBe(true)
+    expect(validators.vnMobile(" 0387654321 ")).toBe(true)
+    expect(validators.vnMobile("0212345678")).toBe(false)
+    expect(validators.vnMobile("091234567")).toBe(false)
+    expect(validators.vnMobile("+84912345678")).toBe(false)
+  })
+})
