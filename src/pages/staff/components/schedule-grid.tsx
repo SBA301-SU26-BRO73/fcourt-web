@@ -12,7 +12,7 @@ import {
 } from '@/pages/staff/schedule-utils'
 
 interface ScheduleGridProps {
-  courts: Court[]
+  courts: Array<Pick<Court, 'id' | 'name' | 'courtTypeName'>>
   schedule: StaffScheduleItem[]
   openMin: number
   rows: number

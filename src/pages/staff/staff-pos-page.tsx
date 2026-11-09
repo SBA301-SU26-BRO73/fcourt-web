@@ -125,15 +125,6 @@ export function StaffPosPage() {
 
         {order.status === 'PENDING' && (
           <div className="mt-4 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-            {branch?.bankQrImageUrl && (
-              <img
-                src={branch.bankQrImageUrl}
-                alt="QR chuyển khoản"
-                width={192}
-                height={192}
-                className="mx-auto h-48 w-48 rounded-lg object-contain"
-              />
-            )}
             <p className="text-center text-xs text-amber-800">
               {branch?.bankAccountName} · {branch?.bankAccountNumber} ({branch?.bankName})
             </p>
