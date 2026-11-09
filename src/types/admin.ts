@@ -1,6 +1,6 @@
 import type { UserRole } from '@/types/auth'
 
-export type UserStatus = 'PENDING_APPROVAL' | 'ACTIVE' | 'INACTIVE' | 'LOCKED'
+export type UserStatus = 'PENDING_APPROVAL' | 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'REJECTED'
 
 export interface UserAdminItem {
   id: number
@@ -10,7 +10,7 @@ export interface UserAdminItem {
   role: UserRole
   status: UserStatus
   createdAt: string
-  updatedAt: string
+  updatedAt?: string
 }
 
 export type UserDocType = 'LEGAL' | 'COURT_IMAGE'
@@ -34,6 +34,7 @@ export interface CourtTypeData {
   color: string | null
   active: boolean
   createdAt: string
+  updatedAt?: string
 }
 
 export interface CourtTypeRequest {
@@ -69,6 +70,8 @@ export interface PlanRequest {
   features: string[]
   color?: string
   popular: boolean
+  /** Omitted keeps the current value on update; defaults to true on create. */
+  active?: boolean
 }
 
 export interface PageResponse<T> {

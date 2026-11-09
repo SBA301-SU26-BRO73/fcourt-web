@@ -1,16 +1,18 @@
 import { Check, LockKeyhole, Mail, Phone, Search, UnlockKeyhole, Users, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { toastApiError } from '@/common/utils/api-error'
 import { useLockUser, useUnlockUser, useUserManagement } from '@/hooks/use-users'
 import type { UserAdminItem, UserStatus } from '@/types/admin'
 import type { UserRole } from '@/types/auth'
 
-type ManagedRole = Extract<UserRole, 'CUSTOMER' | 'ADMIN'>
+type ManagedRole = Extract<UserRole, 'CUSTOMER' | 'ADMIN' | 'STAFF'>
 
 const ROLE_OPTIONS: Array<{ value: ManagedRole | ''; label: string }> = [
   { value: '', label: 'All roles' },
   { value: 'CUSTOMER', label: 'Customers' },
   { value: 'ADMIN', label: 'Court owners' },
+  { value: 'STAFF', label: 'Staff' },
 ]
 
 const STATUS_OPTIONS: Array<{ value: UserStatus | ''; label: string }> = [
@@ -19,6 +21,7 @@ const STATUS_OPTIONS: Array<{ value: UserStatus | ''; label: string }> = [
   { value: 'LOCKED', label: 'Locked' },
   { value: 'PENDING_APPROVAL', label: 'Pending approval' },
   { value: 'INACTIVE', label: 'Inactive' },
+  { value: 'REJECTED', label: 'Rejected' },
 ]
 
 function statusMeta(status: UserStatus) {
@@ -27,6 +30,7 @@ function statusMeta(status: UserStatus) {
     LOCKED: { label: 'Locked', cls: 'bg-slate-100 text-slate-600 ring-slate-200' },
     PENDING_APPROVAL: { label: 'Pending', cls: 'bg-amber-50 text-amber-700 ring-amber-100' },
     INACTIVE: { label: 'Inactive', cls: 'bg-red-50 text-red-700 ring-red-100' },
+    REJECTED: { label: 'Rejected', cls: 'bg-red-50 text-red-700 ring-red-100' },
   }
   return map[status]
 }
@@ -34,6 +38,7 @@ function statusMeta(status: UserStatus) {
 function roleLabel(role: UserRole) {
   if (role === 'ADMIN') return 'Court owner'
   if (role === 'CUSTOMER') return 'Customer'
+  if (role === 'STAFF') return 'Staff'
   return role
 }
 
@@ -141,25 +146,25 @@ export function UserManagementPage() {
   const [status, setStatus] = useState<UserStatus | ''>('')
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [lockingUser, setLockingUser] = useState<UserAdminItem | null>(null)
   const [toast, setToast] = useState('')
 
-  const query = useUserManagement({ role, status, page, size: 10 })
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim())
+      setPage(0)
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  const query = useUserManagement({ role, status, query: debouncedSearch, page, size: 10 })
   const lockMutation = useLockUser()
   const unlockMutation = useUnlockUser()
   const pageData = query.data
   const users = pageData?.content ?? []
-  const filteredUsers = useMemo(() => {
-    const keyword = search.trim().toLowerCase()
-    if (!keyword) return users
-    return users.filter((user) => {
-      return (
-        user.email.toLowerCase().includes(keyword) ||
-        (user.fullName ?? '').toLowerCase().includes(keyword) ||
-        (user.phone ?? '').toLowerCase().includes(keyword)
-      )
-    })
-  }, [users, search])
+  // Search runs on the server (email, name or phone), so the page shows the rows as returned.
+  const filteredUsers = users
 
   function resetAndSetRole(value: ManagedRole | '') {
     setRole(value)
@@ -185,6 +190,7 @@ export function UserManagementPage() {
           showToast('Account locked')
           setLockingUser(null)
         },
+        onError: (error) => toastApiError(error, 'Unable to lock this account.'),
       },
     )
   }
@@ -192,6 +198,7 @@ export function UserManagementPage() {
   function handleUnlock(user: UserAdminItem) {
     unlockMutation.mutate(user.id, {
       onSuccess: () => showToast('Account unlocked'),
+      onError: (error) => toastApiError(error, 'Unable to unlock this account.'),
     })
   }
 
@@ -328,7 +335,7 @@ export function UserManagementPage() {
                             <button
                               type="button"
                               onClick={() => setLockingUser(user)}
-                              disabled={lockMutation.isPending || user.status === 'INACTIVE'}
+                              disabled={lockMutation.isPending || user.status !== 'ACTIVE'}
                               className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-3.5 py-2 text-[12px] font-extrabold text-red-700 ring-1 ring-red-100 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <LockKeyhole className="h-4 w-4" />

@@ -1,6 +1,7 @@
 import { Check, Pencil, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { toastApiError } from '@/common/utils/api-error'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { useCreatePlan, useDeletePlan, usePlans, useUpdatePlan } from '@/hooks/use-subscription-plans'
 import type { PlanData, PlanRequest } from '@/types/admin'
@@ -177,15 +178,15 @@ export function PlansPage() {
 
   function handleSave(req: PlanRequest) {
     if (editing) {
-      updateMut.mutate({ id: editing.id, data: req }, { onSuccess: () => { setFormOpen(false); showToast('Đã cập nhật gói') } })
+      updateMut.mutate({ id: editing.id, data: req }, { onSuccess: () => { setFormOpen(false); showToast('Đã cập nhật gói') }, onError: (e) => toastApiError(e, 'Không thể cập nhật gói') })
     } else {
-      createMut.mutate(req, { onSuccess: () => { setFormOpen(false); showToast('Đã thêm gói mới') } })
+      createMut.mutate(req, { onSuccess: () => { setFormOpen(false); showToast('Đã thêm gói mới') }, onError: (e) => toastApiError(e, 'Không thể thêm gói') })
     }
   }
 
   function handleDelete() {
     if (!delTarget) return
-    deleteMut.mutate(delTarget.id, { onSuccess: () => { setDelTarget(null); showToast('Đã xóa gói') } })
+    deleteMut.mutate(delTarget.id, { onSuccess: () => { setDelTarget(null); showToast('Đã xóa gói') }, onError: (e) => { setDelTarget(null); toastApiError(e, 'Không thể xóa gói') } })
   }
 
   return (

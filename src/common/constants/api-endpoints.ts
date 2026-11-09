@@ -5,7 +5,6 @@
  */
 export const API_PREFIXES = {
   auth: '/auth',
-  users: '/users', // TODO(F14): no "list all users" endpoint in the backend
   superAdmin: '/super-admin',
   courtTypes: '/court-types',
   plans: '/subscription-plans',
@@ -53,8 +52,8 @@ export const API_ENDPOINTS = {
     logout: joinEndpoint(API_PREFIXES.auth, 'logout'),
   },
   users: {
-    // TODO(F14): GET /users (all users with role/status filters) does not exist in the backend.
-    list: joinEndpoint(API_PREFIXES.users),
+    // auth-service: paged list with role/status/query filters (SUPER_ADMIN only).
+    list: joinEndpoint(API_PREFIXES.superAdmin, 'users'),
     pending: joinEndpoint(API_PREFIXES.superAdmin, 'court-admins/pending'),
     detail: (id: Id) => joinEndpoint(API_PREFIXES.superAdmin, 'court-admins', id),
     approve: (id: Id) => joinEndpoint(API_PREFIXES.superAdmin, 'court-admins', id, 'approve'),

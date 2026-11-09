@@ -4,8 +4,10 @@ import type { PageResponse, UserAdminItem, UserDetailItem } from '@/types/admin'
 import type { UserRole, UserStatus } from '@/types/auth'
 
 export interface UserListParams {
-  role?: Extract<UserRole, 'CUSTOMER' | 'ADMIN'> | ''
+  role?: Extract<UserRole, 'CUSTOMER' | 'ADMIN' | 'STAFF'> | ''
   status?: UserStatus | ''
+  /** Matches email, full name or phone (server side, max 100 characters). */
+  query?: string
   page?: number
   size?: number
 }
@@ -18,28 +20,22 @@ export interface UserManagementPageResponse<T> {
   number: number
 }
 
-interface SpringPagedPayload<T> {
-  content: T[]
-  totalElements?: number
-  totalPages?: number
-  size?: number
-  number?: number
-  page?: {
-    size: number
-    number: number
-    totalElements: number
-    totalPages: number
-  }
+/** GET /super-admin/users body: auth-service UserPage. `page` is zero based, `total` the match count. */
+export interface ApiUserPage {
+  items: UserAdminItem[]
+  page: number
+  size: number
+  total: number
 }
 
-function normalizeUserManagementPage<T>(page: SpringPagedPayload<T>): UserManagementPageResponse<T> {
-  const metadata = page.page ?? page
+export function toUserManagementPage(body: ApiUserPage): UserManagementPageResponse<UserAdminItem> {
+  const size = body.size > 0 ? body.size : 1
   return {
-    content: page.content,
-    size: metadata.size ?? page.content.length,
-    number: metadata.number ?? 0,
-    totalElements: metadata.totalElements ?? page.content.length,
-    totalPages: metadata.totalPages ?? 1,
+    content: body.items,
+    size: body.size,
+    number: body.page,
+    totalElements: body.total,
+    totalPages: Math.ceil(body.total / size),
   }
 }
 
@@ -50,18 +46,19 @@ export async function getPendingUsers(): Promise<PageResponse<UserAdminItem>> {
   return { content, totalElements: content.length, totalPages: 1, size: content.length, number: 0 }
 }
 
-// TODO(F14): the backend has no endpoint that lists all users (customers and owners) with
-// role/status filters, so this call is expected to fail until the team decides (gap report 3.2 item 1).
+/** Needs GET /api/super-admin/users in auth-service (SUPER_ADMIN, paged, filtered by role/status/query). */
 export async function getUsers(params: UserListParams): Promise<UserManagementPageResponse<UserAdminItem>> {
-  const res = await axiosClient.get<SpringPagedPayload<UserAdminItem>>(API_ENDPOINTS.users.list, {
+  const query = params.query?.trim()
+  const res = await axiosClient.get<ApiUserPage>(API_ENDPOINTS.users.list, {
     params: {
       role: params.role || undefined,
       status: params.status || undefined,
+      query: query ? query.slice(0, 100) : undefined,
       page: params.page ?? 0,
       size: params.size ?? 10,
     },
   })
-  return normalizeUserManagementPage(res.data)
+  return toUserManagementPage(res.data)
 }
 
 export async function getUserDetail(id: number): Promise<UserDetailItem> {
@@ -79,14 +76,18 @@ export async function rejectUser(id: number, reason = 'Rejected by super admin')
   return res.data
 }
 
-// TODO(F14): lock and unlock are merged into one toggle-status call (PUT, optional reason) that
-// returns { id, status }. Both helpers hit it until the user-management screen is reworked.
-export async function lockUser(id: number, reason: string): Promise<UserAdminItem> {
-  const res = await axiosClient.put<UserAdminItem>(API_ENDPOINTS.users.toggleStatus(id), { reason })
+export interface UserStatusResult {
+  id: number
+  status: UserStatus
+}
+
+/** Lock and unlock share PUT toggle-status: ACTIVE becomes LOCKED (reason required), LOCKED becomes ACTIVE. */
+export async function lockUser(id: number, reason: string): Promise<UserStatusResult> {
+  const res = await axiosClient.put<UserStatusResult>(API_ENDPOINTS.users.toggleStatus(id), { reason })
   return res.data
 }
 
-export async function unlockUser(id: number): Promise<UserAdminItem> {
-  const res = await axiosClient.put<UserAdminItem>(API_ENDPOINTS.users.toggleStatus(id))
+export async function unlockUser(id: number): Promise<UserStatusResult> {
+  const res = await axiosClient.put<UserStatusResult>(API_ENDPOINTS.users.toggleStatus(id))
   return res.data
 }
