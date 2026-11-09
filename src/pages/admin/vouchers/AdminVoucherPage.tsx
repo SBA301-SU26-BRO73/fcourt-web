@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { useState } from 'react'
 import {
   Plus,
   Search,
@@ -10,29 +9,35 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  ExternalLink,
+  Power,
   User,
   Phone,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
-import { getVouchers, deleteVoucher } from '@/services/voucher/voucher.api'
-import { getBranches } from '@/services/branch/branch.api'
-import { getPayments } from '@/services/payment/payment.api'
+import {
+  useDeleteVoucher,
+  useOwnerBranches,
+  useSetVoucherStatus,
+  useVoucherUsages,
+  useVouchers,
+} from '@/hooks/use-admin-vouchers'
 import type { Voucher } from '@/types/voucher'
 import VoucherFormModal from '@/components/admin/VoucherFormModal'
-import { getApiErrorMessage } from '@/common/utils/api-error'
+import { getApiErrorMessage, toastApiError } from '@/common/utils/api-error'
 
 export default function AdminVoucherPage() {
-  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<'list' | 'history'>('list')
   
   // Voucher List states
   const [page, setPage] = useState(0)
   const [size, setSize] = useState(10)
   
-  // History states
+  // Usage history states (the backend lists usages per voucher)
   const [historyPage, setHistoryPage] = useState(0)
   const [historySize] = useState(10)
+  const [historyVoucherId, setHistoryVoucherId] = useState<number | null>(null)
+  const [historyPhone, setHistoryPhone] = useState('')
   
   const [searchTerm, setSearchTerm] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -42,41 +47,22 @@ export default function AdminVoucherPage() {
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null)
 
   // Fetch vouchers
-  const voucherQuery = useQuery({
-    queryKey: ['vouchers', 'list', page, size],
-    queryFn: () => getVouchers({ page, size }),
-    placeholderData: keepPreviousData,
-    enabled: activeTab === 'list',
-  })
-
-  // Fetch payment usage history
-  const historyQuery = useQuery({
-    queryKey: ['payments', 'voucher-history', historyPage, historySize],
-    queryFn: () => getPayments({ page: historyPage, size: historySize, hasVoucher: true }),
-    placeholderData: keepPreviousData,
-    enabled: activeTab === 'history',
+  const voucherQuery = useVouchers({ page, size }, activeTab === 'list')
+  // Voucher picker of the history tab
+  const pickerQuery = useVouchers({ page: 0, size: 100 }, activeTab === 'history')
+  const pickerVouchers = pickerQuery.data?.content ?? []
+  const effectiveHistoryVoucherId = historyVoucherId ?? pickerVouchers[0]?.id ?? null
+  const historyQuery = useVoucherUsages(effectiveHistoryVoucherId, {
+    page: historyPage,
+    size: historySize,
+    phone: historyPhone,
   })
 
   // Fetch admin branches for dropdowns
-  const branchQuery = useQuery({
-    queryKey: ['branches', 'dropdown-list'],
-    queryFn: () => getBranches({ page: 0, size: 200, sortField: 'name', sortDirection: 'asc' }),
-  })
+  const branchQuery = useOwnerBranches()
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteVoucher,
-    onSuccess: async () => {
-      if (voucherQuery.data?.numberOfElements === 1 && page > 0) {
-        setPage((curr) => curr - 1)
-      }
-      await queryClient.invalidateQueries({ queryKey: ['vouchers'] })
-      setDeleteError(null)
-      triggerSuccessMessage('Xóa mã giảm giá thành công.')
-    },
-    onError: (error) => {
-      setDeleteError(getApiErrorMessage(error, 'Không thể xóa mã giảm giá.'))
-    },
-  })
+  const deleteMutation = useDeleteVoucher()
+  const statusMutation = useSetVoucherStatus()
 
   const triggerSuccessMessage = (msg: string) => {
     setSuccessMessage(msg)
@@ -87,9 +73,27 @@ export default function AdminVoucherPage() {
 
   const handleDelete = (voucher: Voucher) => {
     const confirmed = window.confirm(`Bạn có chắc muốn xóa mã giảm giá "${voucher.code}" không?`)
-    if (confirmed) {
-      deleteMutation.mutate(voucher.id)
-    }
+    if (!confirmed) return
+    deleteMutation.mutate(voucher.id, {
+      onSuccess: () => {
+        if (voucherQuery.data?.numberOfElements === 1 && page > 0) setPage((curr) => curr - 1)
+        setDeleteError(null)
+        triggerSuccessMessage('Xóa mã giảm giá thành công.')
+      },
+      onError: (error) => setDeleteError(getApiErrorMessage(error, 'Không thể xóa mã giảm giá.')),
+    })
+  }
+
+  // There is no disable endpoint: switching off is a PUT with status EXPIRED.
+  const handleToggle = (voucher: Voucher) => {
+    const next = voucher.status === 'ACTIVE' ? 'EXPIRED' : 'ACTIVE'
+    statusMutation.mutate(
+      { voucher, status: next },
+      {
+        onSuccess: () => toast.success(next === 'ACTIVE' ? 'Đã bật mã giảm giá.' : 'Đã tắt mã giảm giá.'),
+        onError: (error) => toastApiError(error, 'Không thể đổi trạng thái mã giảm giá.'),
+      },
+    )
   }
 
   const handleEdit = (voucher: Voucher) => {
@@ -102,31 +106,20 @@ export default function AdminVoucherPage() {
     setIsModalOpen(true)
   }
 
-  const branches = branchQuery.data?.content || []
+  const branches = branchQuery.data ?? []
+  const branchNames = new Map(branches.map((branch) => [branch.id, branch.name]))
+  const branchNameOf = (voucher: Voucher) => branchNames.get(voucher.branchId) ?? `Chi nhánh #${voucher.branchId}`
   const data = voucherQuery.data
   const historyData = historyQuery.data
 
-  const filteredVouchers = useMemo(() => {
+  const filteredVouchers = (() => {
     const q = searchTerm.trim().toLowerCase()
-    if (!q) return data?.content || []
-    return (data?.content || []).filter(
-      (v) => v.code.toLowerCase().includes(q) || v.branchName.toLowerCase().includes(q),
-    )
-  }, [data, searchTerm])
+    const all = data?.content ?? []
+    if (!q) return all
+    return all.filter((v) => v.code.toLowerCase().includes(q) || branchNameOf(v).toLowerCase().includes(q))
+  })()
 
-  const filteredHistory = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase()
-    if (!q) return historyData?.content || []
-    return (historyData?.content || []).filter(
-      (p) =>
-        (p.voucherCode && p.voucherCode.toLowerCase().includes(q)) ||
-        (p.branchName && p.branchName.toLowerCase().includes(q)) ||
-        (p.customerName && p.customerName.toLowerCase().includes(q)) ||
-        (p.customerPhone && p.customerPhone.includes(q)),
-    )
-  }, [historyData, searchTerm])
-
-  const formatCurrency = (val: number | null) => {
+  const formatCurrency = (val: number | null | undefined) => {
     if (val === null || val === undefined) return 'Không'
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)
   }
@@ -145,11 +138,11 @@ export default function AdminVoucherPage() {
 
   // Check if voucher is valid (active, within date, usage not exceeded)
   const isVoucherValidNow = (v: Voucher) => {
-    if (!v.active) return false
-    if (v.usageCount >= v.usageLimit) return false
+    if (v.status !== 'ACTIVE') return false
+    if (v.usedCount >= v.usageLimit) return false
     const now = new Date()
     const start = new Date(v.startDate)
-    const expiry = new Date(v.expiryDate)
+    const expiry = new Date(v.endDate)
     return now >= start && now <= expiry
   }
 
@@ -231,7 +224,7 @@ export default function AdminVoucherPage() {
               placeholder={
                 activeTab === 'list'
                   ? 'Tìm kiếm theo mã code hoặc chi nhánh áp dụng...'
-                  : 'Tìm kiếm theo mã voucher, khách hàng, số điện thoại hoặc chi nhánh...'
+                  : 'Dùng ô lọc số điện thoại bên dưới để tìm theo khách hàng...'
               }
               className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-12 pr-4 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-50"
             />
@@ -334,7 +327,7 @@ export default function AdminVoucherPage() {
                               </div>
                             </td>
                             <td className="px-6 py-4 font-semibold text-slate-900">
-                              {voucher.branchName || 'Tất cả chi nhánh'}
+                              {branchNameOf(voucher)}
                             </td>
                             <td className="px-6 py-4 font-bold text-slate-800">
                               {voucher.discountType === 'PERCENTAGE' ? (
@@ -344,25 +337,25 @@ export default function AdminVoucherPage() {
                               )}
                             </td>
                             <td className="px-6 py-4 text-xs">
-                              <div>Tối thiểu: {formatCurrency(voucher.minOrderValue)}</div>
+                              <div>Tối thiểu: {formatCurrency(voucher.minOrderAmount || null)}</div>
                               {voucher.discountType === 'PERCENTAGE' && (
                                 <div className="mt-0.5 text-slate-400">
-                                  Tối đa: {formatCurrency(voucher.maxDiscountValue)}
+                                  Tối đa: {formatCurrency(voucher.maxDiscountAmount)}
                                 </div>
                               )}
                             </td>
                             <td className="px-6 py-4">
                               <div className="w-24">
                                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
-                                  <span>{voucher.usageCount}</span>
+                                  <span>{voucher.usedCount}</span>
                                   <span className="text-slate-400">/ {voucher.usageLimit}</span>
                                 </div>
                                 <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
                                   <div
                                     className={`h-full rounded-full ${
-                                      voucher.usageCount >= voucher.usageLimit ? 'bg-red-500' : 'bg-green-500'
+                                      voucher.usedCount >= voucher.usageLimit ? 'bg-red-500' : 'bg-green-500'
                                     }`}
-                                    style={{ width: `${Math.min(100, (voucher.usageCount / voucher.usageLimit) * 100)}%` }}
+                                    style={{ width: `${Math.min(100, (voucher.usedCount / voucher.usageLimit) * 100)}%` }}
                                   />
                                 </div>
                               </div>
@@ -374,7 +367,7 @@ export default function AdminVoucherPage() {
                               </div>
                               <div className="flex items-center gap-1 text-slate-500">
                                 <span className="font-semibold text-slate-700">Đến:</span>
-                                {formatDate(voucher.expiryDate)}
+                                {formatDate(voucher.endDate)}
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -382,11 +375,15 @@ export default function AdminVoucherPage() {
                                 <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-800">
                                   <CheckCircle className="size-3" /> Đang chạy
                                 </span>
-                              ) : !voucher.active ? (
+                              ) : voucher.status === 'ACTIVE' && voucher.usedCount < voucher.usageLimit && new Date(voucher.startDate) > new Date() ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-800">
+                                  <Clock className="size-3" /> Chưa bắt đầu
+                                </span>
+                              ) : voucher.status === 'EXPIRED' && new Date(voucher.endDate) > new Date() ? (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-500">
                                   <XCircle className="size-3" /> Tắt hoạt động
                                 </span>
-                              ) : voucher.usageCount >= voucher.usageLimit ? (
+                              ) : voucher.usedCount >= voucher.usageLimit ? (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-800">
                                   <XCircle className="size-3" /> Hết lượt
                                 </span>
@@ -405,6 +402,15 @@ export default function AdminVoucherPage() {
                                   title="Chỉnh sửa"
                                 >
                                   <Pencil className="size-4.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={statusMutation.isPending}
+                                  onClick={() => handleToggle(voucher)}
+                                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                                  title={voucher.status === 'ACTIVE' ? 'Tắt mã' : 'Bật mã'}
+                                >
+                                  <Power className="size-4.5" />
                                 </button>
                                 <button
                                   type="button"
@@ -452,19 +458,52 @@ export default function AdminVoucherPage() {
           </>
         )}
 
-        {/* Tab 2: Voucher Usage History */}
+        {/* Tab 2: Voucher Usage History (per voucher) */}
         {activeTab === 'history' && (
           <>
-            {historyQuery.isPending ? (
+            <div className="mt-3 grid gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:grid-cols-2">
+              <label className="space-y-1.5 text-sm font-semibold text-[#374151]">
+                <span className="block">Mã giảm giá</span>
+                <select
+                  value={effectiveHistoryVoucherId ?? ''}
+                  onChange={(e) => {
+                    setHistoryVoucherId(Number(e.target.value))
+                    setHistoryPage(0)
+                  }}
+                  className="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 font-normal outline-none focus:border-green-600"
+                >
+                  {pickerVouchers.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.code} - {branchNameOf(v)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1.5 text-sm font-semibold text-[#374151]">
+                <span className="block">Số điện thoại khách</span>
+                <input
+                  type="search"
+                  value={historyPhone}
+                  onChange={(e) => {
+                    setHistoryPhone(e.target.value)
+                    setHistoryPage(0)
+                  }}
+                  placeholder="Lọc theo số điện thoại"
+                  className="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 font-normal outline-none focus:border-green-600"
+                />
+              </label>
+            </div>
+
+            {pickerQuery.isPending || (effectiveHistoryVoucherId !== null && historyQuery.isPending) ? (
               <div className="mt-6 rounded-2xl border border-[#E5E7EB] bg-white px-6 py-16 text-center shadow-sm">
                 <h2 className="text-lg font-bold">Đang tải lịch sử sử dụng voucher...</h2>
               </div>
-            ) : historyQuery.isError ? (
+            ) : pickerQuery.isError || historyQuery.isError ? (
               <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-6 py-16 text-center">
                 <h2 className="text-lg font-bold text-red-800">Không thể tải lịch sử sử dụng voucher</h2>
                 <button
                   type="button"
-                  onClick={() => void historyQuery.refetch()}
+                  onClick={() => void (pickerQuery.isError ? pickerQuery.refetch() : historyQuery.refetch())}
                   className="mt-4 rounded-xl bg-red-700 px-4 py-2 text-sm font-bold text-white hover:bg-red-800"
                 >
                   Thử lại
@@ -474,105 +513,56 @@ export default function AdminVoucherPage() {
               <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
                 <Clock className="mx-auto size-12 text-slate-400 mb-3" />
                 <h2 className="text-lg font-bold text-slate-800">Chưa có lịch sử sử dụng</h2>
-                <p className="mt-1 text-sm text-slate-500">Khi khách hàng áp dụng voucher để đặt sân và thanh toán, lịch sử sử dụng sẽ xuất hiện ở đây.</p>
-              </div>
-            ) : filteredHistory.length === 0 ? (
-              <div className="mt-6 rounded-2xl border border-[#E5E7EB] bg-white px-6 py-16 text-center">
-                <h2 className="text-lg font-bold">Không tìm thấy kết quả phù hợp trong lịch sử</h2>
-                <p className="mt-1 text-sm text-slate-500">Thử tìm kiếm với một từ khóa khác.</p>
+                <p className="mt-1 text-sm text-slate-500">Khi khách hàng áp dụng voucher để đặt sân, lịch sử sử dụng sẽ xuất hiện ở đây.</p>
               </div>
             ) : (
               <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="border-b border-slate-100 bg-slate-50 px-6 py-3 text-sm text-slate-600">
+                  Tổng số tiền đã giảm:{' '}
+                  <strong className="text-red-600">{formatCurrency(historyData.totalDiscountAmount)}</strong>
+                  {' '}({historyData.totalElements} lượt)
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-left text-sm text-slate-500">
                     <thead className="bg-slate-50 text-xs font-bold uppercase text-slate-700 border-b border-slate-100">
                       <tr>
-                        <th scope="col" className="px-3 py-4 whitespace-nowrap">Mã Voucher</th>
-                        <th scope="col" className="px-3 py-4 whitespace-nowrap">Cơ sở (Branch)</th>
+                        <th scope="col" className="px-3 py-4 whitespace-nowrap">Mã đặt sân</th>
                         <th scope="col" className="px-3 py-4 whitespace-nowrap">Khách hàng</th>
-                        <th scope="col" className="px-3 py-4 text-right whitespace-nowrap">Số tiền gốc</th>
                         <th scope="col" className="px-3 py-4 text-right whitespace-nowrap">Số tiền giảm</th>
-                        <th scope="col" className="px-3 py-4 text-right whitespace-nowrap">Thực tế đã trả</th>
-                        <th scope="col" className="px-3 py-4 whitespace-nowrap">Ngày giao dịch</th>
-                        <th scope="col" className="px-3 py-4 whitespace-nowrap">Trạng thái thanh toán</th>
-                        <th scope="col" className="px-3 py-4 text-center whitespace-nowrap">Hóa đơn</th>
+                        <th scope="col" className="px-3 py-4 whitespace-nowrap">Thời điểm dùng</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filteredHistory.map((payment) => {
-                        const originalAmount = payment.amount + (payment.discountAmount || 0)
-                        return (
-                          <tr key={payment.id} className="hover:bg-slate-50 transition">
-                            <td className="px-3 py-4">
-                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-50 px-2 py-1 text-xs font-bold text-green-700 border border-green-200 uppercase">
-                                <Ticket className="size-3.5" />
-                                {payment.voucherCode}
-                              </span>
-                            </td>
-                            <td className="px-3 py-4 font-semibold text-slate-900">
-                              {payment.branchName}
-                            </td>
-                            <td className="px-3 py-4 text-xs">
-                              <div className="flex items-center gap-1 text-slate-900 font-bold">
-                                <User className="size-3 text-slate-400" />
-                                {payment.customerName || 'Khách vãng lai'}
-                              </div>
-                              <div className="flex items-center gap-1 text-slate-400 mt-0.5">
-                                <Phone className="size-3" />
-                                {payment.customerPhone || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-3 py-4 text-right font-medium text-slate-500 line-through">
-                              {formatCurrency(originalAmount)}
-                            </td>
-                            <td className="px-3 py-4 text-right font-semibold text-red-600">
-                              -{formatCurrency(payment.discountAmount)}
-                            </td>
-                            <td className="px-3 py-4 text-right font-bold text-green-700">
-                              {formatCurrency(payment.amount)}
-                            </td>
-                            <td className="px-3 py-4 text-xs">
-                              {formatDate(payment.createdAt)}
-                            </td>
-                            <td className="px-3 py-4">
-                              {payment.status === 'CONFIRMED' ? (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-800">
-                                  Đã xác nhận
-                                </span>
-                              ) : payment.status === 'PENDING' ? (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800 animate-pulse">
-                                  Chờ xác nhận
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-800">
-                                  Bị từ chối
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 py-4 text-center">
-                              {payment.billImageUrl ? (
-                                <a
-                                  href={payment.billImageUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-800 font-bold"
-                                  title="Xem ảnh hóa đơn chuyển khoản"
-                                >
-                                  Xem ảnh <ExternalLink className="size-3" />
-                                </a>
-                              ) : (
-                                <span className="text-xs text-slate-400">Không có</span>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
+                      {historyData.content.map((usage) => (
+                        <tr key={usage.id} className="hover:bg-slate-50 transition">
+                          <td className="px-3 py-4">
+                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-50 px-2 py-1 text-xs font-bold text-green-700 border border-green-200 uppercase">
+                              <Ticket className="size-3.5" />
+                              {usage.bookingCode ?? `#${usage.bookingId}`}
+                            </span>
+                          </td>
+                          <td className="px-3 py-4 text-xs">
+                            <div className="flex items-center gap-1 text-slate-900 font-bold">
+                              <User className="size-3 text-slate-400" />
+                              {usage.customerName || 'Khách vãng lai'}
+                            </div>
+                            <div className="flex items-center gap-1 text-slate-400 mt-0.5">
+                              <Phone className="size-3" />
+                              {usage.customerPhone || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-4 text-right font-semibold text-red-600">
+                            -{formatCurrency(usage.discountAmount)}
+                          </td>
+                          <td className="px-3 py-4 text-xs">{formatDate(usage.usedAt)}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
 
                 {/* History Pagination */}
-                {historyData && historyData.totalPages > 1 && (
+                {historyData.totalPages > 1 && (
                   <div className="flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 text-slate-500 text-sm">
                     <button
                       type="button"

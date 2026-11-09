@@ -2,7 +2,7 @@ import { Calendar, Clock, MapPin, Ticket, Tag, X, AlertCircle } from 'lucide-rea
 import { useState } from 'react';
 import type { CreateBookingsResponse, PaymentResponse } from '@/types/booking';
 import { getVoucherByCode } from '@/services/voucher/voucher.api';
-import type { Voucher } from '@/types/voucher';
+import type { LegacyVoucher as Voucher } from '@/types/voucher';
 
 type BookingSummaryData = CreateBookingsResponse | PaymentResponse;
 

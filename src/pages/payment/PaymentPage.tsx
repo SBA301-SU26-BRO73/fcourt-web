@@ -7,7 +7,7 @@ import { UploadReceipt } from '../../components/UploadReceipt';
 import { BookingSummary } from '../../components/BookingSummary';
 import { getBookingDetails } from '@/services/booking/booking.api';
 import type { CreateBookingsResponse } from '@/types/booking';
-import type { Voucher } from '@/types/voucher';
+import type { LegacyVoucher as Voucher } from '@/types/voucher';
 
 interface LocationState {
   booking?: CreateBookingsResponse;
