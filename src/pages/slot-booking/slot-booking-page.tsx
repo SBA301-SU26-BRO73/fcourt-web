@@ -5,9 +5,9 @@ import { toast } from 'sonner';
 import CourtAvailabilityGrid from './components/court-availability-grid';
 import type { Court } from './components/court-availability-grid';
 import BookingPanel from './components/booking-panel';
-import ActiveOrderDialog from './components/active-order-dialog';
 import type { SelectedSlot } from './components/booking-panel';
 import { toggleSlot, toHHmm, toMinutes } from './slot-selection';
+import ActiveOrderDialog from './components/active-order-dialog';
 import { useAuth } from '@/hooks/use-auth-context';
 import { useCourtTypes } from '@/hooks/use-court-types';
 import {
@@ -208,7 +208,7 @@ export default function SlotBookingPage() {
   };
 
   const handleHold = async (phone: string, skipUnpaidCheck = false) => {
-    if (isBusy || hold || selectedSlots.length === 0) return;
+    if (isBusy || checkingUnpaid || hold || selectedSlots.length === 0) return;
 
     setBookingError(null);
     const guestPhone = phone.trim();
@@ -410,10 +410,10 @@ export default function SlotBookingPage() {
       <BookingPanel
         selectedSlots={selectedSlots}
         venueName={venueName}
-        onBook={(phone) => handleHold(phone)}
+        onBook={handleHold}
         defaultPhone={defaultPhone}
         phoneOptional={isAuthenticatedCustomer}
-        isSubmitting={holdStatus === 'holding' || checkingUnpaid}
+        isSubmitting={holdStatus === 'holding'}
         error={bookingError}
         hold={hold ? {
           countdown: formatCountdown(remaining),
