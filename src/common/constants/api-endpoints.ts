@@ -76,16 +76,17 @@ export const API_ENDPOINTS = {
     delete: (id: Id) => joinEndpoint(API_PREFIXES.plans, id),
   },
   products: {
-    // TODO(F11): there is no admin product list; the staff POS catalog is the only read endpoint.
+    /** Staff POS catalog (active products of the staff's own branch). */
     list: joinEndpoint(API_PREFIXES.staffPos, 'products'),
-    // TODO(F11): the backend has no GET/DELETE product by id.
-    detail: (id: Id) => joinEndpoint(API_PREFIXES.adminPosProducts, id),
+    /** Owner list `GET ?branchId&active&query&page&size` and create `POST`. */
+    adminList: joinEndpoint(API_PREFIXES.adminPosProducts),
     create: joinEndpoint(API_PREFIXES.adminPosProducts),
+    /** `PUT` only: there is no GET or DELETE by id (stop selling with `active=false`). */
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.adminPosProducts, id),
+    stockAdjustments: (id: Id) => joinEndpoint(API_PREFIXES.adminPosProducts, id, 'stock-adjustments'),
   },
   staff: {
     list: joinEndpoint(API_PREFIXES.adminStaff),
-    // TODO(F11): GET staff by id does not exist in the backend (only /admin/staff/accounts/{userId}).
-    detail: (id: Id) => joinEndpoint(API_PREFIXES.adminStaff, id),
     // TODO(F13): there is no court board endpoint; combine facility courts with public slots.
     courtBoard: joinEndpoint(API_PREFIXES.staff, 'court-board'),
     // TODO(F13): POS orders are created and settled in one call; there is no confirm step.
@@ -93,7 +94,9 @@ export const API_ENDPOINTS = {
     me: joinEndpoint(API_PREFIXES.staff, 'me'),
     create: joinEndpoint(API_PREFIXES.adminStaff),
     update: (id: Id) => joinEndpoint(API_PREFIXES.adminStaff, id),
+    /** `DELETE` disables the assignment and the login account. */
     delete: (id: Id) => joinEndpoint(API_PREFIXES.adminStaff, id),
+    reactivate: (id: Id) => joinEndpoint(API_PREFIXES.adminStaff, id, 'reactivate'),
     schedule: joinEndpoint(API_PREFIXES.staff, 'schedule'),
     checkinManual: joinEndpoint(API_PREFIXES.staff, 'check-in/manual'),
     walkInBooking: joinEndpoint(API_PREFIXES.staff, 'walk-in'),

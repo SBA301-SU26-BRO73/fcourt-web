@@ -1,42 +1,83 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
+import { pageFromApi } from '@/common/utils/api-page'
+import { newIdempotencyKey } from '@/services/booking/booking.api'
 import { axiosClient } from '@/services/http/axios-client'
-import type { CreateProductRequest, Product, UpdateProductRequest } from '@/types/product'
+import type {
+  CreateProductRequest,
+  Product,
+  ProductApiPage,
+  ProductListParams,
+  StockAdjustmentRequest,
+  UpdateProductRequest,
+} from '@/types/product'
 
-export async function getProducts() {
-  const response = await axiosClient.get(API_ENDPOINTS.products.list)
-  return response.data
+/** Owner list: `GET /admin/pos/products?branchId&active&query&page&size` answers `{ items, page, size, total }`. */
+export async function getAdminProductPage(params: ProductListParams) {
+  const { data } = await axiosClient.get<ProductApiPage>(API_ENDPOINTS.products.adminList, {
+    params: {
+      branchId: params.branchId,
+      page: params.page,
+      size: params.size,
+      ...(params.query?.trim() ? { query: params.query.trim() } : {}),
+      ...(params.active === undefined ? {} : { active: params.active }),
+    },
+  })
+  return pageFromApi(data)
 }
 
-export async function getProductDetail(productId: string | number) {
-  const response = await axiosClient.get(
-    API_ENDPOINTS.products.detail(productId),
-  )
-  return response.data
-}
-
-/** Admin: products across the branch(es) they own. */
+/**
+ * Staff POS catalog (active products of the caller's branch).
+ * TODO(F14): super admin has no all-branch product list on the new backend.
+ */
 export async function getAdminProducts(): Promise<Product[]> {
-  const response = await axiosClient.get<Product[]>(API_ENDPOINTS.products.list)
-  return response.data
+  const { data } = await axiosClient.get<Product[]>(API_ENDPOINTS.products.list)
+  return data
 }
 
-export async function createProduct(_branchId: number, payload: CreateProductRequest) {
-  const response = await axiosClient.post<Product>(
-    // TODO(F11): the branch is no longer in the path; check the body of POST /admin/pos/products.
-    API_ENDPOINTS.products.create,
-    payload,
-  )
-  return response.data
+/** Write calls need an Idempotency-Key; a retry of the same attempt must reuse the key. */
+export async function createProduct(payload: CreateProductRequest, idempotencyKey: string = newIdempotencyKey()) {
+  const { data } = await axiosClient.post<Product>(API_ENDPOINTS.products.create, payload, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  })
+  return data
 }
 
-export async function updateProduct(productId: number, payload: UpdateProductRequest) {
-  const response = await axiosClient.put<Product>(
-    API_ENDPOINTS.products.detail(productId),
-    payload,
-  )
-  return response.data
+export async function updateProduct(
+  productId: number,
+  payload: UpdateProductRequest,
+  idempotencyKey: string = newIdempotencyKey(),
+) {
+  const { data } = await axiosClient.put<Product>(API_ENDPOINTS.products.detail(productId), payload, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  })
+  return data
 }
 
-export async function deleteProduct(productId: number) {
-  await axiosClient.delete(API_ENDPOINTS.products.detail(productId))
+/** The update that leaves the product as it is, optionally with another `active` flag. */
+export function productToUpdateRequest(product: Product, active: boolean = product.active): UpdateProductRequest {
+  return {
+    name: product.name,
+    unit: product.unit,
+    category: product.category,
+    price: product.price,
+    active,
+    imageUrl: product.imageUrl,
+  }
+}
+
+/** There is no DELETE: stopping sale (and selling again) is a PUT with the `active` flag. */
+export function setProductActive(product: Product, active: boolean, idempotencyKey?: string) {
+  return updateProduct(product.id, productToUpdateRequest(product, active), idempotencyKey)
+}
+
+/** `delta` is added to the stock (negative removes); the answer is the updated product. */
+export async function adjustProductStock(
+  productId: number,
+  payload: StockAdjustmentRequest,
+  idempotencyKey: string = newIdempotencyKey(),
+) {
+  const { data } = await axiosClient.post<Product>(API_ENDPOINTS.products.stockAdjustments(productId), payload, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  })
+  return data
 }

@@ -1,125 +1,95 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Plus, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Field } from '@/components/ui/field'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { createStaff, updateStaff } from '@/services/staff/staff.api'
-import { getBranches } from '@/services/branch/branch.api'
-import type { StaffResponse } from '@/types/staff'
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PHONE_RE = /^[0-9]{9,11}$/
+import { useCreateStaff, useUpdateStaff } from '@/hooks/use-admin-staff'
+import { useIdempotencyKey } from '@/hooks/use-idempotency-key'
+import { getApiErrorMessage, isApiError } from '@/common/utils/api-error'
+import type { StaffResponse, StaffShift } from '@/types/staff'
+import {
+  DAY_LABELS,
+  PASSWORD_MIN,
+  emptyStaffFormValues,
+  staffToFormValues,
+  toCreateStaffRequest,
+  toUpdateStaffRequest,
+  validateStaffForm,
+  type StaffFormErrors,
+  type StaffFormValues,
+} from '../staff-form.utils'
 
 interface StaffFormModalProps {
   mode: 'create' | 'edit'
   initial?: StaffResponse
   branchId: number
+  branchName?: string
   onClose: () => void
 }
 
-export function StaffFormModal({
-  mode,
-  initial,
-  branchId,
-  onClose,
-}: StaffFormModalProps) {
+const inputClass = (hasError: boolean) =>
+  `w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus:ring-2 bg-white text-slate-800 ${
+    hasError
+      ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
+      : 'border-slate-200 focus:border-green-500 focus:ring-green-100'
+  }`
+
+export function StaffFormModal({ mode, initial, branchId, branchName, onClose }: StaffFormModalProps) {
   const isEdit = mode === 'edit'
-  const queryClient = useQueryClient()
-
-  const [email, setEmail] = useState(initial?.email ?? '')
-  const [phone, setPhone] = useState(initial?.phone ?? '')
-  const [password, setPassword] = useState('')
-  const [selectedBranchId, setSelectedBranchId] = useState<number>(
-    initial?.branchId ?? branchId,
+  const [values, setValues] = useState<StaffFormValues>(() =>
+    initial ? staffToFormValues(initial) : emptyStaffFormValues,
   )
-  const [touched, setTouched] = useState(false)
+  const [errors, setErrors] = useState<StaffFormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
+  const keyFor = useIdempotencyKey()
 
-  const { data: branchPage } = useQuery({
-    queryKey: ['branches'],
-    queryFn: () =>
-      getBranches({ page: 0, size: 100, sortField: 'name', sortDirection: 'asc' }),
-  })
-  const branches = branchPage?.content ?? []
-
-  // Validation
-  const emailValid = EMAIL_RE.test(email)
-  const emailError = !email
-    ? null
-    : !emailValid
-      ? 'Nhập đúng định dạng email (vd: name@bro73.app)'
-      : null
-
-  const phoneError =
-    touched && phone && !PHONE_RE.test(phone)
-      ? 'Số điện thoại phải có 9–11 chữ số'
-      : null
-
-  const pwError =
-    !isEdit && touched && password.length > 0 && password.length < 6
-      ? 'Mật khẩu tối thiểu 6 ký tự'
-      : null
-
-  const phoneOk = isEdit
-    ? phone === '' || PHONE_RE.test(phone)
-    : PHONE_RE.test(phone)
-
-  const canSubmit =
-    emailValid &&
-    !emailError &&
-    phoneOk &&
-    (isEdit || password.length >= 6)
-
-  const createMutation = useMutation({
-    mutationFn: createStaff,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['staff', branchId] })
-      onClose()
-    },
-    onError: (err: { detail?: string }) => {
-      setServerError(
-        err?.detail ?? 'Có lỗi xảy ra, vui lòng thử lại.',
-      )
-    },
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: { phone?: string; branchId?: number } }) =>
-      updateStaff(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['staff', branchId] })
-      onClose()
-    },
-    onError: (err: { detail?: string }) => {
-      setServerError(
-        err?.detail ?? 'Có lỗi xảy ra, vui lòng thử lại.',
-      )
-    },
-  })
-
+  const createMutation = useCreateStaff()
+  const updateMutation = useUpdateStaff()
   const isPending = createMutation.isPending || updateMutation.isPending
 
-  function handleSubmit() {
-    setTouched(true)
+  function change<K extends keyof StaffFormValues>(field: K, value: StaffFormValues[K]) {
+    setValues((current) => ({ ...current, [field]: value }))
+    setErrors((current) => ({ ...current, [field]: undefined }))
     setServerError(null)
-    if (!canSubmit) return
+  }
+
+  function changeShift(index: number, patch: Partial<StaffShift>) {
+    change(
+      'shifts',
+      values.shifts.map((shift, i) => (i === index ? { ...shift, ...patch } : shift)),
+    )
+  }
+
+  function handleError(error: unknown) {
+    if (isApiError(error)) {
+      const fields = error.fieldErrors
+      setErrors((current) => ({
+        ...current,
+        ...(fields.email ? { email: fields.email } : {}),
+        ...(fields.password ? { password: fields.password } : {}),
+        ...(fields.fullName ? { fullName: fields.fullName } : {}),
+        ...(fields.phone ? { phone: fields.phone } : {}),
+      }))
+    }
+    setServerError(getApiErrorMessage(error, 'Có lỗi xảy ra, vui lòng thử lại.'))
+  }
+
+  function handleSubmit() {
+    setServerError(null)
+    const nextErrors = validateStaffForm(values, isEdit)
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) return
 
     if (isEdit && initial) {
-      updateMutation.mutate({
-        id: initial.id,
-        payload: {
-          phone: phone || undefined,
-          branchId: selectedBranchId,
-        },
-      })
+      const payload = toUpdateStaffRequest(values)
+      updateMutation.mutate(
+        { id: initial.id, payload, key: keyFor({ id: initial.id, payload }) },
+        { onSuccess: onClose, onError: handleError },
+      )
     } else {
-      createMutation.mutate({
-        email,
-        password,
-        phone,
-        branchId: selectedBranchId,
-      })
+      const payload = toCreateStaffRequest(values, branchId)
+      createMutation.mutate({ payload, key: keyFor(payload) }, { onSuccess: onClose, onError: handleError })
     }
   }
 
@@ -128,8 +98,8 @@ export function StaffFormModal({
       title={isEdit ? 'Chỉnh sửa tài khoản' : 'Thêm nhân viên'}
       subtitle={
         isEdit
-          ? `Cập nhật thông tin tài khoản của ${initial?.email}`
-          : 'Tạo tài khoản nhân viên mới cho chi nhánh.'
+          ? `Cập nhật thông tin của ${initial?.email}`
+          : `Tạo tài khoản nhân viên mới${branchName ? ` cho ${branchName}` : ' cho chi nhánh'}.`
       }
       onClose={onClose}
       width={580}
@@ -138,11 +108,7 @@ export function StaffFormModal({
           <Button onClick={onClose} disabled={isPending}>
             Huỷ
           </Button>
-          <Button
-            variant="primary"
-            disabled={!canSubmit || isPending}
-            onClick={handleSubmit}
-          >
+          <Button variant="primary" disabled={isPending} onClick={handleSubmit}>
             {isPending ? 'Đang lưu…' : isEdit ? 'Lưu thay đổi' : 'Tạo tài khoản'}
           </Button>
         </>
@@ -150,7 +116,7 @@ export function StaffFormModal({
     >
       <div className="flex flex-col gap-4">
         {serverError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
             {serverError}
           </div>
         )}
@@ -158,53 +124,37 @@ export function StaffFormModal({
         <Field
           label="Email (dùng để đăng nhập)"
           required
-          error={emailError}
-          hint={!emailError ? 'Nhân viên sẽ dùng email này để đăng nhập.' : undefined}
+          error={errors.email}
+          hint="Nhân viên sẽ dùng email này để đăng nhập. Không thể đổi sau khi tạo."
         >
           <input
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={values.email}
+            onChange={(e) => change('email', e.target.value)}
             disabled={isEdit}
             placeholder="name@bro73.app"
-            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus:ring-2 ${
-              emailError
-                ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
-                : 'border-slate-200 focus:border-green-500 focus:ring-green-100'
-            } ${isEdit ? 'cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-800'}`}
+            className={`${inputClass(Boolean(errors.email))} ${isEdit ? 'cursor-not-allowed bg-slate-50 text-slate-400' : ''}`}
           />
         </Field>
 
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Số điện thoại" required={!isEdit} error={phoneError}>
+          <Field label="Họ và tên" required error={errors.fullName}>
             <input
-              type="tel"
-              value={phone}
-              onChange={(e) => {
-                setPhone(e.target.value)
-                setTouched(true)
-              }}
-              placeholder="0901234567"
-              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus:ring-2 ${
-                phoneError
-                  ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
-                  : 'border-slate-200 focus:border-green-500 focus:ring-green-100'
-              } bg-white text-slate-800`}
+              value={values.fullName}
+              maxLength={150}
+              onChange={(e) => change('fullName', e.target.value)}
+              placeholder="Nguyễn Văn A"
+              className={inputClass(Boolean(errors.fullName))}
             />
           </Field>
-
-          <Field label="Chi nhánh" required>
-            <select
-              value={selectedBranchId}
-              onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
-            >
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
+          <Field label="Số điện thoại" required error={errors.phone}>
+            <input
+              type="tel"
+              value={values.phone}
+              onChange={(e) => change('phone', e.target.value)}
+              placeholder="0901234567"
+              className={inputClass(Boolean(errors.phone))}
+            />
           </Field>
         </div>
 
@@ -212,46 +162,81 @@ export function StaffFormModal({
           <Field
             label="Mật khẩu tạm thời"
             required
-            error={pwError}
-            hint={!pwError ? 'Tối thiểu 6 ký tự.' : undefined}
+            error={errors.password}
+            hint={`Tối thiểu ${PASSWORD_MIN} ký tự.`}
           >
             <input
               type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value)
-                setTouched(true)
-              }}
-              placeholder="Tối thiểu 6 ký tự"
-              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus:ring-2 ${
-                pwError
-                  ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
-                  : 'border-slate-200 focus:border-green-500 focus:ring-green-100'
-              } bg-white text-slate-800`}
+              autoComplete="new-password"
+              value={values.password}
+              onChange={(e) => change('password', e.target.value)}
+              placeholder={`Tối thiểu ${PASSWORD_MIN} ký tự`}
+              className={inputClass(Boolean(errors.password))}
             />
           </Field>
         )}
 
+        <Field label="Ca làm việc trong tuần" error={errors.shifts} hint="Có thể để trống và bổ sung sau.">
+          <div className="space-y-2">
+            {values.shifts.map((shift, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <select
+                  aria-label="Ngày"
+                  value={shift.dayOfWeek}
+                  onChange={(e) => changeShift(index, { dayOfWeek: Number(e.target.value) })}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800"
+                >
+                  {Object.entries(DAY_LABELS).map(([day, label]) => (
+                    <option key={day} value={day}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="time"
+                  aria-label="Bắt đầu"
+                  value={shift.startTime}
+                  onChange={(e) => changeShift(index, { startTime: e.target.value })}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800"
+                />
+                <span className="text-slate-400">-</span>
+                <input
+                  type="time"
+                  aria-label="Kết thúc"
+                  value={shift.endTime}
+                  onChange={(e) => changeShift(index, { endTime: e.target.value })}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800"
+                />
+                <button
+                  type="button"
+                  title="Xoá ca"
+                  onClick={() =>
+                    change(
+                      'shifts',
+                      values.shifts.filter((_, i) => i !== index),
+                    )
+                  }
+                  className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+            <Button
+              icon={<Plus size={14} />}
+              onClick={() =>
+                change('shifts', [...values.shifts, { dayOfWeek: 1, startTime: '08:00', endTime: '12:00' }])
+              }
+            >
+              Thêm ca
+            </Button>
+          </div>
+        </Field>
+
         {isEdit && initial && (
           <div className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
             <span className="text-xs text-slate-500">Trạng thái tài khoản:</span>
-            <Badge
-              tone={
-                initial.userStatus === 'ACTIVE'
-                  ? 'green'
-                  : initial.userStatus === 'LOCKED'
-                    ? 'red'
-                    : 'gray'
-              }
-            >
-              {initial.userStatus === 'ACTIVE'
-                ? 'Active'
-                : initial.userStatus === 'INACTIVE'
-                  ? 'Inactive'
-                  : initial.userStatus === 'LOCKED'
-                    ? 'Locked'
-                    : 'Pending'}
-            </Badge>
+            <Badge tone={initial.active ? 'green' : 'gray'}>{initial.active ? 'Active' : 'Inactive'}</Badge>
           </div>
         )}
       </div>
