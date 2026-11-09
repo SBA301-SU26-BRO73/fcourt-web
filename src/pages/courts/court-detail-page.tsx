@@ -76,6 +76,7 @@ export function CourtDetailPage() {
             <div className="mt-7 grid gap-4 sm:grid-cols-2">
               <Info icon={MapPin} label="Branch" value={court.branchName} />
               <Info icon={Shapes} label="Court type" value={`${court.courtTypeName} (ID: ${court.courtTypeId})`} />
+              <Info icon={Shapes} label="Giá mỗi giờ" value={new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(court.defaultPricePerHour)} />
               <Info icon={CalendarDays} label="Ngày tạo" value={formatDateTime(court.createdAt)} />
               <Info icon={CalendarDays} label="Cập nhật gần nhất" value={formatDateTime(court.updatedAt)} />
             </div>

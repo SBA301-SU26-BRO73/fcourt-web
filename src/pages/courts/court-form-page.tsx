@@ -12,15 +12,13 @@ import { getCourtErrorCode, getCourtErrorMessage, getCourtFieldErrors } from './
 import {
   courtToFormValues,
   emptyCourtFormValues,
-  toCreateCourtPayload,
-  toUpdateCourtPayload,
+  toCourtPayload,
   validateCourtForm,
   type CourtFormErrors,
   type CourtFormValues,
 } from './court-form.utils'
 
 import { UpgradePlanModal } from '@/components/admin/UpgradePlanModal'
-import { uploadImage } from '@/services/upload/image-upload.api'
 
 type CourtFormPageProps = { mode: 'create' | 'edit' }
 type CourtNavigationState = {
@@ -57,7 +55,7 @@ export function CourtFormPage({ mode }: CourtFormPageProps) {
   if (!hasValidId) return <Navigate to="/admin/courts" replace />
   if (detailQuery.isPending) return <PageMessage title="Đang tải thông tin sân..." />
   if (detailQuery.isError) {
-    const notFound = getCourtErrorCode(detailQuery.error) === 'RESOURCE_NOT_FOUND'
+    const notFound = getCourtErrorCode(detailQuery.error) === '404'
     return (
       <PageMessage
         title={notFound ? 'Không tìm thấy sân' : 'Không thể tải thông tin sân'}
@@ -104,23 +102,22 @@ function CourtEditor({
         },
   )
   const [errors, setErrors] = useState<CourtFormErrors>({})
-  const [imageFile, setImageFile] = useState<File | null>(null)
   const [submitError, setSubmitError] = useState('')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [limitMessage, setLimitMessage] = useState<string | null>(null)
 
   const branchesQuery = useQuery({
     queryKey: ['branches', 'court-form-options'],
-    queryFn: () => getBranches({ page: 0, size: 100, sortField: 'name', sortDirection: 'asc' }),
+    queryFn: () => getBranches({ page: 0, size: 1000, sortField: 'name', sortDirection: 'asc' }),
   })
   const courtTypesQuery = useCourtTypes()
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const imageUrl = imageFile ? await uploadImage(imageFile, 'courts') : values.imageUrl
+      const payload = toCourtPayload(values)
       return isEdit && court
-        ? updateCourt(court.id, { ...toUpdateCourtPayload(values), imageUrl: imageUrl || null })
-        : createCourt({ ...toCreateCourtPayload(values), imageUrl: imageUrl || null })
+        ? updateCourt(court.id, payload)
+        : createCourt(Number(values.branchId), payload)
     },
     onSuccess: async (savedCourt) => {
       await queryClient.invalidateQueries({ queryKey: ['courts'] })
@@ -227,15 +224,6 @@ function CourtEditor({
           isSubmitting={mutation.isPending || branchesQuery.isPending || courtTypesQuery.isPending}
           submitLabel={isEdit ? 'Cập nhật sân' : 'Tạo sân'}
           onChange={handleChange}
-          imageFile={imageFile}
-          onImageFileChange={(file) => {
-            setImageFile(file)
-            setErrors((current) => ({ ...current, imageUrl: undefined }))
-          }}
-          onClearImage={() => {
-            setImageFile(null)
-            handleChange('imageUrl', '')
-          }}
           onSubmit={handleSubmit}
         />
 
