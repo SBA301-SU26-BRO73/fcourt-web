@@ -11,6 +11,7 @@ import {
   resetPassword,
 } from '@/services/auth/auth.service'
 import type { LoginRequest, RegisterCustomerRequest, TokenResponse, UserRole } from '@/types/auth'
+import { readLoginRedirect } from '@/utils/redirect'
 import { decodeJwt } from '@/utils/token'
 
 /** Where each backend role lands after signing in. */
@@ -21,6 +22,11 @@ export const ROLE_HOME_PATH: Record<UserRole, string> = {
   CUSTOMER: '/',
 }
 
+function landingPath(tokens: TokenResponse) {
+  const role = decodeJwt(tokens.accessToken).role
+  return readLoginRedirect(role, ROLE_HOME_PATH[role])
+}
+
 export function useLogin() {
   const navigate = useNavigate()
   const { setAuth } = useAuth()
@@ -29,7 +35,7 @@ export function useLogin() {
     mutationFn: (data: LoginRequest) => login(data),
     onSuccess: (tokens: TokenResponse) => {
       setAuth(tokens)
-      navigate(ROLE_HOME_PATH[decodeJwt(tokens.accessToken).role])
+      navigate(landingPath(tokens))
     },
   })
 }
@@ -60,7 +66,7 @@ export function useGoogleLogin() {
     mutationFn: (idToken: string) => googleLogin(idToken),
     onSuccess: (tokens: TokenResponse) => {
       setAuth(tokens)
-      navigate(ROLE_HOME_PATH[decodeJwt(tokens.accessToken).role])
+      navigate(landingPath(tokens))
     },
   })
 }

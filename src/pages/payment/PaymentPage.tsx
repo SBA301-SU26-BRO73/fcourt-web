@@ -1,140 +1,219 @@
-import { Loader2 } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router';
-import { useSearchParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { QRPaymentCard } from '../../components/QRPaymentCard';
 import { UploadReceipt } from '../../components/UploadReceipt';
 import { BookingSummary } from '../../components/BookingSummary';
-import { getBookingDetails } from '@/services/booking/booking.api';
-import type { CreateBookingsResponse } from '@/types/booking';
-import type { LegacyVoucher as Voucher } from '@/types/voucher';
-
-interface LocationState {
-  booking?: CreateBookingsResponse;
-}
+import { PaymentLoading, PaymentMessage } from './payment-state-card';
+import {
+  buildVietQrUrl,
+  CHECKOUT_FAILURE_MESSAGE,
+  classifyCheckoutError,
+  isFreeCheckout,
+  loginPathFor,
+  parsePositiveInt,
+  resolveHoldCheckoutStage,
+} from './payment.utils';
+import { getApiErrorMessage, toastApiError } from '@/common/utils/api-error';
+import { useAuth } from '@/hooks/use-auth-context';
+import { useCountdown } from '@/hooks/use-countdown';
+import {
+  useBookingDetail,
+  useCheckoutInfo,
+  useConfirmFree,
+  useCreateBooking,
+  useUploadReceipt,
+} from '@/hooks/use-customer-checkout';
+import { newIdempotencyKey } from '@/services/booking/booking.api';
+import { releaseHold } from '@/services/hold/hold.api';
+import { formatCountdown } from '@/utils/hold-countdown';
+import { clearActiveHold, loadActiveHold, withIdempotencyKey } from '@/utils/hold-storage';
 
 export function PaymentPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
   const bookingIdParam = searchParams.get('bookingId');
+  const navigate = useNavigate();
 
-  const [bookingData, setBookingData] = useState<CreateBookingsResponse | null>(() => {
-    return (location.state as LocationState | null)?.booking ?? null;
-  });
-  const [loading, setLoading] = useState(!bookingData && !!bookingIdParam);
-  const [error, setError] = useState<string | null>(null);
-  const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
-
-  useEffect(() => {
-    if (bookingData) return;
-
-    if (bookingIdParam) {
-      const bId = parseInt(bookingIdParam, 10);
-      if (isNaN(bId)) {
-        setError('Mã đặt sân không hợp lệ.');
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      getBookingDetails(bId)
-        .then((fetchedBooking) => {
-          const mapped: CreateBookingsResponse = {
-            branchId: fetchedBooking.branchId,
-            branchName: fetchedBooking.branchName,
-            branchAddress: fetchedBooking.branchAddress,
-            bankAccountNumber: fetchedBooking.bankAccountNumber,
-            bankAccountName: fetchedBooking.bankAccountName,
-            bankName: fetchedBooking.bankName,
-            bankQrImageUrl: fetchedBooking.bankQrImageUrl,
-            totalAmount: fetchedBooking.totalPrice,
-            bookings: [fetchedBooking],
-          };
-          setBookingData(mapped);
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error(err);
-          setError('Không thể tải thông tin đặt sân. Lịch đặt sân có thể đã hết hạn hoặc không tồn tại.');
-          setLoading(false);
-        });
+  if (bookingIdParam !== null) {
+    const bookingId = parsePositiveInt(bookingIdParam);
+    if (bookingId === null) {
+      return (
+        <PaymentMessage
+          title="Mã đặt sân không hợp lệ"
+          message="Liên kết thanh toán không đúng. Vui lòng chọn lại khung giờ."
+          actions={[{ label: 'Chọn sân', onClick: () => navigate('/slot-booking') }]}
+        />
+      );
     }
-  }, [bookingIdParam, bookingData]);
-
-  // Manage countdown timer
-  const expiredAt = bookingData?.bookings?.[0]?.expiredAt;
-  const [timeLeft, setTimeLeft] = useState(() => {
-    if (expiredAt) {
-      const difference = +new Date(expiredAt) - +new Date();
-      return difference > 0 ? Math.floor(difference / 1000) : 0;
-    }
-    return 300; // default 5 minutes
-  });
-
-  useEffect(() => {
-    if (!expiredAt) return;
-
-    const calculateTimeLeft = () => {
-      const difference = +new Date(expiredAt) - +new Date();
-      return difference > 0 ? Math.floor(difference / 1000) : 0;
-    };
-
-    setTimeLeft(calculateTimeLeft());
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [expiredAt]);
-
-  const isExpired = timeLeft <= 0;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          <p className="text-sm text-muted-foreground font-medium">Đang tải thông tin đặt sân...</p>
-        </div>
-      </div>
-    );
+    return <CheckoutView key={bookingId} bookingId={bookingId} />;
   }
 
-  if (error || !bookingData) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-6">
-        <div className="bg-card border border-border rounded-3xl p-8 max-w-md w-full text-center shadow-sm">
-          <h1 className="text-xl font-bold text-foreground mb-2">Chưa có booking để thanh toán</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            {error || 'Vui lòng chọn slot và tạo booking trước khi vào trang thanh toán.'}
-          </p>
-          <button
-            onClick={() => navigate('/slot-booking')}
-            className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold"
-          >
-            Chọn sân
-          </button>
-        </div>
-      </div>
-    );
-  }
+  return <HoldCheckout />;
+}
 
-  const handleVoucherChange = (voucher: Voucher | null, discount: number) => {
-    setAppliedVoucher(voucher);
-    setDiscountAmount(discount);
+/** /payment without a booking: turn the stored hold into a booking (customers) or ask to sign in (guests). */
+function HoldCheckout() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [hold] = useState(() => loadActiveHold());
+  const { remaining, isExpired } = useCountdown(hold?.expiresAt ?? null);
+  const createBooking = useCreateBooking();
+  const startedRef = useRef(false);
+
+  const stage = resolveHoldCheckoutStage({
+    hasHold: hold !== null,
+    expired: isExpired,
+    role: user?.role ?? null,
+    createFailed: createBooking.isError,
+  });
+
+  const submit = () => {
+    if (!hold) return;
+    // The key is stored with the hold, so a retry or a reload replays the same booking.
+    const keyed = withIdempotencyKey(hold, newIdempotencyKey);
+    createBooking.mutate(
+      {
+        payload: { holdToken: keyed.holdToken, courtId: keyed.courtId, date: keyed.date, slotIds: keyed.slots.map((slot) => slot.slotId) },
+        idempotencyKey: keyed.idempotencyKey as string,
+      },
+      {
+        onSuccess: (booking) => {
+          clearActiveHold();
+          navigate(`/payment?bookingId=${booking.id}`, { replace: true });
+        },
+      },
+    );
   };
 
-  const paymentCode = `BOOK-${bookingData.bookings.map((booking) => booking.id).join('-')}`;
-  const finalAmount = Math.max(0, bookingData.totalAmount - discountAmount);
+  useEffect(() => {
+    if (stage !== 'creating' || startedRef.current) return;
+    startedRef.current = true;
+    submit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per mount
+  }, [stage]);
+
+  const chooseAgain = () => {
+    if (hold) void releaseHold(hold.holdToken).catch(() => undefined);
+    clearActiveHold();
+    navigate('/slot-booking');
+  };
+
+  switch (stage) {
+    case 'empty':
+      return (
+        <PaymentMessage
+          title="Chưa có booking để thanh toán"
+          message="Vui lòng chọn slot và giữ chỗ trước khi vào trang thanh toán."
+          actions={[{ label: 'Chọn sân', onClick: () => navigate('/slot-booking') }]}
+        />
+      );
+    case 'expired':
+      return (
+        <PaymentMessage
+          title="Đã hết thời gian giữ chỗ"
+          message="Khung giờ đã được mở lại cho mọi người. Vui lòng chọn lại."
+          actions={[{ label: 'Chọn lại khung giờ', onClick: () => { clearActiveHold(); navigate('/slot-booking'); } }]}
+        />
+      );
+    case 'login':
+      return (
+        <PaymentMessage
+          title="Đăng nhập để hoàn tất đặt sân"
+          message={
+            <>
+              Khung giờ đang được giữ cho bạn trong <b className="tabular-nums text-destructive">{formatCountdown(remaining)}</b>.
+              Cần có tài khoản khách hàng để tạo đơn và thanh toán.
+            </>
+          }
+          actions={[
+            { label: 'Đăng nhập', onClick: () => navigate(loginPathFor('/payment')) },
+            { label: 'Hủy giữ chỗ', onClick: chooseAgain, primary: false },
+          ]}
+        />
+      );
+    case 'wrong-role':
+      return (
+        <PaymentMessage
+          title="Tài khoản không thể đặt sân"
+          message="Chỉ tài khoản khách hàng mới đặt sân trực tuyến được. Vui lòng đăng nhập bằng tài khoản khách hàng."
+          actions={[
+            { label: 'Đăng nhập tài khoản khách hàng', onClick: () => navigate(loginPathFor('/payment')) },
+            { label: 'Hủy giữ chỗ', onClick: chooseAgain, primary: false },
+          ]}
+        />
+      );
+    case 'error':
+      return (
+        <PaymentMessage
+          title="Không thể tạo đơn đặt sân"
+          message={getApiErrorMessage(createBooking.error, 'Vui lòng thử lại.')}
+          actions={[
+            { label: 'Thử lại', onClick: submit, disabled: createBooking.isPending },
+            { label: 'Chọn lại khung giờ', onClick: chooseAgain, primary: false },
+          ]}
+        />
+      );
+    default:
+      return <PaymentLoading label="Đang tạo đơn đặt sân..." />;
+  }
+}
+
+function CheckoutView({ bookingId }: { bookingId: number }) {
+  const navigate = useNavigate();
+  const bookingQuery = useBookingDetail(bookingId);
+  const infoQuery = useCheckoutInfo(bookingId);
+  const upload = useUploadReceipt(bookingId);
+  const confirmFree = useConfirmFree(bookingId);
+
+  const booking = bookingQuery.data;
+  const info = infoQuery.data;
+  const { remaining, isExpired } = useCountdown(info ? Date.parse(info.expiresAt) : null);
+
+  // A booking that is no longer waiting for payment belongs on the confirmation screen.
+  const alreadyPaid = booking && booking.status !== 'PENDING_PAYMENT' && booking.status !== 'CANCELLED';
+  const failure = infoQuery.error ? classifyCheckoutError(infoQuery.error) : bookingQuery.error ? classifyCheckoutError(bookingQuery.error) : null;
+
+  useEffect(() => {
+    if (alreadyPaid || failure === 'not-awaiting-payment') {
+      navigate(`/confirmation?bookingId=${bookingId}`, { replace: true });
+    }
+  }, [alreadyPaid, failure, bookingId, navigate]);
+
+  if (alreadyPaid || failure === 'not-awaiting-payment') return <PaymentLoading label="Đang chuyển đến trạng thái thanh toán..." />;
+
+  if (failure || booking?.status === 'CANCELLED') {
+    const kind = failure ?? 'expired';
+    return (
+      <PaymentMessage
+        title={kind === 'expired' ? 'Phiên thanh toán đã hết hạn' : 'Không thể tải đơn đặt sân'}
+        message={CHECKOUT_FAILURE_MESSAGE[kind]}
+        actions={[
+          ...(kind === 'network' || kind === 'other'
+            ? [{ label: 'Thử lại', onClick: () => { void bookingQuery.refetch(); void infoQuery.refetch(); } }]
+            : []),
+          { label: 'Chọn sân', onClick: () => navigate('/slot-booking'), primary: kind !== 'network' && kind !== 'other' },
+        ]}
+      />
+    );
+  }
+
+  if (!booking || !info) return <PaymentLoading label="Đang tải thông tin đặt sân..." />;
+
+  const isFree = isFreeCheckout(info);
+
+  const handleUploaded = (file: { name: string; size: number; previewUrl: string }) => {
+    toast.success('Đã gửi biên lai. Vui lòng chờ xác nhận.');
+    navigate(`/confirmation?bookingId=${bookingId}`, { replace: true, state: { file } });
+  };
+
+  const handleConfirmFree = async () => {
+    try {
+      await confirmFree.mutateAsync();
+      navigate(`/confirmation?bookingId=${bookingId}`, { replace: true, state: { free: true } });
+    } catch (error) {
+      toastApiError(error, 'Không thể xác nhận đơn miễn phí.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f5faf6] text-[#191c1d]" style={{ zoom: 0.9 }}>
@@ -145,30 +224,36 @@ export function PaymentPage() {
 
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(340px,0.82fr)]">
           <div>
-            <QRPaymentCard
-              branchName={bookingData.branchName}
-              bankName={bookingData.bankName}
-              bankAccountNumber={bookingData.bankAccountNumber}
-              bankAccountName={bookingData.bankAccountName}
-              bankQrImageUrl={bookingData.bankQrImageUrl}
-              amount={finalAmount}
-              content={paymentCode}
-              timeLeft={timeLeft}
-            />
+            {isFree ? (
+              <FreeBookingCard
+                timeLeft={remaining}
+                expired={isExpired}
+                busy={confirmFree.isPending}
+                onConfirm={handleConfirmFree}
+              />
+            ) : (
+              <QRPaymentCard
+                branchName={info.branchName}
+                bankName={info.bankName}
+                bankAccountNumber={info.bankAccountNumber}
+                bankAccountName={info.bankAccountName}
+                bankQrImageUrl={buildVietQrUrl(info)}
+                amount={info.amount}
+                content={info.transferContent}
+                timeLeft={remaining}
+                expired={isExpired}
+              />
+            )}
           </div>
           <div>
-            <BookingSummary
-              data={bookingData}
-              paymentCode={paymentCode}
-              onVoucherChange={handleVoucherChange}
-            />
-            <UploadReceipt
-              bookingData={bookingData}
-              paymentCode={paymentCode}
-              isExpired={isExpired}
-              discount={discountAmount}
-              voucherCode={appliedVoucher?.code}
-            />
+            <BookingSummary booking={booking} paymentCode={info.transferContent} payableAmount={info.amount} />
+            {!isFree && (
+              <UploadReceipt
+                isExpired={isExpired}
+                onSubmit={(file) => upload.mutateAsync(file)}
+                onUploaded={handleUploaded}
+              />
+            )}
           </div>
         </div>
 
@@ -187,5 +272,36 @@ export function PaymentPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+interface FreeBookingCardProps {
+  timeLeft: number;
+  expired: boolean;
+  busy: boolean;
+  onConfirm: () => void;
+}
+
+/** Voucher brought the total to 0 VND: no transfer, one confirmation (POST confirm-free). */
+export function FreeBookingCard({ timeLeft, expired, busy, onConfirm }: FreeBookingCardProps) {
+  return (
+    <section className="rounded-3xl border border-[#d8e8dc] bg-white p-6 shadow-[0_10px_35px_rgba(46,125,50,0.08)] md:p-8">
+      <div className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#2e7d32]">Đơn miễn phí</div>
+      <h2 className="text-2xl font-bold tracking-tight text-[#191c1d]">Không cần chuyển khoản</h2>
+      <p className="mt-2 text-sm text-[#667267]">
+        Voucher đã giảm toàn bộ tiền sân. Xác nhận để giữ khung giờ của bạn.
+      </p>
+      <div className="mt-4 text-sm font-bold tabular-nums text-[#b7433d]" role="timer">
+        Còn lại {formatCountdown(timeLeft)}
+      </div>
+      <button
+        type="button"
+        disabled={busy || expired}
+        onClick={onConfirm}
+        className="mt-6 w-full rounded-xl bg-[#2e7d32] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#256b29] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {busy ? 'Đang xác nhận...' : 'Xác nhận đặt sân miễn phí'}
+      </button>
+    </section>
   );
 }

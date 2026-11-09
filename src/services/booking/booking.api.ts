@@ -1,65 +1,43 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type {
-  BookingResponse,
-  CancelBookingRequest,
-  CreateBookingsRequest,
-  CreateBookingsResponse,
-  PaymentResponse,
-} from '@/types/booking'
+import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
+import type { CreateBookingRequest } from '@/types/checkout'
+import type { MyBooking } from '@/types/my-booking'
 
-// TODO(F2/F3): booking is now two steps: POST /bookings/hold-slots, then POST /bookings with an
-// Idempotency-Key header and { holdToken, courtId, date, slotIds }. One booking per court per day.
-export async function createBookings(payload: CreateBookingsRequest) {
-  const { data } = await axiosClient.post<CreateBookingsResponse>(
-    API_ENDPOINTS.bookings.create,
-    payload,
-  )
-  return data
-}
-
-// TODO(F3): receipts upload per booking (POST /payments/{bookingId}/upload-receipt, part "file") after
-// GET /payments/checkout-info/{bookingId}; there is no multi-booking payment any more.
-export async function createPayment(payload: {
-  branchId: number
-  bookingIds: number[]
-  amount: number
-  billImage: File
-  voucherCode?: string
-}) {
-  const formData = new FormData()
-  formData.append('branchId', String(payload.branchId))
-  payload.bookingIds.forEach((bookingId) => {
-    formData.append('bookingIds', String(bookingId))
+/** UUID for the Idempotency-Key header; a fallback keeps old WebViews and tests working. */
+export function newIdempotencyKey() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = (Math.random() * 16) | 0
+    return (char === 'x' ? random : (random & 0x3) | 0x8).toString(16)
   })
-  formData.append('amount', String(payload.amount))
-  formData.append('billImage', payload.billImage)
-  if (payload.voucherCode) {
-    formData.append('voucherCode', payload.voucherCode)
-  }
+}
 
-  const { data } = await axiosClient.post<PaymentResponse>(
-    API_ENDPOINTS.payments.legacy,
-    formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } },
-  )
+/** X-Hold-Token is the credential of a guest booking; a signed-in customer uses the JWT instead. */
+export function holdTokenHeaders(holdToken?: string | null) {
+  return holdToken ? { 'X-Hold-Token': holdToken } : undefined
+}
+
+/**
+ * POST /api/bookings (booking-service, CUSTOMER JWT): turns a live hold into a PENDING_PAYMENT
+ * booking. The same key and selection replay the same booking, so a lost response is safe to retry.
+ */
+export async function createBooking(payload: CreateBookingRequest, idempotencyKey: string) {
+  const { data } = await axiosClient.post<MyBooking>(API_ENDPOINTS.bookings.create, payload, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  })
   return data
 }
 
-export async function getPaymentDetails(paymentId: number) {
-  const { data } = await axiosClient.get<PaymentResponse>(
-    `${API_ENDPOINTS.payments.legacy}/${paymentId}`,
-  )
+/** GET /api/bookings/{id}: owner JWT, or the guest `X-Hold-Token` for a guest-only booking. */
+export async function getBookingDetail(bookingId: number, holdToken?: string | null) {
+  const { data } = await axiosClient.get<MyBooking>(API_ENDPOINTS.bookings.detail(bookingId), {
+    headers: holdTokenHeaders(holdToken),
+  })
   return data
 }
 
-export async function getBookingDetails(bookingId: number) {
-  const { data } = await axiosClient.get<BookingResponse>(
-    API_ENDPOINTS.bookings.detail(bookingId),
-  )
-  return data
-}
-
+// TODO(F5-guest): the two calls below still target the old monolith; the guest lookup item replaces them.
 export async function cancelBooking(bookingId: number, payload: CancelBookingRequest) {
   const { data } = await axiosClient.post<BookingResponse>(
     API_ENDPOINTS.bookings.cancel(bookingId),
@@ -75,4 +53,3 @@ export async function lookupBooking(bookingCode: string, phone: string) {
   )
   return data
 }
-
