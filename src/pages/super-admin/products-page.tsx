@@ -57,7 +57,7 @@ export function SuperAdminProductsPage() {
                       {product.name}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-slate-600">{product.branchName}</td>
+                  <td className="px-5 py-3 text-slate-600">#{product.branchId}</td>
                   <td className="px-5 py-3 text-slate-600">{product.unit || '—'}</td>
                   <td className="px-5 py-3 font-semibold text-slate-800">{formatPrice(product.price)}</td>
                   <td className="px-5 py-3">

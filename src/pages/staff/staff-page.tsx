@@ -1,39 +1,36 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { UserPlus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { SearchInput } from '@/components/ui/search-input'
 import { Button } from '@/components/ui/button'
 import { StaffTable } from './components/staff-table'
 import { StaffFormModal } from './components/staff-form-modal'
-import { getStaffByBranch, deleteStaff } from '@/services/staff/staff.api'
+import { useBranchStaff, useSetStaffActive } from '@/hooks/use-admin-staff'
 import { getBranches } from '@/services/branch/branch.api'
-import type { StaffResponse, UserStatus } from '@/types/staff'
+import type { StaffResponse } from '@/types/staff'
 import { getApiErrorMessage } from '@/common/utils/api-error'
 
-type StatusFilter = 'all' | UserStatus
+type StatusFilter = 'all' | 'active' | 'inactive'
 
 const STATUS_TABS: { id: StatusFilter; label: string }[] = [
   { id: 'all', label: 'Tất cả' },
-  { id: 'ACTIVE', label: 'Active' },
-  { id: 'INACTIVE', label: 'Inactive' },
-  { id: 'LOCKED', label: 'Locked' },
+  { id: 'active', label: 'Active' },
+  { id: 'inactive', label: 'Inactive' },
 ]
 
 export function StaffPage() {
-  const queryClient = useQueryClient()
   const [page, setPage] = useState(0)
   const [q, setQ] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [showForm, setShowForm] = useState(false)
   const [editingStaff, setEditingStaff] = useState<StaffResponse | null>(null)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [disabling, setDisabling] = useState<StaffResponse | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null)
 
   const PAGE_SIZE = 20
-  // Staff per branch is small; fetch the whole branch once so search,
+  // Staff per branch is small; the whole branch is fetched once so search,
   // status counts and pagination all stay consistent client-side.
-  const FETCH_SIZE = 500
 
   // Branches this admin owns — the picker replaces the old hardcoded branch id.
   const { data: branchPage } = useQuery({
@@ -44,34 +41,37 @@ export function StaffPage() {
   // Fall back to the first loaded branch until the admin picks one explicitly.
   const branchId = selectedBranchId ?? branches[0]?.id ?? null
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['staff', branchId],
-    queryFn: () => getStaffByBranch(branchId as number, 0, FETCH_SIZE),
-    enabled: branchId != null,
-  })
+  const { data, isLoading, refetch } = useBranchStaff(branchId)
 
-  const allStaff = data?.content ?? []
-  const totalElements = data?.totalElements ?? allStaff.length
+  const allStaff = data ?? []
+  const totalElements = allStaff.length
+  const branchNames = Object.fromEntries(branches.map((b) => [b.id, b.name]))
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteStaff,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['staff', branchId] })
-      setDeletingId(null)
-      setDeleteError(null)
-    },
-    onError: (error) => {
-      setDeletingId(null)
-      setDeleteError(getApiErrorMessage(error, 'Không thể xoá nhân viên.'))
-    },
-  })
+  const activeMutation = useSetStaffActive()
+
+  function setActive(staff: StaffResponse, active: boolean) {
+    setActionError(null)
+    activeMutation.mutate(
+      { id: staff.id, active },
+      {
+        onSuccess: () => setDisabling(null),
+        onError: (error) => {
+          setDisabling(null)
+          setActionError(
+            getApiErrorMessage(error, active ? 'Không thể kích hoạt lại nhân viên.' : 'Không thể vô hiệu hoá nhân viên.'),
+          )
+        },
+      },
+    )
+  }
 
   // Client-side filter (search + status) over the full branch list
   const filtered = allStaff.filter((s) => {
-    if (statusFilter !== 'all' && s.userStatus !== statusFilter) return false
+    if (statusFilter === 'active' && !s.active) return false
+    if (statusFilter === 'inactive' && s.active) return false
     if (!q.trim()) return true
     const t = q.toLowerCase()
-    return s.email.toLowerCase().includes(t) || String(s.id).includes(t)
+    return s.email.toLowerCase().includes(t) || s.fullName.toLowerCase().includes(t) || String(s.id).includes(t)
   })
 
   // Paginate the filtered set client-side
@@ -79,8 +79,8 @@ export function StaffPage() {
   const safePage = Math.min(page, totalPages - 1)
   const pageRows = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE)
 
-  function countByStatus(status: UserStatus) {
-    return allStaff.filter((s) => s.userStatus === status).length
+  function countByStatus(status: 'active' | 'inactive') {
+    return allStaff.filter((s) => s.active === (status === 'active')).length
   }
 
   function changeStatusFilter(next: StatusFilter) {
@@ -96,10 +96,6 @@ export function StaffPage() {
   function handleEdit(s: StaffResponse) {
     setEditingStaff(s)
     setShowForm(true)
-  }
-
-  function handleDelete(id: number) {
-    setDeletingId(id)
   }
 
   function handleCloseForm() {
@@ -156,9 +152,9 @@ export function StaffPage() {
         </div>
       </div>
 
-      {deleteError && (
+      {actionError && (
         <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
-          {deleteError}
+          {actionError}
         </div>
       )}
 
@@ -169,7 +165,7 @@ export function StaffPage() {
           <SearchInput
             value={q}
             onChange={changeQuery}
-            placeholder="Tìm theo email…"
+            placeholder="Tìm theo tên hoặc email…"
           />
 
           {/* Segmented status filter */}
@@ -178,7 +174,7 @@ export function StaffPage() {
               const count =
                 tab.id === 'all'
                   ? allStaff.length
-                  : countByStatus(tab.id as UserStatus)
+                  : countByStatus(tab.id)
               return (
                 <button
                   key={tab.id}
@@ -206,7 +202,9 @@ export function StaffPage() {
           staff={pageRows}
           isLoading={isLoading}
           onEdit={handleEdit}
-          onDelete={handleDelete}
+          onDisable={setDisabling}
+          onReactivate={(staff) => setActive(staff, true)}
+          branchNames={branchNames}
           onAdd={() => {
             setEditingStaff(null)
             setShowForm(true)
@@ -248,27 +246,27 @@ export function StaffPage() {
           mode={editingStaff ? 'edit' : 'create'}
           initial={editingStaff ?? undefined}
           branchId={branchId}
+          branchName={branchNames[branchId]}
           onClose={handleCloseForm}
         />
       )}
 
       {/* Delete confirmation */}
-      {deletingId !== null && (
+      {disabling !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <h3 className="font-semibold text-slate-900">Xác nhận xoá</h3>
+            <h3 className="font-semibold text-slate-900">Vô hiệu hoá nhân viên</h3>
             <p className="mt-1.5 text-sm text-slate-500">
-              Nhân viên sẽ bị vô hiệu hoá và không thể đăng nhập. Hành động
-              này không thể hoàn tác.
+              {disabling.fullName || disabling.email} sẽ không thể đăng nhập nữa. Bạn có thể kích hoạt lại bất cứ lúc nào.
             </p>
             <div className="mt-5 flex justify-end gap-2">
-              <Button onClick={() => setDeletingId(null)}>Huỷ</Button>
+              <Button onClick={() => setDisabling(null)}>Huỷ</Button>
               <Button
                 variant="danger"
-                disabled={deleteMutation.isPending}
-                onClick={() => deleteMutation.mutate(deletingId)}
+                disabled={activeMutation.isPending}
+                onClick={() => setActive(disabling, false)}
               >
-                {deleteMutation.isPending ? 'Đang xoá…' : 'Xoá nhân viên'}
+                {activeMutation.isPending ? 'Đang xử lý…' : 'Vô hiệu hoá'}
               </Button>
             </div>
           </div>
