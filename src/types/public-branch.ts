@@ -14,6 +14,11 @@ export interface PublicBranchSummary {
   distanceKm: number | null
   averageRating: number
   reviewCount: number
+  /** Cover photo, "HH:mm" hours and court type ids: discovery-service card fields (null until the branch is re-projected). */
+  imageUrl?: string | null
+  openTime?: string | null
+  closeTime?: string | null
+  courtTypeIds?: number[]
 }
 
 export interface PublicBranchPage {
@@ -45,7 +50,13 @@ export interface PublicBranchDetail {
   id: number
   name: string
   address: string
+  ward?: string | null
+  district?: string | null
   city: string
+  /** Contact number and opening hours ("HH:mm") shown on the detail page. */
+  phone?: string | null
+  openTime?: string | null
+  closeTime?: string | null
   status: string
 }
 
@@ -54,6 +65,8 @@ export interface PublicCourt {
   name: string
   courtTypeId: number
   defaultPricePerHour: number
+  imageUrl?: string | null
+  description?: string | null
 }
 
 export interface BranchImage {
