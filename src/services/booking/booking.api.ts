@@ -50,3 +50,20 @@ export async function lookupGuestBooking(bookingCode: string, phone: string) {
   })
   return data
 }
+
+export interface GuestCancelResult {
+  bookingCode: string
+  status: string
+  refundAmount: number | null
+  currency: string
+}
+
+/** POST /api/public/bookings/cancel: guest cancels by code + phone; 404 on any miss, 400 when past the cut-off. */
+export async function cancelGuestBooking(bookingCode: string, phone: string, reason?: string) {
+  const { data } = await axiosClient.post<GuestCancelResult>(API_ENDPOINTS.bookings.guestCancel, {
+    bookingCode: bookingCode.trim().toUpperCase(),
+    phone: normalizeLookupPhone(phone),
+    ...(reason?.trim() ? { reason: reason.trim() } : {}),
+  })
+  return data
+}
