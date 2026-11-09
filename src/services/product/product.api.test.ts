@@ -7,6 +7,7 @@ import {
   adjustProductStock,
   createProduct,
   getAdminProductPage,
+  getSuperAdminProductPage,
   productToUpdateRequest,
   setProductActive,
 } from './product.api'
@@ -31,6 +32,13 @@ const product: Product = {
 
 describe('product api', () => {
   beforeEach(() => vi.clearAllMocks())
+
+  it('lists every branch through the super admin endpoint', async () => {
+    http.get.mockResolvedValue({ data: { items: [product], page: 0, size: 20, total: 1 } })
+    const page = await getSuperAdminProductPage({ page: 0, size: 20 })
+    expect(http.get).toHaveBeenCalledWith('/super-admin/pos/products', { params: { page: 0, size: 20 } })
+    expect(page.content).toEqual([product])
+  })
 
   it('maps { items, page, size, total } and sends only the filters that are set', async () => {
     http.get.mockResolvedValue({ data: { items: [product], page: 1, size: 20, total: 45 } })

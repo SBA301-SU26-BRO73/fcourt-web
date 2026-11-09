@@ -20,6 +20,7 @@ export const API_PREFIXES = {
   adminRefunds: '/admin/refunds',
   adminStaff: '/admin/staff',
   adminPosProducts: '/admin/pos/products',
+  superAdminPosProducts: '/super-admin/pos/products',
   adminDashboard: '/admin/dashboard',
   superAdminDashboard: '/super-admin/dashboard',
   bookings: '/bookings',
@@ -75,10 +76,10 @@ export const API_ENDPOINTS = {
     delete: (id: Id) => joinEndpoint(API_PREFIXES.plans, id),
   },
   products: {
-    /** Staff POS catalog (active products of the staff's own branch). */
-    list: joinEndpoint(API_PREFIXES.staffPos, 'products'),
     /** Owner list `GET ?branchId&active&query&page&size` and create `POST`. */
     adminList: joinEndpoint(API_PREFIXES.adminPosProducts),
+    /** Super admin, read-only, all branches: `GET ?branchId&active&query&page&size`. */
+    superAdminList: joinEndpoint(API_PREFIXES.superAdminPosProducts),
     create: joinEndpoint(API_PREFIXES.adminPosProducts),
     /** `PUT` only: there is no GET or DELETE by id (stop selling with `active=false`). */
     detail: (id: Id) => joinEndpoint(API_PREFIXES.adminPosProducts, id),

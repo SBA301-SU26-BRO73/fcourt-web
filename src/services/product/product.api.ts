@@ -25,13 +25,18 @@ export async function getAdminProductPage(params: ProductListParams) {
   return pageFromApi(data)
 }
 
-/**
- * Staff POS catalog (active products of the caller's branch).
- * TODO(F14): super admin has no all-branch product list on the new backend.
- */
-export async function getAdminProducts(): Promise<Product[]> {
-  const { data } = await axiosClient.get<Product[]>(API_ENDPOINTS.products.list)
-  return data
+/** Super admin list over every branch: `GET /super-admin/pos/products?branchId&active&query&page&size`. */
+export async function getSuperAdminProductPage(params: Omit<ProductListParams, 'branchId'> & { branchId?: number }) {
+  const { data } = await axiosClient.get<ProductApiPage>(API_ENDPOINTS.products.superAdminList, {
+    params: {
+      page: params.page,
+      size: params.size,
+      ...(params.branchId ? { branchId: params.branchId } : {}),
+      ...(params.query?.trim() ? { query: params.query.trim() } : {}),
+      ...(params.active === undefined ? {} : { active: params.active }),
+    },
+  })
+  return pageFromApi(data)
 }
 
 /** Write calls need an Idempotency-Key; a retry of the same attempt must reuse the key. */
