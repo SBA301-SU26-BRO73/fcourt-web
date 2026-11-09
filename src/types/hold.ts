@@ -6,8 +6,8 @@ export interface HoldSlotsRequest {
   date: string
   /** 1..48 slot ids of one court and one day. */
   slotIds: number[]
-  /** Vietnamese mobile `0[35789]xxxxxxxx`; required even for a signed-in customer. */
-  guestPhone: string
+  /** Vietnamese mobile `0[35789]xxxxxxxx`. Required for a guest; a signed-in customer may omit it. */
+  guestPhone?: string
 }
 
 export interface HoldSlotsResponse {
@@ -40,6 +40,7 @@ export interface ActiveHold {
   branchId: number | null
   branchName: string
   date: string
+  /** Empty when a signed-in customer held without a phone. */
   guestPhone: string
   slots: HeldSlot[]
   /** Idempotency-Key of POST /api/bookings, created once per hold so a retry replays the same booking. */

@@ -28,6 +28,7 @@ import {
 import { newIdempotencyKey } from '@/services/booking/booking.api';
 import { releaseHold } from '@/services/hold/hold.api';
 import { formatCountdown } from '@/utils/hold-countdown';
+import { saveGuestBookingToken, loadGuestBookingToken } from '@/utils/guest-booking-storage';
 import { clearActiveHold, loadActiveHold, withIdempotencyKey } from '@/utils/hold-storage';
 
 export function PaymentPage() {
@@ -52,12 +53,12 @@ export function PaymentPage() {
   return <HoldCheckout />;
 }
 
-/** /payment without a booking: turn the stored hold into a booking (customers) or ask to sign in (guests). */
+/** /payment without a booking: turn the stored hold into a booking, signed in or as a guest (hold token + phone, no account). */
 function HoldCheckout() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [hold] = useState(() => loadActiveHold());
-  const { remaining, isExpired } = useCountdown(hold?.expiresAt ?? null);
+  const { isExpired } = useCountdown(hold?.expiresAt ?? null);
   const createBooking = useCreateBooking();
   const startedRef = useRef(false);
 
@@ -79,6 +80,8 @@ function HoldCheckout() {
       },
       {
         onSuccess: (booking) => {
+          // A guest has no JWT: the hold token stays the credential of this booking's checkout.
+          if (!user) saveGuestBookingToken(booking.id, keyed.holdToken);
           clearActiveHold();
           navigate(`/payment?bookingId=${booking.id}`, { replace: true });
         },
@@ -116,22 +119,6 @@ function HoldCheckout() {
           actions={[{ label: 'Chọn lại khung giờ', onClick: () => { clearActiveHold(); navigate('/slot-booking'); } }]}
         />
       );
-    case 'login':
-      return (
-        <PaymentMessage
-          title="Đăng nhập để hoàn tất đặt sân"
-          message={
-            <>
-              Khung giờ đang được giữ cho bạn trong <b className="tabular-nums text-destructive">{formatCountdown(remaining)}</b>.
-              Cần có tài khoản khách hàng để tạo đơn và thanh toán.
-            </>
-          }
-          actions={[
-            { label: 'Đăng nhập', onClick: () => navigate(loginPathFor('/payment')) },
-            { label: 'Hủy giữ chỗ', onClick: chooseAgain, primary: false },
-          ]}
-        />
-      );
     case 'wrong-role':
       return (
         <PaymentMessage
@@ -161,9 +148,12 @@ function HoldCheckout() {
 
 function CheckoutView({ bookingId }: { bookingId: number }) {
   const navigate = useNavigate();
-  const bookingQuery = useBookingDetail(bookingId);
-  const infoQuery = useCheckoutInfo(bookingId);
-  const upload = useUploadReceipt(bookingId);
+  const { user } = useAuth();
+  // Set only for a guest booking; a signed-in customer is identified by the JWT.
+  const [holdToken] = useState(() => loadGuestBookingToken(bookingId));
+  const bookingQuery = useBookingDetail(bookingId, { holdToken });
+  const infoQuery = useCheckoutInfo(bookingId, holdToken);
+  const upload = useUploadReceipt(bookingId, holdToken);
   const confirmFree = useConfirmFree(bookingId);
 
   const booking = bookingQuery.data;
@@ -248,7 +238,7 @@ function CheckoutView({ bookingId }: { bookingId: number }) {
           </div>
           <div>
             <BookingSummary booking={booking} paymentCode={info.transferContent} payableAmount={info.amount}>
-              <VoucherApplyBox booking={booking} disabled={isExpired} />
+              {user?.role === 'CUSTOMER' ? <VoucherApplyBox booking={booking} disabled={isExpired} /> : null}
             </BookingSummary>
             {!isFree && (
               <UploadReceipt
