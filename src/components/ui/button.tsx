@@ -48,4 +48,4 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = "Button";
 
-export const buttonVariants = (_args?: any) => "";
+export const buttonVariants = (_args?: unknown) => { void _args; return ""; };

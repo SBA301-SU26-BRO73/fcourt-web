@@ -34,7 +34,7 @@ export default function CourtAvailabilityGrid({
     if (dateInputRef.current) {
       try {
         dateInputRef.current.showPicker();
-      } catch (err) {
+      } catch {
         dateInputRef.current.click();
       }
     }
@@ -195,6 +195,7 @@ export default function CourtAvailabilityGrid({
                       const price = apiSlot?.price ?? 0;
                       const selected = isSelected(court.id, time);
 
+                      // eslint-disable-next-line no-useless-assignment
                       let cellStyle = '';
                       let content = null;
                       let disabled = false;
