@@ -17,7 +17,7 @@ export async function updatePlan(id: number, data: PlanRequest): Promise<PlanDat
   return res.data
 }
 
+/** 204 No Content. */
 export async function deletePlan(id: number): Promise<void> {
-  const res = await axiosClient.delete(API_ENDPOINTS.plans.delete(id))
-  return res.data
+  await axiosClient.delete(API_ENDPOINTS.plans.delete(id))
 }

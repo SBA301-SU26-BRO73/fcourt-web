@@ -23,6 +23,7 @@ export function SubscriptionPlanCard({
   const isCurrentPlan = currentSubscription?.plan?.id === plan.id && currentSubscription?.active
 
   const price = billingCycle === 'YEARLY' ? plan.yearlyPrice : plan.monthlyPrice
+  const sellable = price != null
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(val)
 
@@ -70,10 +71,10 @@ export function SubscriptionPlanCard({
         <div className="my-5 border-b border-border pb-5">
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-extrabold text-foreground">
-              {formatCurrency(price)}
+              {sellable ? formatCurrency(price) : 'Không bán'}
             </span>
             <span className="text-xs text-muted-foreground">
-              /{billingCycle === 'YEARLY' ? 'năm' : 'tháng'}
+              {sellable ? `/${billingCycle === 'YEARLY' ? 'năm' : 'tháng'}` : `theo ${billingCycle === 'YEARLY' ? 'năm' : 'tháng'}`}
             </span>
           </div>
 
@@ -113,11 +114,11 @@ export function SubscriptionPlanCard({
         ) : (
           <button
             onClick={() => onSubscribe(plan.id)}
-            disabled={submitting}
+            disabled={submitting || !sellable}
             className="w-full rounded-xl py-2.5 text-xs font-bold text-white transition-all flex items-center justify-center gap-2 shadow-sm bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Zap className="h-3.5 w-3.5 fill-white" />
-            {currentSubscription ? 'Nâng cấp ngay' : 'Đăng ký ngay'}
+            {currentSubscription && !currentSubscription.starter ? 'Nâng cấp ngay' : 'Đăng ký ngay'}
           </button>
         )}
       </div>

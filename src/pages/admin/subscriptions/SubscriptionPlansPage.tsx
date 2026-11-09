@@ -5,6 +5,7 @@ import { getSubscriptionPlans, getMyActiveSubscription, createSubscriptionChecko
 import { SubscriptionPlanCard } from '@/components/admin/SubscriptionPlanCard'
 import type { SubscriptionPlan, Subscription } from '@/types/subscription'
 import { useNavigate } from 'react-router-dom'
+import { getApiErrorMessage, isApiError } from '@/common/utils/api-error'
 
 export default function SubscriptionPlansPage() {
   const navigate = useNavigate()
@@ -23,8 +24,10 @@ export default function SubscriptionPlansPage() {
     queryFn: async () => {
       try {
         return await getMyActiveSubscription()
-      } catch {
-        return null
+      } catch (error) {
+        // 404: the owner has no subscription yet.
+        if (isApiError(error) && error.status === 404) return null
+        throw error
       }
     },
   })
@@ -37,9 +40,7 @@ export default function SubscriptionPlansPage() {
       setErrorMessage(null)
     },
     onError: (err: unknown) => {
-      const errorResponse = err as { status?: number; detail?: string; message?: string }
-      const msg = errorResponse?.detail || errorResponse?.message || 'Không thể đăng ký gói dịch vụ.'
-      setErrorMessage(msg)
+      setErrorMessage(getApiErrorMessage(err, 'Không thể đăng ký gói dịch vụ.'))
       setTimeout(() => setErrorMessage(null), 6000)
     },
   })
@@ -111,11 +112,21 @@ export default function SubscriptionPlansPage() {
                 <span className="rounded-md bg-emerald-600 text-white text-[11px] font-bold px-2 py-0.5">
                   {currentSub.plan.name}
                 </span>
+                {currentSub.starter && (
+                  <span className="rounded-md bg-muted text-muted-foreground text-[11px] font-bold px-2 py-0.5">
+                    Gói khởi đầu miễn phí
+                  </span>
+                )}
               </div>
               <p className="text-xs text-muted-foreground flex items-center gap-2">
                 <Calendar className="h-3.5 w-3.5" />
                 Thời hạn: {currentSub.startDate} đến {currentSub.endDate}
               </p>
+              {currentSub.upcoming.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Đã mua tiếp: {currentSub.upcoming.map((item) => `${item.plan.name} (${item.startDate} đến ${item.endDate})`).join(', ')}
+                </p>
+              )}
             </div>
 
             {/* Usage Stats */}
@@ -127,8 +138,7 @@ export default function SubscriptionPlansPage() {
                 <div>
                   <div className="text-xs text-muted-foreground">Chi nhánh</div>
                   <div className="text-sm font-extrabold text-foreground">
-                    {currentSub.currentBranchCount ?? 0} /{' '}
-                    {currentSub.maxBranches >= 99 ? '∞' : currentSub.maxBranches}
+                    Tối đa {currentSub.maxBranches >= 99 ? '∞' : currentSub.maxBranches}
                   </div>
                 </div>
               </div>
@@ -140,8 +150,7 @@ export default function SubscriptionPlansPage() {
                 <div>
                   <div className="text-xs text-muted-foreground">Sân đấu</div>
                   <div className="text-sm font-extrabold text-foreground">
-                    {currentSub.currentCourtCount ?? 0} /{' '}
-                    {currentSub.maxCourts >= 99 ? '∞' : currentSub.maxCourts}
+                    Tối đa {currentSub.maxCourts >= 99 ? '∞' : currentSub.maxCourts}
                   </div>
                 </div>
               </div>

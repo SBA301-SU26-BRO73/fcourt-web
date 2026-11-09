@@ -17,7 +17,7 @@ export async function updateCourtType(id: number, data: CourtTypeRequest): Promi
   return res.data
 }
 
+/** 204 No Content. */
 export async function deleteCourtType(id: number): Promise<void> {
-  const res = await axiosClient.delete(API_ENDPOINTS.courtTypes.delete(id))
-  return res.data
+  await axiosClient.delete(API_ENDPOINTS.courtTypes.delete(id))
 }

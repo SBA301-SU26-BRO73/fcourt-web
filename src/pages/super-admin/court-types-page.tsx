@@ -1,6 +1,7 @@
 import { Bike, Check, CircleDot, Dumbbell, Feather, Layers, Pencil, Plus, Star, Trophy, X, Zap } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { toastApiError } from '@/common/utils/api-error'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import {
   useCourtTypes,
@@ -210,10 +211,12 @@ export function CourtTypesPage() {
     if (editing) {
       updateMut.mutate({ id: editing.id, data: req }, {
         onSuccess: () => { setFormOpen(false); showToast('Đã cập nhật loại sân') },
+        onError: (e) => toastApiError(e, 'Không thể cập nhật loại sân'),
       })
     } else {
       createMut.mutate(req, {
         onSuccess: () => { setFormOpen(false); showToast('Đã thêm loại sân mới') },
+        onError: (e) => toastApiError(e, 'Không thể thêm loại sân'),
       })
     }
   }
@@ -221,7 +224,7 @@ export function CourtTypesPage() {
   function handleToggleActive(item: CourtTypeData) {
     updateMut.mutate(
       { id: item.id, data: { name: item.name, nameEn: item.nameEn ?? undefined, description: item.description ?? undefined, icon: item.icon ?? undefined, color: item.color ?? undefined, active: !item.active } },
-      { onSuccess: () => showToast(item.active ? 'Đã ẩn loại sân' : 'Đã kích hoạt loại sân') },
+      { onSuccess: () => showToast(item.active ? 'Đã ẩn loại sân' : 'Đã kích hoạt loại sân'), onError: (e) => toastApiError(e, 'Không thể đổi trạng thái loại sân') },
     )
   }
 
@@ -229,6 +232,7 @@ export function CourtTypesPage() {
     if (!delTarget) return
     deleteMut.mutate(delTarget.id, {
       onSuccess: () => { setDelTarget(null); showToast('Đã xóa loại sân') },
+      onError: (e) => { setDelTarget(null); toastApiError(e, 'Không thể xóa loại sân') },
     })
   }
 

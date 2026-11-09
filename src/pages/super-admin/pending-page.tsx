@@ -1,6 +1,7 @@
 import { Check, FileText, ImageOff, Mail, Phone, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { toastApiError } from '@/common/utils/api-error'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { useApproveUser, useRejectUser, useUserDetail, useUsers } from '@/hooks/use-users'
 import type { UserAdminItem, UserDocumentItem } from '@/types/admin'
@@ -82,7 +83,8 @@ function StatusBadge({ status }: { status: UserAdminItem['status'] }) {
   const map = {
     PENDING_APPROVAL: { label: 'Chờ duyệt', cls: 'bg-amber-50 text-amber-600' },
     ACTIVE: { label: 'Đang hoạt động', cls: 'bg-green-50 text-green-700' },
-    INACTIVE: { label: 'Từ chối', cls: 'bg-red-50 text-red-600' },
+    INACTIVE: { label: 'Ngừng hoạt động', cls: 'bg-red-50 text-red-600' },
+    REJECTED: { label: 'Từ chối', cls: 'bg-red-50 text-red-600' },
     LOCKED: { label: 'Đã khóa', cls: 'bg-slate-100 text-slate-500' },
   }
   const { label, cls } = map[status] ?? { label: status, cls: 'bg-slate-100 text-slate-500' }
@@ -237,12 +239,14 @@ export function PendingPage() {
   function handleApprove(item: UserAdminItem) {
     approveUser.mutate(item.id, {
       onSuccess: () => { setSel(null); showToast(`Đã duyệt "${item.fullName ?? item.email}"`) },
+      onError: (e) => toastApiError(e, 'Không thể duyệt chủ sân'),
     })
   }
 
   function handleReject(item: UserAdminItem) {
     rejectUser.mutate(item.id, {
       onSuccess: () => { setSel(null); showToast(`Đã từ chối "${item.fullName ?? item.email}"`) },
+      onError: (e) => toastApiError(e, 'Không thể từ chối chủ sân'),
     })
   }
 
