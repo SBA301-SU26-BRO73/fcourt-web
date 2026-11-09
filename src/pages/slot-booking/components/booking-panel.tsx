@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 export interface SelectedSlot {
+  slotId: number;
   courtId: number;
   courtName: string;
   startTime: string; // "HH:MM:SS" or "HH:MM"
@@ -9,17 +10,30 @@ export interface SelectedSlot {
   date: string;
 }
 
+export interface HoldInfo {
+  /** mm:ss until the server expiry. */
+  countdown: string;
+  isWarning: boolean;
+  isReleasing?: boolean;
+  onRelease: () => void;
+  onContinue: () => void;
+}
+
 interface BookingPanelProps {
   selectedSlots: SelectedSlot[];
   venueName: string;
-  onBook: (guestPhone?: string) => void | Promise<void>;
-  requiresGuestPhone?: boolean;
+  onBook: (phone: string) => void | Promise<void>;
+  /** Prefills the contact phone (profile of a signed-in customer). */
+  defaultPhone?: string;
   isSubmitting?: boolean;
   error?: string | null;
+  /** Set once the slots are held: the panel shows the countdown instead of the phone form. */
+  hold?: HoldInfo | null;
 }
 
-export default function BookingPanel({ selectedSlots, venueName, onBook, requiresGuestPhone = true, isSubmitting = false, error }: BookingPanelProps) {
-  const [guestPhone, setGuestPhone] = useState('');
+export default function BookingPanel({ selectedSlots, venueName, onBook, defaultPhone = '', isSubmitting = false, error, hold }: BookingPanelProps) {
+  const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
+  const guestPhone = phoneDraft ?? defaultPhone;
   // calculate total amount
   const totalAmount = selectedSlots.reduce((sum, slot) => sum + slot.price, 0);
 
@@ -78,28 +92,53 @@ export default function BookingPanel({ selectedSlots, venueName, onBook, require
               <div className="text-destructive text-xs font-medium mt-1 max-w-72">{error}</div>
             ) : null}
           </div>
-          {requiresGuestPhone ? (
-            <input
-              value={guestPhone}
-              onChange={(event) => setGuestPhone(event.target.value)}
-              placeholder="Số điện thoại"
-              inputMode="numeric"
-              className="h-11 w-full min-w-0 rounded-xl border border-outline-variant/60 bg-white px-3 text-sm font-medium text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 sm:w-44"
-            />
+          {hold ? (
+            <>
+              <div className="text-left md:text-right" role="timer" aria-live="off">
+                <div className="text-on-surface-variant text-[12px] font-medium uppercase tracking-wider">Giữ chỗ còn</div>
+                <div className={`text-xl font-bold tabular-nums sm:text-2xl ${hold.isWarning ? 'text-destructive' : 'text-primary'}`}>
+                  {hold.countdown}
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={hold.isReleasing}
+                onClick={hold.onRelease}
+                className="w-full shrink-0 cursor-pointer rounded-xl border border-outline-variant/60 bg-white px-4 py-3 text-sm font-bold text-on-surface transition-all duration-200 hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6 sm:text-body-sm"
+              >
+                {hold.isReleasing ? 'Đang hủy...' : 'Hủy giữ chỗ'}
+              </button>
+              <button
+                type="button"
+                disabled={hold.isReleasing}
+                onClick={hold.onContinue}
+                className="primary-gradient w-full shrink-0 cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all duration-200 hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6 sm:text-body-sm"
+              >
+                Tiếp tục thanh toán
+              </button>
+            </>
           ) : (
-            <span className="text-xs font-medium text-on-surface-variant sm:text-sm">Đặt bằng tài khoản</span>
+            <>
+              <input
+                value={guestPhone}
+                onChange={(event) => setPhoneDraft(event.target.value)}
+                placeholder="Số điện thoại"
+                inputMode="numeric"
+                aria-label="Số điện thoại liên hệ"
+                className="h-11 w-full min-w-0 rounded-xl border border-outline-variant/60 bg-white px-3 text-sm font-medium text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 sm:w-44"
+              />
+              <button
+                disabled={isSubmitting}
+                onClick={() => {
+                  if (isSubmitting) return;
+                  onBook(guestPhone);
+                }}
+                className="primary-gradient w-full shrink-0 cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all duration-200 hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6 sm:text-body-sm"
+              >
+                {isSubmitting ? 'Đang giữ khung giờ...' : 'Giữ chỗ khung giờ đã chọn'}
+              </button>
+            </>
           )}
-          
-          <button 
-            disabled={isSubmitting}
-            onClick={() => {
-              if (isSubmitting) return;
-              onBook(requiresGuestPhone ? guestPhone : undefined);
-            }}
-            className="primary-gradient w-full shrink-0 cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all duration-200 hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6 sm:text-body-sm"
-          >
-            {isSubmitting ? 'Đang giữ khung giờ...' : 'Đặt khung giờ đã chọn'}
-          </button>
         </div>
       </div>
     </div>

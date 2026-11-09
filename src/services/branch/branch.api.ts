@@ -65,17 +65,6 @@ export interface PageContent<T> {
   };
 }
 
-function normalizePage<T>(page: PageContent<T>): PageContent<T> {
-  const metadata = page.page ?? page;
-  return {
-    content: page.content,
-    size: metadata.size,
-    number: metadata.number,
-    totalElements: metadata.totalElements,
-    totalPages: metadata.totalPages,
-  };
-}
-
 export interface CourtResponse {
   id: number;
   branchId: number;
@@ -100,26 +89,13 @@ export interface DailySlotResponse {
 
 // Client Side API
 export const branchApi = {
-  getAll: async (page: number = 0, size: number = 6): Promise<PageContent<Branch>> => {
-    // TODO(F2): slot-booking still uses this legacy shape; customer browse (F1) uses public-branch.api.ts.
-    const response = await axiosClient.get<PageContent<Branch>>(API_ENDPOINTS.branches.list, {
-      params: { page, size }
-    });
-    return normalizePage(response.data);
-  },
-
-  getById: async (id: string | number): Promise<Branch> => {
-    const response = await axiosClient.get<Branch>(API_ENDPOINTS.branches.detail(id));
-    return response.data;
-  },
-
   getCourtsByBranch: async (branchId: string | number): Promise<CourtResponse[]> => {
     const response = await axiosClient.get<CourtResponse[]>(API_ENDPOINTS.branches.courts(branchId));
     return response.data;
   },
 
   getDailyCourtSchedule: async (courtId: number, date: string): Promise<DailySlotResponse[]> => {
-    // TODO(F2): slots are identified by slotId and status HOLD replaces HOLDING (gap report 2.3, row 30).
+    // Owner-side board only. Customer slot picking uses getPublicCourtSlots (slotId, status HOLD).
     const response = await axiosClient.get<DailySlotResponse[]>(API_ENDPOINTS.courtSlots(courtId), {
       params: { date }
     });

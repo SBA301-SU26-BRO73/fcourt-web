@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@stomp/stompjs": "^7.5.0",
     "@tanstack/react-query": "^5.90.7",
     "@tanstack/react-query-devtools": "^5.90.7",
     "@types/qrcode": "^1.5.6",
