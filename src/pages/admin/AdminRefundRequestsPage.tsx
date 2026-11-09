@@ -1,42 +1,78 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, HandCoins, RefreshCw, Upload } from 'lucide-react'
+import { CheckCircle2, HandCoins, RefreshCw, ThumbsUp, Upload, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { getApiErrorMessage } from '@/common/utils/api-error'
-import { confirmRefundRequest, getRefundRequests } from '@/services/refund/refund.api'
-import type { RefundRequestResponse, RefundRequestStatus } from '@/types/booking'
+import { BranchSelect } from '@/components/admin/BranchSelect'
+import { useBranchChoice } from '@/hooks/use-branch-choice'
+import { ConfirmModal } from '@/components/admin/ConfirmModal'
+import {
+  useApproveRefund,
+  useCompleteRefund,
+  usePendingRefunds,
+  useRejectRefund,
+} from '@/hooks/use-admin-bookings'
+import type { AdminRefund } from '@/types/admin-booking'
 
 const currency = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
   currency: 'VND',
 })
 
+const PAGE_SIZE = 10
+
 export function AdminRefundRequestsPage() {
+  const { branches, branchId, setBranchId } = useBranchChoice()
   const [page, setPage] = useState(0)
-  const [status, setStatus] = useState<RefundRequestStatus>('PENDING')
   const [proofFiles, setProofFiles] = useState<Record<number, File | undefined>>({})
-  const queryClient = useQueryClient()
+  const [rejecting, setRejecting] = useState<AdminRefund | null>(null)
 
-  const query = useQuery({
-    queryKey: ['refund-requests', status, page],
-    queryFn: () => getRefundRequests({ status, page, size: 10 }),
-  })
+  const query = usePendingRefunds(branchId, page, PAGE_SIZE)
+  const approveMutation = useApproveRefund()
+  const rejectMutation = useRejectRefund()
+  const completeMutation = useCompleteRefund()
+  const busy = approveMutation.isPending || rejectMutation.isPending || completeMutation.isPending
 
-  const confirmMutation = useMutation({
-    mutationFn: confirmRefundRequest,
-    onSuccess: async () => {
-      toast.success('Đã xác nhận hoàn tiền')
-      setProofFiles({})
-      await queryClient.invalidateQueries({ queryKey: ['refund-requests'] })
-    },
-    onError: (error) => {
-      toast.error(getApiErrorMessage(error, 'Không thể xác nhận hoàn tiền'))
-    },
-  })
+  const refunds = query.data ?? []
+  const hasNext = refunds.length === PAGE_SIZE
 
-  const refunds = query.data?.content ?? []
-  const totalPages = query.data?.totalPages ?? 1
+  const handleApprove = (refund: AdminRefund) =>
+    approveMutation.mutate(refund.id, {
+      onSuccess: () => toast.success('Đã duyệt yêu cầu hoàn tiền, hãy chuyển khoản và tải chứng từ'),
+      onError: (error) => toast.error(getApiErrorMessage(error, 'Không thể duyệt yêu cầu hoàn tiền')),
+    })
+
+  const handleComplete = (refund: AdminRefund) => {
+    const proofImage = proofFiles[refund.id]
+    if (!proofImage) {
+      toast.error('Vui lòng tải ảnh chứng từ hoàn tiền trước khi xác nhận')
+      return
+    }
+    completeMutation.mutate(
+      { refundId: refund.id, proofImage },
+      {
+        onSuccess: () => {
+          toast.success('Đã xác nhận hoàn tiền')
+          setProofFiles((current) => ({ ...current, [refund.id]: undefined }))
+        },
+        onError: (error) => toast.error(getApiErrorMessage(error, 'Không thể xác nhận hoàn tiền')),
+      },
+    )
+  }
+
+  const handleReject = (reason: string) => {
+    if (!rejecting) return
+    rejectMutation.mutate(
+      { refundId: rejecting.id, reason },
+      {
+        onSuccess: () => {
+          toast.success('Đã từ chối yêu cầu hoàn tiền')
+          setRejecting(null)
+        },
+        onError: (error) => toast.error(getApiErrorMessage(error, 'Không thể từ chối yêu cầu hoàn tiền')),
+      },
+    )
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -44,46 +80,35 @@ export function AdminRefundRequestsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Yêu cầu hoàn tiền</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Các booking đã hủy sau thanh toán, cần chuyển khoản hoàn 80% thủ công.
+            Duyệt yêu cầu, chuyển khoản hoàn tiền thủ công rồi tải ảnh chứng từ để hoàn tất.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => query.refetch()}
-          disabled={query.isFetching}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60"
-        >
-          <RefreshCw size={16} className={query.isFetching ? 'animate-spin' : ''} />
-          Làm mới
-        </button>
+        <div className="flex items-center gap-3">
+          <BranchSelect
+            branches={branches}
+            value={branchId}
+            onChange={(id) => {
+              setBranchId(id)
+              setPage(0)
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => query.refetch()}
+            disabled={query.isFetching}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60"
+          >
+            <RefreshCw size={16} className={query.isFetching ? 'animate-spin' : ''} />
+            Làm mới
+          </button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-5 py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-              <HandCoins size={18} className="text-emerald-700" />
-              Danh sách yêu cầu hoàn tiền
-            </div>
-            <div className="inline-flex rounded-lg bg-slate-100 p-1">
-              {(['PENDING', 'CONFIRMED'] as RefundRequestStatus[]).map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => {
-                    setStatus(item)
-                    setPage(0)
-                  }}
-                  className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${
-                    status === item
-                      ? 'bg-white text-emerald-700 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {item === 'PENDING' ? 'Đang chờ' : 'Đã xác nhận'}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
+            <HandCoins size={18} className="text-emerald-700" />
+            Danh sách yêu cầu hoàn tiền đang chờ xử lý
           </div>
         </div>
 
@@ -94,18 +119,13 @@ export function AdminRefundRequestsPage() {
             {getApiErrorMessage(query.error, 'Không thể tải yêu cầu hoàn tiền')}
           </div>
         ) : refunds.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-400">
-            {status === 'PENDING'
-              ? 'Không có yêu cầu hoàn tiền đang chờ xử lý.'
-              : 'Chưa có yêu cầu hoàn tiền đã xác nhận.'}
-          </div>
+          <div className="p-8 text-center text-sm text-slate-400">Không có yêu cầu hoàn tiền đang chờ xử lý.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-5 py-3">Booking</th>
-                  <th className="px-5 py-3">Khách hàng</th>
                   <th className="px-5 py-3">Số tiền hoàn</th>
                   <th className="px-5 py-3">Thông tin nhận tiền</th>
                   <th className="px-5 py-3">Lý do</th>
@@ -117,20 +137,12 @@ export function AdminRefundRequestsPage() {
                   <RefundRow
                     key={refund.id}
                     refund={refund}
-                    status={status}
-                    confirming={confirmMutation.isPending}
+                    busy={busy}
                     proofFile={proofFiles[refund.id]}
-                    onProofFileChange={(file) =>
-                      setProofFiles((current) => ({ ...current, [refund.id]: file }))
-                    }
-                    onConfirm={() => {
-                      const proofImage = proofFiles[refund.id]
-                      if (!proofImage) {
-                        toast.error('Vui lòng tải ảnh chứng từ hoàn tiền trước khi xác nhận')
-                        return
-                      }
-                      confirmMutation.mutate({ refundRequestId: refund.id, proofImage })
-                    }}
+                    onProofFileChange={(file) => setProofFiles((current) => ({ ...current, [refund.id]: file }))}
+                    onApprove={() => handleApprove(refund)}
+                    onComplete={() => handleComplete(refund)}
+                    onReject={() => setRejecting(refund)}
                   />
                 ))}
               </tbody>
@@ -139,9 +151,7 @@ export function AdminRefundRequestsPage() {
         )}
 
         <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-sm text-slate-500">
-          <span>
-            Trang {page + 1}/{Math.max(1, totalPages)}
-          </span>
+          <span>Trang {page + 1}</span>
           <div className="flex gap-2">
             <button
               type="button"
@@ -153,7 +163,7 @@ export function AdminRefundRequestsPage() {
             </button>
             <button
               type="button"
-              disabled={page + 1 >= totalPages}
+              disabled={!hasNext}
               onClick={() => setPage((value) => value + 1)}
               className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold disabled:opacity-50"
             >
@@ -162,89 +172,106 @@ export function AdminRefundRequestsPage() {
           </div>
         </div>
       </div>
+
+      {rejecting && (
+        <ConfirmModal
+          open
+          action="reject_refund"
+          bookingCode={`BK-${rejecting.bookingId}`}
+          loading={rejectMutation.isPending}
+          onConfirm={handleReject}
+          onCancel={() => !rejectMutation.isPending && setRejecting(null)}
+        />
+      )}
     </div>
   )
 }
 
 function RefundRow({
   refund,
-  status,
-  confirming,
+  busy,
   proofFile,
   onProofFileChange,
-  onConfirm,
+  onApprove,
+  onComplete,
+  onReject,
 }: {
-  refund: RefundRequestResponse
-  status: RefundRequestStatus
-  confirming: boolean
+  refund: AdminRefund
+  busy: boolean
   proofFile?: File
   onProofFileChange: (file?: File) => void
-  onConfirm: () => void
+  onApprove: () => void
+  onComplete: () => void
+  onReject: () => void
 }) {
+  const approved = refund.status === 'APPROVED'
+
   return (
     <tr className="text-sm text-slate-700">
       <td className="px-5 py-4 align-top">
-        <div className="font-mono font-semibold text-slate-900">{refund.bookingCode}</div>
-        <div className="mt-1 text-xs text-slate-500">{refund.branchName}</div>
-      </td>
-      <td className="px-5 py-4 align-top">
-        <div className="font-semibold text-slate-900">
-          {refund.customerEmail || refund.guestPhone || 'Khách vãng lai'}
+        <div className="font-mono font-semibold text-slate-900">BK-{refund.bookingId}</div>
+        <div className="mt-1 text-xs text-slate-500">{new Date(refund.createdAt).toLocaleString('vi-VN')}</div>
+        <div
+          className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+            approved ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+          }`}
+        >
+          {approved ? 'Đã duyệt, chờ chuyển khoản' : 'Chờ duyệt'}
         </div>
-        {refund.guestPhone && <div className="mt-1 text-xs text-slate-500">{refund.guestPhone}</div>}
       </td>
-      <td className="px-5 py-4 align-top font-bold text-emerald-700">
-        {currency.format(refund.amount)}
-      </td>
+      <td className="px-5 py-4 align-top font-bold text-emerald-700">{currency.format(refund.amount)}</td>
       <td className="px-5 py-4 align-top">
-        <div className="font-semibold text-slate-900">{refund.refundBankName}</div>
-        <div className="mt-1 font-mono text-xs text-slate-600">{refund.refundBankAccountNumber}</div>
-        <div className="mt-1 text-xs text-slate-500">{refund.refundBankAccountName}</div>
+        <div className="font-semibold text-slate-900">{refund.bankName}</div>
+        <div className="mt-1 font-mono text-xs text-slate-600">{refund.bankAccountNumber}</div>
+        <div className="mt-1 text-xs text-slate-500">{refund.bankAccountName}</div>
       </td>
       <td className="max-w-xs px-5 py-4 align-top text-slate-600">{refund.reason}</td>
       <td className="px-5 py-4 align-top">
-        {status === 'PENDING' ? (
-          <div className="space-y-2">
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50">
-              <Upload size={14} />
-              {proofFile ? proofFile.name : 'Tải ảnh chuyển khoản'}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => onProofFileChange(event.target.files?.[0])}
-              />
-            </label>
+        <div className="space-y-2">
+          {!approved && (
             <button
               type="button"
-              disabled={confirming || !proofFile}
-              onClick={onConfirm}
+              disabled={busy}
+              onClick={onApprove}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <CheckCircle2 size={15} />
-              Đã chuyển khoản
+              <ThumbsUp size={15} />
+              Duyệt yêu cầu
             </button>
-          </div>
-        ) : (
-          <div className="text-xs font-semibold text-emerald-700">
-            Đã xác nhận
-            {refund.confirmedAt && (
-              <div className="mt-1 font-normal text-slate-500">
-                {new Date(refund.confirmedAt).toLocaleString('vi-VN')}
-              </div>
-            )}
-            {refund.refundProofImageUrl && (
-              <a
-                href={refund.refundProofImageUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-block text-emerald-700 underline"
+          )}
+          {approved && (
+            <>
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50">
+                <Upload size={14} />
+                {proofFile ? proofFile.name : 'Tải ảnh chuyển khoản'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => onProofFileChange(event.target.files?.[0])}
+                />
+              </label>
+              <button
+                type="button"
+                disabled={busy || !proofFile}
+                onClick={onComplete}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Xem ảnh chuyển khoản
-              </a>
-            )}
-          </div>
-        )}
+                <CheckCircle2 size={15} />
+                Đã chuyển khoản
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onReject}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <XCircle size={15} />
+            Từ chối
+          </button>
+        </div>
       </td>
     </tr>
   )

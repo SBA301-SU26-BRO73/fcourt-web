@@ -7,224 +7,136 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  SlidersHorizontal,
   InboxIcon,
   HandCoins,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import {
-  bookingService,
-  type Booking,
-  type BookingStatus,
-} from '@/services/admin/booking.service';
+import type { AdminBooking, BookingStatus } from '@/types/admin-booking';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { BookingDetailModal } from '../../components/admin/BookingDetailModal';
-import { ConfirmModal } from '../../components/admin/ConfirmModal';
+import { BranchSelect } from '../../components/admin/BranchSelect';
+import { useBranchChoice } from '@/hooks/use-branch-choice';
+import { ConfirmModal, type ConfirmAction } from '../../components/admin/ConfirmModal';
+import {
+  useAdminBookings,
+  useApprovePayment,
+  useBookingCounts,
+  useCancelBooking,
+  usePendingPayments,
+  usePendingRefunds,
+  useRejectPayment,
+} from '@/hooks/use-admin-bookings';
 import { getApiErrorMessage } from '@/common/utils/api-error';
 
-type TabFilter = 'all' | 'PENDING' | 'CONFIRMED' | 'REFUND' | 'CANCELLED';
-type ConfirmAction = 'approve' | 'reject' | 'reject_payment';
-type BookingRowItem = Booking & { groupItems?: Booking[] };
+type TabFilter = 'all' | 'AWAITING_CONFIRMATION' | 'CONFIRMED' | 'CANCELLED';
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 10;
+
+const TAB_STATUS: Record<TabFilter, BookingStatus | undefined> = {
+  all: undefined,
+  AWAITING_CONFIRMATION: 'AWAITING_CONFIRMATION',
+  CONFIRMED: 'CONFIRMED',
+  CANCELLED: 'CANCELLED',
+};
 
 export function AdminBookingPage() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const { branches, branchId, setBranchId } = useBranchChoice();
   const [tab, setTab] = useState<TabFilter>('all');
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(0);
 
   // Modal state
-  const [detailBooking, setDetailBooking] = useState<Booking | null>(null);
+  const [detailBooking, setDetailBooking] = useState<AdminBooking | null>(null);
   const [confirmState, setConfirmState] = useState<{
-    open: boolean;
     action: ConfirmAction;
-    bookingId: number;
-    bookingCode: string;
-    paymentId?: number;
+    booking: AdminBooking;
   } | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
-
-  const fetchBookings = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      const data = await bookingService.getAll(0, 100);
-
-      setBookings(sortBookings(data.content));
-      return true;
-    } catch (error) {
-      console.error(error);
-      toast.error(getApiErrorMessage(error, 'Không thể tải danh sách booking'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  // Filtered & searched bookings
-  const groupedBookings = groupBookingsByPayment(bookings);
-  const filtered = groupedBookings.filter((b) => {
-    const status = getBookingStatus(b);
-    const matchTab =
-      tab === 'all' ||
-      (tab === 'PENDING' && isReviewableStatus(status)) ||
-      (tab === 'CONFIRMED' && status === 'CONFIRMED') ||
-      (tab === 'REFUND' && isPendingRefund(b)) ||
-      (tab === 'CANCELLED' && status === 'CANCELLED');
-    const q = search.toLowerCase();
-    const matchSearch =
-        !q ||
-        String(b.id).includes(q) ||
-        String(b.paymentId ?? '').includes(q) ||
-        b.customerEmail?.toLowerCase().includes(q) ||
-        b.guestPhone?.toLowerCase().includes(q) ||
-        b.courtName?.toLowerCase().includes(q) ||
-        b.groupItems?.some((item) =>
-          item.courtName?.toLowerCase().includes(q) ||
-          item.guestPhone?.toLowerCase().includes(q) ||
-          item.customerEmail?.toLowerCase().includes(q)
-        );
+  const listQuery = useAdminBookings(
+    { branchId, status: TAB_STATUS[tab], search: debouncedSearch, page, size: PAGE_SIZE },
+    branchId !== undefined,
+  );
+  const counts = useBookingCounts(branchId);
+  const pendingPayments = usePendingPayments(branchId);
+  const pendingRefunds = usePendingRefunds(branchId, 0, 100);
+  const approveMutation = useApprovePayment();
+  const rejectPaymentMutation = useRejectPayment();
+  const cancelMutation = useCancelBooking();
 
-    return matchTab && matchSearch;
-  });
+  const data = listQuery.data;
+  const bookings = data?.content ?? [];
+  const totalPages = Math.max(1, data?.totalPages ?? 1);
+  const loading = listQuery.isLoading;
+  const refundPending = pendingRefunds.data?.length ?? 0;
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  // payment of a booking = the pending payment whose bookingId matches
+  const paymentOf = (booking: AdminBooking) =>
+    pendingPayments.data?.find((payment) => payment.bookingId === booking.id);
 
-  // Stat counts
-  const stats = {
-    pending: groupedBookings.filter((b) => isReviewableStatus(getBookingStatus(b))).length,
-    approved: groupedBookings.filter((b) => getBookingStatus(b) === 'CONFIRMED').length,
-    refundPending: groupedBookings.filter(isPendingRefund).length,
-    rejected: groupedBookings.filter((b) => getBookingStatus(b) === 'CANCELLED').length,
-    total: groupedBookings.length,
-  };
+  const actionLoading =
+    approveMutation.isPending || rejectPaymentMutation.isPending || cancelMutation.isPending;
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-
-    const refreshed = await fetchBookings();
-
-    setRefreshing(false);
-
-    if (refreshed) {
-      toast.success('Danh sách đã được cập nhật');
-    }
+    const [result] = await Promise.all([
+      listQuery.refetch(),
+      pendingPayments.refetch(),
+      pendingRefunds.refetch(),
+    ]);
+    if (!result.isError) toast.success('Danh sách đã được cập nhật');
   };
 
-  const openConfirm = (action: ConfirmAction, booking: Booking) => {
-    setConfirmState({
-      open: true,
-      action,
-      bookingId: booking.id,
-      bookingCode: getBookingCode(booking),
-      paymentId: booking.paymentId,
-    });
+  const closeAll = () => {
+    setDetailBooking(null);
+    setConfirmState(null);
   };
 
-  const handleConfirmAction = useCallback(async () => {
+  const handleConfirmAction = async (reason: string) => {
     if (!confirmState) return;
-    setActionLoading(true);
-
-    let newStatus: BookingStatus;
-    if (confirmState.action === 'approve') {
-      newStatus = 'CONFIRMED';
-    } else if (confirmState.action === 'reject_payment') {
-      newStatus = 'PENDING_PAYMENT';
-    } else {
-      newStatus = 'CANCELLED';
-    }
+    const { action, booking } = confirmState;
+    const payment = paymentOf(booking);
 
     try {
-      if (confirmState.action === 'approve' || confirmState.action === 'reject_payment') {
-        if (!confirmState.paymentId) {
-          throw new Error('Booking does not have a submitted payment');
-        }
-
-        if (confirmState.action === 'approve') {
-          await bookingService.approvePayment(confirmState.paymentId);
+      if (action === 'approve' || action === 'reject_payment') {
+        if (!payment) throw new Error('Booking does not have a submitted payment');
+        if (action === 'approve') {
+          await approveMutation.mutateAsync(payment.id);
+          toast.success('Đã xác nhận thanh toán và booking');
         } else {
-          await bookingService.rejectPayment(confirmState.paymentId);
+          await rejectPaymentMutation.mutateAsync({ paymentId: payment.id, reason });
+          toast.success('Đã từ chối bill, booking được mở lại để thanh toán');
         }
-
-        await fetchBookings();
-        setDetailBooking(null);
-        setConfirmState(null);
-        toast.success(
-          confirmState.action === 'approve'
-            ? 'Đã xác nhận thanh toán và booking'
-            : 'Đã từ chối bill, booking được mở lại để thanh toán',
-        );
-        return;
-      }
-
-      const updatedBooking = await bookingService.updateStatus(confirmState.bookingId, {
-        status: newStatus,
-      });
-      const fallbackBooking = bookings.find((b) => b.id === confirmState.bookingId);
-      const nextBooking = normalizeBookingStatus(
-        updatedBooking ?? fallbackBooking,
-        confirmState.bookingId,
-        newStatus,
-      );
-
-      setBookings((prev) =>
-        sortBookings(
-          prev.map((b) =>
-            b.id === confirmState.bookingId ? { ...b, ...nextBooking } : b
-          )
-        )
-      );
-      setDetailBooking((prev) =>
-        prev?.id === confirmState.bookingId
-          ? { ...prev, ...nextBooking }
-          : prev
-      );
-
-      setConfirmState(null);
-
-      if (newStatus === 'CONFIRMED') {
-        toast.success('Đã xác nhận đặt sân thành công', {
-          description: `Mã đơn: ${confirmState.bookingCode}`,
-          icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
-        });
-      } else if (newStatus === 'PENDING_PAYMENT') {
-        toast.warning('Đã từ chối biên lai thanh toán', {
-          description: `Mã đơn: ${confirmState.bookingCode}. Đơn hàng chuyển lại chờ thanh toán.`,
-          icon: <XCircle className="w-4 h-4 text-amber-500" />,
-        });
       } else {
+        await cancelMutation.mutateAsync({ bookingId: booking.id, reason });
         toast.error('Đã hủy đặt sân', {
-          description: `Mã đơn: ${confirmState.bookingCode}`,
+          description: `Mã đơn: ${booking.bookingCode}`,
           icon: <XCircle className="w-4 h-4 text-red-500" />,
         });
       }
+      closeAll();
     } catch (error) {
       console.error(error);
-      toast.error(getApiErrorMessage(error, 'Không thể cập nhật trạng thái booking'), {
-        description: `Mã đơn: ${confirmState.bookingCode}`,
+      toast.error(getApiErrorMessage(error, 'Không thể cập nhật booking'), {
+        description: `Mã đơn: ${booking.bookingCode}`,
       });
-    } finally {
-      setActionLoading(false);
     }
-  }, [bookings, confirmState]);
+  };
 
   const tabs: Array<{ key: TabFilter; label: string; count: number }> = [
-    { key: 'all', label: 'Tất cả', count: stats.total },
-    { key: 'PENDING', label: 'Chờ duyệt', count: stats.pending },
-    { key: 'CONFIRMED', label: 'Đã xác nhận', count: stats.approved },
-    { key: 'REFUND', label: 'Chờ hoàn', count: stats.refundPending },
-    { key: 'CANCELLED', label: 'Đã hủy', count: stats.rejected },
+    { key: 'all', label: 'Tất cả', count: counts.all },
+    { key: 'AWAITING_CONFIRMATION', label: 'Chờ duyệt', count: counts.awaiting },
+    { key: 'CONFIRMED', label: 'Đã xác nhận', count: counts.confirmed },
+    { key: 'CANCELLED', label: 'Đã hủy', count: counts.cancelled },
   ];
 
   return (
@@ -236,229 +148,223 @@ export function AdminBookingPage() {
             Theo dõi và cập nhật trạng thái đơn đặt sân của khách hàng
           </p>
         </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              style={{ backgroundColor: '#006d38' }}
-              className="flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Làm mới
-            </button>
-          </div>
+        <div className="flex items-center gap-3">
+          <BranchSelect
+            branches={branches}
+            value={branchId}
+            onChange={(id) => {
+              setBranchId(id);
+              setPage(0);
+            }}
+          />
+          <button
+            onClick={handleRefresh}
+            disabled={listQuery.isFetching}
+            style={{ backgroundColor: '#006d38' }}
+            className="flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+          >
+            <RefreshCw className={`w-4 h-4 ${listQuery.isFetching ? 'animate-spin' : ''}`} />
+            Làm mới
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Tổng đơn"
+            value={counts.all}
+            icon={<ClipboardList className="w-5 h-5" />}
+            color="bg-slate-50 border-slate-200 text-slate-600"
+          />
+          <StatCard
+            label="Chờ duyệt"
+            value={counts.awaiting}
+            icon={<Clock className="w-5 h-5" />}
+            color="bg-amber-50 border-amber-200 text-amber-600"
+            urgent={counts.awaiting > 0}
+          />
+          <StatCard
+            label="Đã xác nhận"
+            value={counts.confirmed}
+            icon={<CheckCircle2 className="w-5 h-5" />}
+            color="bg-emerald-50 border-emerald-200 text-emerald-600"
+          />
+          <StatCard
+            label="Chờ hoàn tiền"
+            value={refundPending}
+            icon={<HandCoins className="w-5 h-5" />}
+            color="bg-amber-50 border-amber-200 text-amber-600"
+            urgent={refundPending > 0}
+          />
+          <StatCard
+            label="Đã hủy"
+            value={counts.cancelled}
+            icon={<XCircle className="w-5 h-5" />}
+            color="bg-red-50 border-red-200 text-red-500"
+          />
         </div>
 
-        <div className="space-y-6">
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              label="Tổng đơn"
-              value={stats.total}
-              icon={<ClipboardList className="w-5 h-5" />}
-              color="bg-slate-50 border-slate-200 text-slate-600"
-            />
-            <StatCard
-              label="Chờ duyệt"
-              value={stats.pending}
-              icon={<Clock className="w-5 h-5" />}
-              color="bg-amber-50 border-amber-200 text-amber-600"
-              urgent={stats.pending > 0}
-            />
-            <StatCard
-              label="Đã xác nhận"
-              value={stats.approved}
-              icon={<CheckCircle2 className="w-5 h-5" />}
-              color="bg-emerald-50 border-emerald-200 text-emerald-600"
-            />
-            <StatCard
-              label="Chờ hoàn tiền"
-              value={stats.refundPending}
-              icon={<HandCoins className="w-5 h-5" />}
-              color="bg-amber-50 border-amber-200 text-amber-600"
-              urgent={stats.refundPending > 0}
-            />
-            <StatCard
-              label="Đã hủy"
-              value={stats.rejected}
-              icon={<XCircle className="w-5 h-5" />}
-              color="bg-red-50 border-red-200 text-red-500"
-            />
+        {refundPending > 0 && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+            <div className="font-semibold">
+              Có {refundPending} yêu cầu hoàn tiền đang chờ admin xử lý.
+            </div>
+            <Link
+              to="/admin/refund-requests"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700"
+            >
+              <HandCoins className="h-4 w-4" />
+              Xử lý hoàn tiền
+            </Link>
+          </div>
+        )}
+
+        {/* Table card */}
+        <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
+          {/* Filters */}
+          <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-4">
+            {/* Tabs */}
+            <div className="flex gap-1 bg-muted p-1 rounded-xl">
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => {
+                    setTab(t.key);
+                    setPage(0);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                    tab === t.key
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t.label}
+                  {t.count > 0 && (
+                    <span
+                      className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs ${
+                        tab === t.key
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-muted-foreground/20 text-muted-foreground'
+                      }`}
+                    >
+                      {t.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Search */}
+            <div className="relative flex-1 max-w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm mã đơn, khách hàng..."
+                className="w-full pl-9 pr-4 py-2 bg-muted rounded-xl text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+              />
+            </div>
           </div>
 
-          {stats.refundPending > 0 && (
-            <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
-              <div className="font-semibold">
-                Có {stats.refundPending} booking đã hủy đang chờ admin chuyển khoản hoàn tiền.
+          {/* Table */}
+          <div className="overflow-x-auto">
+            {loading ? (
+              <SkeletonRows />
+            ) : listQuery.isError ? (
+              <div className="m-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {getApiErrorMessage(listQuery.error, 'Không thể tải danh sách booking')}
               </div>
-              <Link
-                to="/admin/refund-requests"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700"
-              >
-                <HandCoins className="h-4 w-4" />
-                Xử lý hoàn tiền
-              </Link>
-            </div>
-          )}
-
-          {/* Table card */}
-          <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
-            {/* Filters */}
-            <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-4">
-              {/* Tabs */}
-              <div className="flex gap-1 bg-muted p-1 rounded-xl">
-                {tabs.map((t) => (
-                  <button
-                    key={t.key}
-                    onClick={() => {
-                      setTab(t.key);
-                      setPage(1);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
-                      tab === t.key
-                        ? 'bg-card text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {t.label}
-                    {t.count > 0 && (
-                      <span
-                        className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs ${
-                          tab === t.key
-                            ? 'bg-primary/10 text-primary'
-                            : 'bg-muted-foreground/20 text-muted-foreground'
-                        }`}
-                      >
-                        {t.count}
-                      </span>
+            ) : bookings.length === 0 ? (
+              <EmptyState search={debouncedSearch} tab={tab} />
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    {['Mã đơn', 'Khách hàng', 'Sân', 'Lịch đặt', 'Số tiền', 'Trạng thái', 'Thanh toán', 'Thao tác'].map(
+                      (col) => (
+                        <th
+                          key={col}
+                          className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap"
+                        >
+                          {col}
+                        </th>
+                      )
                     )}
-                  </button>
-                ))}
-              </div>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {bookings.map((booking) => (
+                    <BookingRow
+                      key={booking.id}
+                      booking={booking}
+                      canReview={booking.status === 'AWAITING_CONFIRMATION' && Boolean(paymentOf(booking))}
+                      onView={() => setDetailBooking(booking)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
 
-              {/* Search */}
-              <div className="relative flex-1 max-w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                  placeholder="Tìm mã đơn, khách hàng..."
-                  className="w-full pl-9 pr-4 py-2 bg-muted rounded-xl text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 ml-auto">
-                <button className="flex items-center gap-2 border border-border px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted transition-colors">
-                  <SlidersHorizontal className="w-4 h-4" />
-                  Lọc
+          {/* Pagination */}
+          {!loading && (data?.totalElements ?? 0) > 0 && (
+            <div className="px-6 py-4 border-t border-border flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Hiển thị{' '}
+                <span className="font-medium text-foreground">
+                  {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + bookings.length}
+                </span>{' '}
+                / {data?.totalElements} đơn
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  aria-label="Trang trước"
+                  className="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <span className="px-2 text-xs font-medium text-muted-foreground">
+                  {page + 1}/{totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page + 1 >= totalPages}
+                  aria-label="Trang sau"
+                  className="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
             </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto">
-              {loading ? (
-                <SkeletonRows />
-              ) : pageItems.length === 0 ? (
-                <EmptyState search={search} tab={tab} />
-              ) : (
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/40">
-                      {['Mã đơn', 'Khách hàng', 'Sân', 'Lịch đặt', 'Số tiền', 'Trạng thái', 'Cập nhật', 'Thao tác'].map(
-                        (col) => (
-                          <th
-                            key={col}
-                            className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap"
-                          >
-                            {col}
-                          </th>
-                        )
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {pageItems.map((booking) => (
-                      <BookingRow
-                        key={booking.id}
-                        booking={booking}
-                        onView={() => setDetailBooking(booking)}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Pagination */}
-            {!loading && filtered.length > 0 && (
-              <div className="px-6 py-4 border-t border-border flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  Hiển thị{' '}
-                  <span className="font-medium text-foreground">
-                    {(safePage - 1) * PAGE_SIZE + 1}–
-                    {Math.min(safePage * PAGE_SIZE, filtered.length)}
-                  </span>{' '}
-                  / {filtered.length} đơn
-                </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={safePage === 1}
-                    className="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
-                        p === safePage
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={safePage === totalPages}
-                    className="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
+      </div>
 
       {/* Modals */}
       {detailBooking && (
         <BookingDetailModal
           booking={detailBooking}
+          hasPendingPayment={Boolean(paymentOf(detailBooking))}
           onClose={() => setDetailBooking(null)}
-          onApprove={() => openConfirm('approve', detailBooking)}
-          onReject={(actionType) => {
-            if (actionType === 'reject_payment') {
-              openConfirm('reject_payment', detailBooking);
-            } else {
-              openConfirm('reject', detailBooking);
-            }
-          }}
+          onApprove={() => setConfirmState({ action: 'approve', booking: detailBooking })}
+          onReject={(actionType) =>
+            setConfirmState({
+              action: actionType === 'reject_payment' ? 'reject_payment' : 'reject',
+              booking: detailBooking,
+            })
+          }
         />
       )}
 
       {confirmState && (
         <ConfirmModal
-          open={confirmState.open}
+          open
           action={confirmState.action}
-          bookingCode={confirmState.bookingCode}
+          bookingCode={confirmState.booking.bookingCode}
           loading={actionLoading}
           onConfirm={handleConfirmAction}
           onCancel={() => !actionLoading && setConfirmState(null)}
@@ -505,36 +411,37 @@ function StatCard({
 
 // ─── Booking Row ─────────────────────────────────────────────────────────────
 
+const PAYMENT_LABELS: Record<string, string> = {
+  PENDING: 'Chờ duyệt bill',
+  CONFIRMED: 'Đã xác nhận',
+  PAID: 'Đã thanh toán',
+  REJECTED: 'Bill bị từ chối',
+  CANCELLED: 'Đã hủy',
+};
+
 function BookingRow({
   booking,
+  canReview,
   onView,
 }: {
-  booking: BookingRowItem;
+  booking: AdminBooking;
+  canReview: boolean;
   onView: () => void;
 }) {
-  const status = getBookingStatus(booking);
-  const canReview = isReviewableStatus(status);
-  const groupCount = booking.groupItems?.length ?? 1;
-
   return (
     <tr className="hover:bg-muted/30 transition-colors">
       <td className="px-5 py-4">
         <code className="text-xs font-mono bg-muted px-2 py-1 rounded">
-          {getBookingCode(booking)}
+          {booking.bookingCode}
         </code>
-        {groupCount > 1 && (
-          <div className="mt-1 text-[11px] font-medium text-muted-foreground">
-            {groupCount} booking
-          </div>
-        )}
       </td>
 
       <td className="px-5 py-4">
         <div className="text-sm font-medium">
-          {booking.customerEmail}
+          {booking.customerName || 'Khách vãng lai'}
         </div>
         <div className="text-xs text-muted-foreground">
-          {booking.guestPhone}
+          {booking.customerPhone}
         </div>
       </td>
 
@@ -543,7 +450,7 @@ function BookingRow({
           {booking.courtName}
         </div>
         <div className="text-xs text-muted-foreground">
-          {groupCount > 1 ? 'Nhiều sân/khung giờ' : `Court ID: ${booking.courtId}`}
+          {booking.branchName}
         </div>
       </td>
 
@@ -559,111 +466,31 @@ function BookingRow({
       </td>
 
       <td className="px-5 py-4">
-        <StatusBadge status={status} />
-        {isPendingRefund(booking) && (
-          <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-            <HandCoins className="h-3 w-3" />
-            Chờ hoàn tiền
-          </div>
-        )}
+        <StatusBadge status={booking.status} />
       </td>
 
       <td className="px-5 py-4">
         <span className="text-xs text-muted-foreground">
-          {formatDateTime(booking.updatedAt)}
+          {booking.paymentStatus ? (PAYMENT_LABELS[booking.paymentStatus] ?? booking.paymentStatus) : '-'}
         </span>
       </td>
 
       <td className="px-5 py-4">
         <button
           onClick={onView}
-          style={canReview || isPendingRefund(booking) ? { backgroundColor: '#006d38' } : undefined}
+          style={canReview ? { backgroundColor: '#006d38' } : undefined}
           className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-            canReview || isPendingRefund(booking)
+            canReview
               ? 'text-white shadow-sm hover:opacity-90 active:scale-95'
               : 'border border-border text-foreground hover:bg-muted'
           }`}
-          aria-label={`${canReview || isPendingRefund(booking) ? 'Xử lý' : 'Xem'} ${getBookingCode(booking)}`}
+          aria-label={`${canReview ? 'Xử lý' : 'Xem'} ${booking.bookingCode}`}
         >
-          {canReview || isPendingRefund(booking) ? 'Xử lý' : 'Xem'}
+          {canReview ? 'Xử lý' : 'Xem'}
         </button>
       </td>
     </tr>
   );
-}
-
-function getBookingStatus(booking: Booking): BookingStatus {
-  return booking.bookingStatus ?? booking.bookingstatus ?? booking.status ?? 'PENDING_PAYMENT';
-}
-
-function isReviewableStatus(status: BookingStatus) {
-  return status === 'PENDING_PAYMENT' || status === 'AWAITING_CONFIRMATION';
-}
-
-function isPendingRefund(booking: Booking) {
-  return getBookingStatus(booking) === 'CANCELLED' && booking.refundStatus === 'PENDING';
-}
-
-function normalizeBookingStatus(
-  booking: Booking | undefined,
-  id: number,
-  status: BookingStatus,
-): Booking {
-  return {
-    ...booking,
-    id,
-    status,
-    bookingStatus: status,
-    bookingstatus: status,
-  } as Booking;
-}
-
-function getBookingCode(booking: Booking) {
-  return booking.paymentId ? `PAY-${booking.paymentId}` : `BK-${booking.id}`;
-}
-
-function groupBookingsByPayment(items: Booking[]): BookingRowItem[] {
-  return items.map((booking) => ({
-    ...booking,
-    groupItems: [booking],
-  }));
-}
-
-const statusOrder: Record<BookingStatus, number> = {
-  PENDING_PAYMENT: 0,
-  AWAITING_CONFIRMATION: 1,
-  CONFIRMED: 2,
-  CHECKED_IN: 3,
-  COMPLETED: 4,
-  CANCELLED: 5,
-};
-
-function sortBookings(items: Booking[]) {
-  return [...items].sort((a, b) => {
-    const aDay = getDayTime(a.createdAt);
-    const bDay = getDayTime(b.createdAt);
-
-    if (aDay !== bDay) return bDay - aDay;
-
-    const statusDiff = statusOrder[getBookingStatus(a)] - statusOrder[getBookingStatus(b)];
-    if (statusDiff !== 0) return statusDiff;
-
-    return getDateTime(b.createdAt) - getDateTime(a.createdAt);
-  });
-}
-
-function getDateTime(value: string) {
-  const time = new Date(value).getTime();
-
-  return Number.isNaN(time) ? 0 : time;
-}
-
-function getDayTime(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return 0;
-
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
 const formatAmount = (amount: number) =>
@@ -690,7 +517,7 @@ function EmptyState({ search, tab }: { search: string; tab: TabFilter }) {
         <p className="text-sm text-muted-foreground">
           Không tìm thấy kết quả cho "{search}". Thử từ khóa khác.
         </p>
-      ) : tab === 'PENDING' ? (
+      ) : tab === 'AWAITING_CONFIRMATION' ? (
         <p className="text-sm text-muted-foreground">
           Tất cả biên lai đã được xử lý. Không còn đơn nào chờ duyệt.
         </p>
@@ -708,7 +535,7 @@ function EmptyState({ search, tab }: { search: string; tab: TabFilter }) {
 function SkeletonRows() {
   return (
     <div className="p-6 space-y-3">
-      {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+      {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="flex gap-4 items-center animate-pulse">
           <div className="h-8 w-28 bg-muted rounded-lg" />
           <div className="h-8 flex-1 bg-muted rounded-lg" />
