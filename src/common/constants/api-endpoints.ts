@@ -144,8 +144,8 @@ export const API_ENDPOINTS = {
     holdSlots: joinEndpoint(API_PREFIXES.bookings, 'hold-slots'),
     releaseHold: (holdToken: Id) => joinEndpoint(API_PREFIXES.bookings, 'hold-slots', holdToken),
     my: joinEndpoint(API_PREFIXES.bookings, 'my'),
-    // TODO(F5): guest lookup by bookingCode + phone has no equivalent endpoint (gap report 3.2 item 2).
-    lookup: joinEndpoint(API_PREFIXES.bookings, 'lookup'),
+    /** booking-service: POST { bookingCode, phone } for a guest booking (rate limited, 404 on any miss). */
+    lookup: joinEndpoint('/public/bookings', 'lookup'),
     detail: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id),
     cancel: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id, 'cancel'),
     cancellationPolicy: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id, 'cancellation-policy'),

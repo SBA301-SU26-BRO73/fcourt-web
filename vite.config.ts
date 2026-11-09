@@ -53,7 +53,7 @@ const API_ROUTES: Array<[pattern: string, service: ServiceName]> = [
 
   // booking-service owns /api/bookings, except hold-slots which is slot-hold-engine.
   ['^/api/bookings/hold-slots', 'slotHold'],
-  ['^/api/(bookings|admin/bookings)', 'booking'],
+  ['^/api/(bookings|admin/bookings|public/bookings)', 'booking'],
   ['^/ws-fcourt', 'booking'],
 
   ['^/api/(payments|refunds|admin/payments|admin/refunds)', 'payment'],

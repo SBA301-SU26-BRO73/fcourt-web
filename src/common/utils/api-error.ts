@@ -24,6 +24,8 @@ export class ApiError extends Error {
   /** field name -> message, from the `errors[]` array of validation problems. */
   readonly fieldErrors: Record<string, string>
   readonly isNetworkError: boolean
+  /** Seconds from the `Retry-After` header of a 429, when sent. */
+  readonly retryAfterSeconds?: number
 
   constructor(init: {
     status: number
@@ -32,6 +34,7 @@ export class ApiError extends Error {
     detail?: string
     fieldErrors?: Record<string, string>
     isNetworkError?: boolean
+    retryAfterSeconds?: number
     cause?: unknown
   }) {
     super(init.message, { cause: init.cause })
@@ -41,11 +44,17 @@ export class ApiError extends Error {
     this.detail = init.detail
     this.fieldErrors = init.fieldErrors ?? {}
     this.isNetworkError = init.isNetworkError ?? false
+    this.retryAfterSeconds = init.retryAfterSeconds
   }
 }
 
 function asProblem(data: unknown): ProblemDetails {
   return data && typeof data === 'object' ? (data as ProblemDetails) : {}
+}
+
+function parseRetryAfter(value: unknown) {
+  const seconds = typeof value === 'string' || typeof value === 'number' ? Number(value) : NaN
+  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : undefined
 }
 
 /** Convert anything thrown by axios into an {@link ApiError}; other errors pass through. */
@@ -81,6 +90,7 @@ export function toApiError(error: unknown): unknown {
     title,
     detail,
     fieldErrors,
+    retryAfterSeconds: parseRetryAfter(error.response.headers?.['retry-after']),
     cause: error,
   })
 }
