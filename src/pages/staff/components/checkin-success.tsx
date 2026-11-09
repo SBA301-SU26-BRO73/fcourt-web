@@ -2,10 +2,22 @@ import { Calendar, CheckCircle, ScanLine } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { formatClock } from '@/pages/staff/schedule-utils'
-import type { StaffCheckinResponse } from '@/types/staff'
+
+/** What the success screen shows; built from the preview and the check-in result, or from an offline ticket. */
+export interface CheckinSummary {
+  bookingId: number
+  courtName: string
+  customerName: string | null
+  guestPhone: string | null
+  startTime: string | null
+  endTime: string | null
+  checkedInAt: string
+  /** Accepted from the downloaded permits; it reaches the server when the connection is back. */
+  offline?: boolean
+}
 
 interface CheckinSuccessProps {
-  result: StaffCheckinResponse
+  result: CheckinSummary
   onScanNext: () => void
   onBackToSchedule: () => void
 }
@@ -48,14 +60,21 @@ export function CheckinSuccess({
       <p className="mt-1 text-sm text-slate-500">
         {customer} is good to go on {result.courtName}.
       </p>
+      {result.offline && (
+        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+          Check-in offline, sẽ tự đồng bộ khi có mạng.
+        </p>
+      )}
 
       <div className="mt-6 w-full max-w-md divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white px-5">
         <SummaryRow label="Customer" value={customer} />
         <SummaryRow label="Court" value={result.courtName} />
-        <SummaryRow
-          label="Time slot"
-          value={`${formatClock(result.startTime)} – ${formatClock(result.endTime)}`}
-        />
+        {result.startTime && result.endTime && (
+          <SummaryRow
+            label="Time slot"
+            value={`${formatClock(result.startTime)} – ${formatClock(result.endTime)}`}
+          />
+        )}
         <SummaryRow
           label="Checked in at"
           value={formatCheckedInAt(result.checkedInAt)}

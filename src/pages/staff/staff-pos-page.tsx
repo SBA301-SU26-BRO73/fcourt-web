@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { useBranchGrid } from '@/hooks/staff/use-branch-grid'
 import { useTodaySchedule } from '@/hooks/staff/use-today-schedule'
-import { getPosProducts, createPosOrder, confirmPosOrder } from '@/services/staff/staff.api'
+import { createPosOrder, getPosOrder, getPosProducts } from '@/services/staff/counter.api'
+import { useIdempotencyKey } from '@/hooks/staff/use-idempotency-key'
 import { getApiErrorMessage } from '@/common/utils/api-error'
 import { ReceiptPrint } from '@/pages/staff/components/receipt-print'
-import type { PosProduct, PaymentMethod, OrderResponse } from '@/types/pos'
+import { useStaffSession } from '@/context/staff-session'
+import type { PosOrder, PosProduct } from '@/types/pos'
 
 interface CartLine {
   product: PosProduct
@@ -22,21 +24,32 @@ function formatMoney(amount: number): string {
 
 export function StaffPosPage() {
   const queryClient = useQueryClient()
-  const { branch } = useBranchGrid()
+  useBranchGrid()
+  const { branchName } = useStaffSession()
+  const keys = useIdempotencyKey()
   const scheduleQuery = useTodaySchedule()
 
+  const [search, setSearch] = useState('')
   const { data: products, isLoading, isError } = useQuery({
-    queryKey: ['pos-products'],
-    queryFn: getPosProducts,
+    queryKey: ['pos-products', search.trim()],
+    queryFn: () => getPosProducts({ query: search.trim() }),
   })
 
   const [cart, setCart] = useState<Map<number, CartLine>>(new Map())
   const [target, setTarget] = useState<'standalone' | number>('standalone')
-  const [method, setMethod] = useState<PaymentMethod>('CASH')
-  const [order, setOrder] = useState<OrderResponse | null>(null)
+  const [order, setOrder] = useState<PosOrder | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [confirming, setConfirming] = useState(false)
+
+  // A booking order is added to the bill by booking-service a moment later (202 PENDING_CHARGE).
+  const pendingOrderId = order?.status === 'PENDING_CHARGE' ? order.id : null
+  const { data: polled } = useQuery({
+    queryKey: ['pos-order', pendingOrderId],
+    queryFn: () => getPosOrder(pendingOrderId as number),
+    enabled: pendingOrderId != null,
+    refetchInterval: 2_000,
+  })
+  const shownOrder = polled && order && polled.id === order.id ? polled : order
 
   const activeCheckedInBookings = useMemo(
     () => (scheduleQuery.data ?? []).filter((b) => b.status === 'CHECKED_IN'),
@@ -50,6 +63,7 @@ export function StaffPosPage() {
     setCart((prev) => {
       const next = new Map(prev)
       const existing = next.get(product.id)
+      if ((existing?.quantity ?? 0) >= product.stockQuantity) return prev
       next.set(product.id, { product, quantity: (existing?.quantity ?? 0) + 1 })
       return next
     })
@@ -63,6 +77,8 @@ export function StaffPosPage() {
       const quantity = existing.quantity + delta
       if (quantity <= 0) {
         next.delete(productId)
+      } else if (quantity > existing.product.stockQuantity) {
+        return prev
       } else {
         next.set(productId, { ...existing, quantity })
       }
@@ -83,7 +99,7 @@ export function StaffPosPage() {
     setOrder(null)
     setError(null)
     setTarget('standalone')
-    setMethod('CASH')
+    keys.clear()
   }
 
   async function handleSubmit() {
@@ -91,11 +107,12 @@ export function StaffPosPage() {
     setError(null)
     setSubmitting(true)
     try {
-      const result = await createPosOrder({
-        bookingId: target === 'standalone' ? null : target,
-        paymentMethod: method,
+      const request = {
+        paymentMethod: target === 'standalone' ? ('CASH' as const) : ('BOOKING' as const),
+        ...(target === 'standalone' ? {} : { bookingId: target }),
         items: lines.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
-      })
+      }
+      const result = await createPosOrder(request, keys.keyFor(JSON.stringify(request)))
       setOrder(result)
       queryClient.invalidateQueries({ queryKey: ['staff-schedule'] })
     } catch (err) {
@@ -105,36 +122,10 @@ export function StaffPosPage() {
     }
   }
 
-  async function handleConfirmReceived() {
-    if (!order) return
-    setConfirming(true)
-    try {
-      const updated = await confirmPosOrder(order.id)
-      setOrder(updated)
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'Không thể xác nhận thanh toán'))
-    } finally {
-      setConfirming(false)
-    }
-  }
-
-  if (order) {
+  if (shownOrder) {
     return (
       <div className="mx-auto max-w-md">
-        <ReceiptPrint order={order} branchName={branch?.name} />
-
-        {order.status === 'PENDING' && (
-          <div className="mt-4 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <p className="text-center text-xs text-amber-800">
-              {branch?.bankAccountName} · {branch?.bankAccountNumber} ({branch?.bankName})
-            </p>
-            <Button variant="primary" disabled={confirming} onClick={handleConfirmReceived}>
-              {confirming ? 'Đang xác nhận…' : 'Xác nhận đã nhận tiền'}
-            </Button>
-          </div>
-        )}
-
-        {error && <p className="mt-3 text-center text-sm text-red-600">{error}</p>}
+        <ReceiptPrint order={shownOrder} branchName={branchName ?? undefined} />
 
         <div className="mt-4 flex gap-2 print:hidden">
           <Button variant="ghost" onClick={() => window.print()} className="flex-1">
@@ -153,6 +144,13 @@ export function StaffPosPage() {
       {/* Product grid */}
       <div>
         <h1 className="mb-3 text-lg font-bold tracking-tight text-slate-900">Bán hàng tại quầy</h1>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Tìm sản phẩm"
+          maxLength={100}
+          className="mb-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+        />
         {isLoading ? (
           <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">
             Đang tải sản phẩm…
@@ -167,11 +165,14 @@ export function StaffPosPage() {
               <button
                 key={product.id}
                 type="button"
+                disabled={product.stockQuantity <= 0}
                 onClick={() => addToCart(product)}
-                className="flex flex-col items-start rounded-xl border border-slate-200 bg-white p-3 text-left hover:border-green-400 hover:bg-green-50"
+                className="flex flex-col items-start rounded-xl border border-slate-200 bg-white p-3 text-left hover:border-green-400 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className="text-sm font-semibold text-slate-900">{product.name}</span>
-                <span className="text-xs text-slate-500">{product.unit}</span>
+                <span className="text-xs text-slate-500">
+                  {product.unit} · {product.stockQuantity > 0 ? `còn ${product.stockQuantity}` : 'hết hàng'}
+                </span>
                 <span className="mt-2 font-mono text-sm font-bold text-green-700">
                   {formatMoney(product.price)}
                 </span>
@@ -236,7 +237,7 @@ export function StaffPosPage() {
             onChange={(e) => setTarget(e.target.value === 'standalone' ? 'standalone' : Number(e.target.value))}
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
           >
-            <option value="standalone">Bill riêng (không gộp)</option>
+            <option value="standalone">Bill riêng (tiền mặt)</option>
             {activeCheckedInBookings.map((b) => (
               <option key={b.bookingId} value={b.bookingId}>
                 #{b.bookingId} · {b.courtName} · {b.customerName ?? b.guestPhone ?? 'Khách'}
@@ -245,28 +246,11 @@ export function StaffPosPage() {
           </select>
         </Field>
 
-        <div className="flex gap-2 text-xs font-medium">
-          <button
-            type="button"
-            aria-pressed={method === 'CASH'}
-            onClick={() => setMethod('CASH')}
-            className={`flex-1 rounded-lg border px-2 py-1.5 ${
-              method === 'CASH' ? 'border-green-500 bg-green-50 text-green-700' : 'border-slate-200 text-slate-600'
-            }`}
-          >
-            Tiền mặt
-          </button>
-          <button
-            type="button"
-            aria-pressed={method === 'TRANSFER'}
-            onClick={() => setMethod('TRANSFER')}
-            className={`flex-1 rounded-lg border px-2 py-1.5 ${
-              method === 'TRANSFER' ? 'border-green-500 bg-green-50 text-green-700' : 'border-slate-200 text-slate-600'
-            }`}
-          >
-            Chuyển khoản
-          </button>
-        </div>
+        <p className="text-xs text-slate-500">
+          {target === 'standalone'
+            ? 'Thu tiền mặt tại quầy.'
+            : 'Tính vào hoá đơn booking, thu khi khách checkout.'}
+        </p>
 
         {error && <p className="text-xs text-red-600">{error}</p>}
 

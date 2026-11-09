@@ -6,60 +6,22 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Field } from '@/components/ui/field'
 import { useBranchGrid } from '@/hooks/staff/use-branch-grid'
-import { useTodaySchedule } from '@/hooks/staff/use-today-schedule'
-import { useCourtSlotTemplates } from '@/hooks/staff/use-court-slot-templates'
-import { useWalkInBooking } from '@/hooks/staff/use-walk-in-booking'
+import { usePublicCourtSlots } from '@/hooks/use-public-branches'
+import { useWalkIn } from '@/hooks/staff/use-walk-in'
 import { WalkInSlotGrid } from '@/pages/staff/components/walk-in-slot-grid'
-import { timeToMinutes, formatClock } from '@/pages/staff/schedule-utils'
+import { summarizeWalkIn, toggleWalkInSlot, todayIso } from '@/pages/staff/counter-utils'
+import { formatClock } from '@/pages/staff/schedule-utils'
 import { getApiErrorMessage } from '@/common/utils/api-error'
-import type { StaffScheduleItem } from '@/types/staff'
-import type { TimeSlotTemplate } from '@/types/booking'
+import type { WalkInResult } from '@/types/counter'
 
-const PHONE_RE = /^[0-9]{9,11}$/
+/** Same rule as the server: optional +, 9 to 15 digits. */
+const PHONE_RE = /^\+?[0-9]{9,15}$/
 
 const TODAY_LABEL = new Date().toLocaleDateString('en-US', {
   weekday: 'short',
   month: 'short',
   day: 'numeric',
 })
-
-function expandBookedTimes(
-  schedule: StaffScheduleItem[] | undefined,
-  courtId: number,
-): Set<string> {
-  const set = new Set<string>()
-  schedule
-    ?.filter((b) => b.courtId === courtId && b.status !== 'CANCELLED')
-    .forEach((b) => {
-      const startMin = timeToMinutes(b.startTime)
-      for (let i = 0; i < b.slotCount; i++) {
-        const m = startMin + i * 30
-        const hh = String(Math.floor(m / 60)).padStart(2, '0')
-        const mm = String(m % 60).padStart(2, '0')
-        set.add(`${hh}:${mm}:00`)
-      }
-    })
-  return set
-}
-
-function toggleSlotFn(
-  startTime: string,
-  prev: string[],
-  templates: TimeSlotTemplate[],
-  bookedTimes: Set<string>,
-): string[] {
-  if (bookedTimes.has(startTime)) return prev
-  if (prev.includes(startTime)) return prev.filter((t) => t !== startTime)
-  if (prev.length === 0) return [startTime]
-  const idx = templates.findIndex((t) => t.startTime === startTime)
-  const prevIdxs = prev
-    .map((t) => templates.findIndex((tmpl) => tmpl.startTime === t))
-    .sort((a, b) => a - b)
-  const minIdx = prevIdxs[0]
-  const maxIdx = prevIdxs[prevIdxs.length - 1]
-  if (idx === minIdx - 1 || idx === maxIdx + 1) return [...prev, startTime]
-  return [startTime]
-}
 
 const STEPS = [
   { n: 1, label: 'Customer' },
@@ -70,67 +32,99 @@ const STEPS = [
 export function StaffWalkInPage() {
   const navigate = useNavigate()
   const { courts } = useBranchGrid()
-  const scheduleQuery = useTodaySchedule()
-  const walkInMutation = useWalkInBooking()
+  const walkInMutation = useWalkIn()
+  const date = todayIso()
 
   const [step, setStep] = useState(1)
   const [phone, setPhone] = useState('')
+  const [guestName, setGuestName] = useState('')
   const [courtId, setCourtId] = useState<number | null>(null)
-  const [selectedTimes, setSelectedTimes] = useState<string[]>([])
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [serverError, setServerError] = useState<string | null>(null)
+  const [created, setCreated] = useState<WalkInResult | null>(null)
 
   // Derive the active court: user pick first, fall back to first loaded court
   const effectiveCourtId = courtId ?? courts?.[0]?.id ?? null
 
-  const { templates } = useCourtSlotTemplates(effectiveCourtId)
-
-  const bookedTimes = useMemo(
-    () => expandBookedTimes(scheduleQuery.data, effectiveCourtId ?? 0),
-    [scheduleQuery.data, effectiveCourtId],
-  )
+  const slotsQuery = usePublicCourtSlots(effectiveCourtId, date)
+  const slots = slotsQuery.data
 
   const phoneValid = PHONE_RE.test(phone)
 
-  const selectedSorted = useMemo(() => [...selectedTimes].sort(), [selectedTimes])
-
-  const firstTmpl = templates?.find((t) => t.startTime === selectedSorted[0])
-  const lastTmpl = templates?.find((t) => t.startTime === selectedSorted[selectedSorted.length - 1])
+  const summary = useMemo(() => summarizeWalkIn(selectedIds, slots ?? []), [selectedIds, slots])
+  const { total } = summary
 
   const rangeLabel =
-    selectedSorted.length && firstTmpl && lastTmpl
-      ? `${formatClock(firstTmpl.startTime)} – ${formatClock(lastTmpl.endTime)}`
+    summary.startTime && summary.endTime
+      ? `${formatClock(summary.startTime)} – ${formatClock(summary.endTime)}`
       : '—'
-
-  const total = useMemo(
-    () =>
-      selectedSorted.reduce((sum, time) => {
-        const tmpl = templates?.find((t) => t.startTime === time)
-        return sum + (tmpl?.price ?? 0)
-      }, 0),
-    [selectedSorted, templates],
-  )
 
   const selectedCourt = courts?.find((c) => c.id === effectiveCourtId)
 
-  function handleToggle(startTime: string) {
-    if (!templates) return
-    setSelectedTimes((prev) => toggleSlotFn(startTime, prev, templates, bookedTimes))
+  function handleToggle(slotId: number) {
+    if (!slots) return
+    setSelectedIds((prev) => toggleWalkInSlot(slotId, prev, slots))
   }
 
   function handleCourtChange(id: number) {
     setCourtId(id)
-    setSelectedTimes([])
+    setSelectedIds([])
   }
 
   function handleSubmit() {
     if (effectiveCourtId == null) return
     setServerError(null)
+    const name = guestName.trim()
     walkInMutation.mutate(
-      { courtId: effectiveCourtId, guestPhone: phone, slotStarts: selectedSorted },
       {
-        onSuccess: () => navigate('/staff'),
-        onError: (err) => setServerError(getApiErrorMessage(err)),
+        courtId: effectiveCourtId,
+        date,
+        slotIds: summary.chosen.map((slot) => slot.slotId),
+        guestPhone: phone,
+        ...(name ? { guestName: name } : {}),
       },
+      {
+        onSuccess: (result) => setCreated(result),
+        onError: (err) => {
+          setServerError(getApiErrorMessage(err))
+          void slotsQuery.refetch()
+        },
+      },
+    )
+  }
+
+  if (created) {
+    return (
+      <div className="mx-auto w-full max-w-lg rounded-xl border border-slate-200 bg-white p-7 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white">
+          <CheckCircle size={32} />
+        </div>
+        <h2 className="mb-1 text-xl font-bold tracking-tight text-slate-900">Walk-in booking created</h2>
+        <p className="mb-5 text-sm text-slate-500">
+          {selectedCourt?.name} · {rangeLabel} · mã <span className="font-mono">{created.bookingCode}</span>
+        </p>
+        <div className="mb-5 flex flex-col gap-1.5 rounded-xl bg-slate-50 p-4 text-left text-sm text-slate-600">
+          <div className="flex justify-between">
+            <span>Biên nhận</span>
+            <span className="font-mono">{created.invoice.receiptCode}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Tiền sân</span>
+            <span className="font-mono">{created.invoice.baseAmount.toLocaleString('vi-VN')}đ</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Phụ thu</span>
+            <span className="font-mono">{created.invoice.surchargeAmount.toLocaleString('vi-VN')}đ</span>
+          </div>
+          <div className="flex justify-between border-t border-slate-200 pt-2 font-semibold text-slate-900">
+            <span>Đã thu tiền mặt</span>
+            <span className="font-mono">{created.invoice.totalAmount.toLocaleString('vi-VN')}đ</span>
+          </div>
+        </div>
+        <Button variant="primary" className="h-12 w-full justify-center" onClick={() => navigate('/staff')}>
+          Back to today&apos;s schedule
+        </Button>
+      </div>
     )
   }
 
@@ -201,10 +195,10 @@ export function StaffWalkInPage() {
           <Field
             label="Phone number"
             required
-            hint="9–11 digits, e.g. 0912345678"
+            hint="9–15 digits, e.g. 0912345678"
             error={
               phone.length > 0 && !phoneValid
-                ? 'Invalid phone number (9–11 digits, numbers only)'
+                ? 'Invalid phone number (9–15 digits, numbers only)'
                 : null
             }
           >
@@ -212,11 +206,22 @@ export function StaffWalkInPage() {
               className="w-full rounded-lg border border-slate-200 px-3 py-3.5 font-mono text-base tracking-wider text-slate-900 placeholder-slate-300 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
               placeholder="0912345678"
               value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-              maxLength={11}
+              onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, ''))}
+              maxLength={16}
               inputMode="numeric"
             />
           </Field>
+          <div className="mt-4">
+            <Field label="Customer name" hint="Optional">
+              <input
+                className="w-full rounded-lg border border-slate-200 px-3 py-3 text-base text-slate-900 placeholder-slate-300 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                placeholder="Nguyễn Văn A"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                maxLength={150}
+              />
+            </Field>
+          </div>
           <div className="mt-6 flex justify-end">
             <Button
               variant="primary"
@@ -250,7 +255,7 @@ export function StaffWalkInPage() {
               >
                 {(courts ?? []).map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} — {c.courtTypeName}
+                    {c.name}
                   </option>
                 ))}
               </select>
@@ -263,27 +268,24 @@ export function StaffWalkInPage() {
           </div>
 
           <div className="mb-3 flex items-center justify-between text-sm text-slate-500">
-            <span>{selectedCourt?.courtTypeName} · 30-min slots</span>
-            {selectedSorted.length > 0 && (
+            <span>{selectedCourt?.name} · 30-min slots</span>
+            {selectedIds.length > 0 && (
               <span className="font-mono font-semibold text-slate-800">
                 {rangeLabel} · {total.toLocaleString('vi-VN')}đ
               </span>
             )}
           </div>
 
-          {templates == null || templates.length === 0 ? (
+          {slots == null || slots.length === 0 ? (
             <div className="rounded-xl border border-slate-200 py-8 text-center text-sm text-slate-400">
-              {templates == null
-                ? 'Loading slots…'
-                : 'No slots configured for this court today.'}
+              {slotsQuery.isError
+                ? 'Could not load the slots.'
+                : slots == null
+                  ? 'Loading slots…'
+                  : 'No slots configured for this court today.'}
             </div>
           ) : (
-            <WalkInSlotGrid
-              templates={templates}
-              bookedTimes={bookedTimes}
-              selectedTimes={selectedTimes}
-              onToggle={handleToggle}
-            />
+            <WalkInSlotGrid slots={slots} selectedIds={selectedIds} onToggle={handleToggle} />
           )}
 
           <div className="mt-6 flex justify-between">
@@ -297,7 +299,7 @@ export function StaffWalkInPage() {
             <Button
               variant="primary"
               icon={<ArrowRight size={16} />}
-              disabled={selectedSorted.length === 0}
+              disabled={selectedIds.length === 0}
               onClick={() => setStep(3)}
               className="px-5 py-2.5 text-sm"
             >
@@ -323,10 +325,11 @@ export function StaffWalkInPage() {
             {(
               [
                 { label: 'Phone', value: phone, mono: true },
+                { label: 'Name', value: guestName.trim() || '—', mono: false },
                 { label: 'Court', value: selectedCourt?.name ?? '—', mono: false },
                 { label: 'Date', value: `Today · ${TODAY_LABEL}`, mono: false },
                 { label: 'Time', value: rangeLabel, mono: true },
-                { label: 'Slots', value: `${selectedSorted.length} × 30 min`, mono: false },
+                { label: 'Slots', value: `${selectedIds.length} × 30 min`, mono: false },
               ] as const
             ).map(({ label, value, mono }) => (
               <div key={label}>

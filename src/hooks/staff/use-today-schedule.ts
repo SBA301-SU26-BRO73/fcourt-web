@@ -1,24 +1,30 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
-import { getTodaySchedule } from '@/services/staff/staff.api'
+import { getTodaySchedule } from '@/services/staff/counter.api'
 import { useStaffSession } from '@/context/staff-session'
+import { scheduleToItems } from '@/pages/staff/counter-utils'
 
-/** Query key for the front-desk schedule, granular per staff + date. */
-export function scheduleQueryKey(staffUserId: number | null, date?: string) {
-  return ['staff-schedule', staffUserId, date ?? 'today'] as const
+/** Query key for the front-desk schedule, granular per staff. */
+export function scheduleQueryKey(staffUserId: number | null) {
+  return ['staff-schedule', staffUserId, 'today'] as const
 }
 
 /**
- * Today's booking schedule for the acting staff's branch (resolved server-side
- * from the JWT). Polls so the grid and now-line stay roughly current.
+ * Today's booking schedule of the staff's branch (resolved server-side from the JWT), one block
+ * per booking. Polls so the grid and now-line stay roughly current.
  */
-export function useTodaySchedule(date?: string) {
+export function useTodaySchedule() {
   const { staffUserId } = useStaffSession()
 
-  return useQuery({
-    queryKey: scheduleQueryKey(staffUserId, date),
-    queryFn: () => getTodaySchedule(date),
+  const query = useQuery({
+    queryKey: scheduleQueryKey(staffUserId),
+    queryFn: getTodaySchedule,
     enabled: staffUserId != null,
     refetchInterval: 60_000,
   })
+
+  const data = useMemo(() => (query.data ? scheduleToItems(query.data) : undefined), [query.data])
+
+  return { ...query, data }
 }

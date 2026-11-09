@@ -3,7 +3,7 @@ import { createContext, useContext } from 'react'
 /**
  * Front-desk staff session, derived from the JWT: `staffUserId` is the
  * logged-in user's id (from auth context), `branchId`/`branchName` come from
- * `GET /api/v1/staff/me`, resolved server-side from the same token.
+ * `GET /api/staff/me` (branch name from the public branch), resolved server-side from the same token.
  */
 export interface StaffSession {
   staffUserId: number | null
