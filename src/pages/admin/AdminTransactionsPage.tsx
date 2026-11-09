@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, InboxIcon, RefreshCw, Search } from 'lucide-
 
 import { getApiErrorMessage } from '@/common/utils/api-error'
 import { BranchSelect } from '@/components/admin/BranchSelect'
+import { ViewerButton } from '@/components/ui/image-viewer'
 import { useBranchChoice } from '@/hooks/use-branch-choice'
 import { useLedger } from '@/hooks/use-admin-bookings'
 import type { LedgerEntry, LedgerStatus, LedgerTransactionType } from '@/types/payment'
@@ -232,14 +233,13 @@ export function AdminTransactionsPage() {
                     </td>
                     <td className="px-5 py-4">
                       {entry.receiptImageUrl ? (
-                        <a
-                          href={entry.receiptImageUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <ViewerButton
+                          url={entry.receiptImageUrl}
+                          alt={`Biên lai ${entry.transactionCode ?? ''}`.trim()}
                           className="text-xs font-semibold text-emerald-700 underline"
                         >
                           Xem ảnh
-                        </a>
+                        </ViewerButton>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>
                       )}

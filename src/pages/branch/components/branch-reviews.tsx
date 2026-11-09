@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { usePublicBranchReviews } from "@/hooks/use-public-branches";
 import { getApiErrorMessage } from "@/common/utils/api-error";
+import { ZoomableImage } from "@/components/ui/image-viewer";
 import type { BranchReview } from "@/types/public-branch";
 
 function Stars({ rating }: { rating: number }) {
@@ -40,8 +41,15 @@ function ReviewCard({ review }: { review: BranchReview }) {
       {review.comment && <p className="font-body-sm text-body-sm italic">"{review.comment}"</p>}
       {review.imageUrls.length > 0 && (
         <div className="flex flex-wrap gap-stack-sm">
-          {review.imageUrls.map((url) => (
-            <img key={url} src={url} alt="Ảnh đánh giá" className="h-20 w-20 rounded-lg object-cover" />
+          {review.imageUrls.map((url, index) => (
+            <ZoomableImage
+              key={url}
+              src={url}
+              alt="Ảnh đánh giá"
+              gallery={review.imageUrls.map((u, i) => ({ url: u, alt: `Ảnh đánh giá ${i + 1}` }))}
+              index={index}
+              className="h-20 w-20 rounded-lg object-cover"
+            />
           ))}
         </div>
       )}

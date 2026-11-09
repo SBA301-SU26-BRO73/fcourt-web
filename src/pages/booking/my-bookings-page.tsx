@@ -14,6 +14,7 @@ import {
 import { getApiErrorMessage, toastApiError } from '@/common/utils/api-error'
 import { StatusBadge } from '@/components/admin/StatusBadge'
 import { CustomerCancelDialog } from '@/components/booking/CustomerCancelDialog'
+import { ViewerButton } from '@/components/ui/image-viewer'
 import { MyBookingDetail } from '@/components/booking/MyBookingDetail'
 import { RefundRequestDialog } from '@/components/booking/RefundRequestDialog'
 import { ReviewDialog } from '@/components/booking/ReviewDialog'
@@ -222,14 +223,13 @@ export function MyBookingsPage() {
                 </div>
               </div>
               {transaction.receiptImageUrl && (
-                <a
-                  href={transaction.receiptImageUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <ViewerButton
+                  url={transaction.receiptImageUrl}
+                  alt={`Biên lai ${transaction.transactionCode}`}
                   className="mt-3 inline-block text-xs font-medium text-emerald-700 hover:underline"
                 >
                   Xem biên lai
-                </a>
+                </ViewerButton>
               )}
             </div>
           ))}

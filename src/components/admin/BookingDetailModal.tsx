@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { AdminBooking } from '@/types/admin-booking';
 import { StatusBadge } from './StatusBadge';
+import { ZoomableImage } from '@/components/ui/image-viewer';
 
 interface BookingDetailModalProps {
   booking: AdminBooking;
@@ -151,19 +152,15 @@ export function BookingDetailModal({
 
               {booking.receiptImageUrl ? (
                 <div className="flex-1 rounded-2xl overflow-hidden border border-border bg-muted/30 flex items-center justify-center relative group min-h-[200px]">
-                  <img
+                  <ZoomableImage
                     src={booking.receiptImageUrl}
                     alt="Biên lai thanh toán"
+                    buttonClassName="flex h-full w-full cursor-zoom-in items-center justify-center"
                     className="w-full h-full object-contain max-h-[350px] p-2"
                   />
-                  <a
-                    href={booking.receiptImageUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-medium transition-opacity text-sm duration-200"
-                  >
+                  <span className="pointer-events-none absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-medium transition-opacity text-sm duration-200">
                     Xem ảnh gốc
-                  </a>
+                  </span>
                 </div>
               ) : (
                 <div className="flex-1 rounded-2xl border border-dashed border-border bg-muted/30 p-8 flex flex-col items-center justify-center text-center">

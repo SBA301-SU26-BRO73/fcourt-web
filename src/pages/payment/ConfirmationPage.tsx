@@ -1,4 +1,5 @@
-﻿import { useState } from 'react';
+﻿import { ZoomableImage } from '@/components/ui/image-viewer'
+import { useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   CheckCircle2,
@@ -155,9 +156,10 @@ function ConfirmationView({ bookingId }: { bookingId: number }) {
                 <div className="flex gap-6 items-start">
                   <div className="w-48 h-48 rounded-2xl overflow-hidden border border-border bg-muted/30 flex-shrink-0 flex items-center justify-center">
                     {previewUrl ? (
-                      <img
+                      <ZoomableImage
                         src={previewUrl}
                         alt="Biên lai"
+                        buttonClassName="block h-full w-full cursor-zoom-in"
                         className="w-full h-full object-cover"
                       />
                     ) : (

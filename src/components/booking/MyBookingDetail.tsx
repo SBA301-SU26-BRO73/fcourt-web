@@ -1,6 +1,7 @@
 import { Ban, CreditCard, Landmark, Star } from 'lucide-react'
 
 import { CheckinQrCard } from '@/components/booking/CheckinQrCard'
+import { ZoomableImage } from '@/components/ui/image-viewer'
 import { useMyBooking, useRefundState, useTicket } from '@/hooks/use-my-bookings'
 import {
   REFUND_STATUS_LABELS,
@@ -126,14 +127,12 @@ export function RefundStatusNotice({ refund }: { refund: Refund }) {
       </div>
       {refund.adminNote && <div className="mt-1 text-xs">Ghi chú từ chủ sân: {refund.adminNote}</div>}
       {refund.transferProofUrl && (
-        <a
-          href={refund.transferProofUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 block overflow-hidden rounded-lg border border-emerald-200 bg-white"
-        >
-          <img src={refund.transferProofUrl} alt="Chứng từ hoàn tiền" className="max-h-72 w-full object-contain" />
-        </a>
+        <ZoomableImage
+          src={refund.transferProofUrl}
+          alt="Chứng từ hoàn tiền"
+          buttonClassName="mt-3 block w-full cursor-zoom-in overflow-hidden rounded-lg border border-emerald-200 bg-white"
+          className="max-h-72 w-full object-contain"
+        />
       )}
     </div>
   )

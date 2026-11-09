@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ZoomableImage } from "@/components/ui/image-viewer";
 import { usePublicCourtSlots } from "@/hooks/use-public-branches";
 import { formatLocalDate } from "@/common/utils/local-date";
 import type { CourtView } from "../branch-detail.types";
@@ -100,7 +101,7 @@ function CourtRow({ court, onViewAvailability }: { court: CourtView; onViewAvail
   return (
     <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-xl overflow-hidden flex flex-col md:flex-row hover:border-primary transition-all hover:shadow-lg group">
       <div className="md:w-1/3 h-48 md:h-auto overflow-hidden bg-surface-container">
-        <img alt={court.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={court.imageUrl && !imageFailed ? court.imageUrl : defaultSportImage} onError={() => setImageFailed(true)} />
+        <ZoomableImage alt={court.name} buttonClassName="block h-full w-full cursor-zoom-in" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={court.imageUrl && !imageFailed ? court.imageUrl : defaultSportImage} onError={() => setImageFailed(true)} />
       </div>
       <div className="p-stack-lg flex-1 flex flex-col justify-between">
         <div className="flex justify-between items-start gap-4">

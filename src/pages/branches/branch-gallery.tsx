@@ -1,3 +1,4 @@
+import { ZoomableImage } from '@/components/ui/image-viewer'
 import { ImagePlus, Trash2 } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef } from 'react'
 
@@ -74,9 +75,16 @@ export function BranchGallery({
         </p>
       ) : (
         <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {existing.map((image) => (
+          {existing.map((image, index) => (
             <li key={image.id} className="relative overflow-hidden rounded-xl bg-slate-100">
-              <img src={image.url} alt="Ảnh chi nhánh" className="h-28 w-full object-cover" />
+              <ZoomableImage
+                src={image.url}
+                alt="Ảnh chi nhánh"
+                gallery={existing.map((item, i) => ({ url: item.url, alt: `Ảnh chi nhánh ${i + 1}` }))}
+                index={index}
+                buttonClassName="block w-full cursor-zoom-in"
+                className="h-28 w-full object-cover"
+              />
               <button
                 type="button"
                 aria-label="Xóa ảnh"

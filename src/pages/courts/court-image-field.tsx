@@ -1,3 +1,4 @@
+import { ZoomableImage } from '@/components/ui/image-viewer'
 import { ImagePlus, Trash2, Undo2 } from 'lucide-react'
 import { useEffect, useId, useMemo } from 'react'
 
@@ -43,7 +44,7 @@ export function CourtImageField({
       <div className="flex flex-wrap items-start gap-4">
         <div className="h-32 w-48 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
           {shown ? (
-            <img src={shown} alt="Ảnh sân" className="h-full w-full object-cover" />
+            <ZoomableImage src={shown} alt="Ảnh sân" buttonClassName="block h-full w-full cursor-zoom-in" className="h-full w-full object-cover" />
           ) : (
             <div className="grid h-full place-items-center px-2 text-center text-xs text-slate-500">
               {removed ? 'Ảnh sẽ bị xóa khi lưu' : 'Chưa có ảnh'}

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { toastApiError } from '@/common/utils/api-error'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
+import { ViewerButton, ZoomableImage, isPdfUrl, type ViewerItem } from '@/components/ui/image-viewer'
 import { useApproveUser, useRejectUser, useUserDetail, useUsers } from '@/hooks/use-users'
 import type { UserAdminItem, UserDocumentItem } from '@/types/admin'
 
@@ -11,8 +12,9 @@ const DOC_TYPE_LABEL: Record<UserDocumentItem['docType'], string> = {
   COURT_IMAGE: 'Ảnh sân',
 }
 
+// Document URLs are presigned (`...jpg?X-Amz-...`), so decide by path, not by the end of the string.
 function isImageUrl(url: string) {
-  return /\.(png|jpe?g|gif|webp|avif)$/i.test(url)
+  return !isPdfUrl(url)
 }
 
 function DocumentGallery({ documents }: { documents: UserDocumentItem[] }) {
@@ -29,6 +31,13 @@ function DocumentGallery({ documents }: { documents: UserDocumentItem[] }) {
     return acc
   }, {})
 
+  const items: ViewerItem[] = documents.map((doc) => ({
+    url: doc.url,
+    alt: DOC_TYPE_LABEL[doc.docType] ?? doc.docType,
+    kind: isImageUrl(doc.url) ? 'image' : 'pdf',
+  }))
+  const indexOf = (id: UserDocumentItem['id']) => documents.findIndex((doc) => doc.id === id)
+
   return (
     <div className="mt-5 space-y-4">
       {Object.entries(groups).map(([docType, docs]) => (
@@ -39,26 +48,30 @@ function DocumentGallery({ documents }: { documents: UserDocumentItem[] }) {
           <div className="grid grid-cols-3 gap-2.5">
             {docs.map((doc) =>
               isImageUrl(doc.url) ? (
-                <a
+                <div
                   key={doc.id}
-                  href={doc.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block aspect-square rounded-xl overflow-hidden border border-slate-200 hover:ring-2 hover:ring-green-500/40 transition"
+                  className="aspect-square rounded-xl overflow-hidden border border-slate-200 hover:ring-2 hover:ring-green-500/40 transition"
                 >
-                  <img src={doc.url} alt={DOC_TYPE_LABEL[doc.docType] ?? doc.docType} className="w-full h-full object-cover" />
-                </a>
+                  <ZoomableImage
+                    src={doc.url}
+                    alt={DOC_TYPE_LABEL[doc.docType] ?? doc.docType}
+                    gallery={items}
+                    index={indexOf(doc.id)}
+                    buttonClassName="block h-full w-full cursor-zoom-in"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               ) : (
-                <a
+                <ViewerButton
                   key={doc.id}
-                  href={doc.url}
-                  target="_blank"
-                  rel="noreferrer"
+                  items={items}
+                  index={indexOf(doc.id)}
+                  alt={DOC_TYPE_LABEL[doc.docType] ?? doc.docType}
                   className="aspect-square rounded-xl border border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-1.5 text-slate-500 hover:bg-slate-100 transition"
                 >
                   <FileText size={20} />
                   <span className="text-[11px] font-medium">Xem tệp</span>
-                </a>
+                </ViewerButton>
               ),
             )}
           </div>

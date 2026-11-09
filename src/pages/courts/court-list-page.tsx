@@ -1,3 +1,4 @@
+import { ZoomableImage } from '@/components/ui/image-viewer'
 import { useEffect, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, Eye, ImageOff, MapPin, Pencil, Plus, Power, Trash2 } from 'lucide-react'
@@ -173,7 +174,7 @@ export function CourtListPage() {
 function CourtImage({ court }: { court: Court }) {
   const [failed, setFailed] = useState(false)
   if (!court.imageUrl || failed) return <div className="grid h-44 place-items-center bg-emerald-50 text-emerald-300"><ImageOff className="size-12" aria-label="Không có ảnh sân" /></div>
-  return <img src={court.imageUrl} alt={court.name} className="h-44 w-full bg-slate-100 object-cover" onError={() => setFailed(true)} />
+  return <ZoomableImage src={court.imageUrl} alt={court.name} buttonClassName="block w-full cursor-zoom-in" className="h-44 w-full bg-slate-100 object-cover" onError={() => setFailed(true)} />
 }
 
 function ActionLink({ to, label, icon: Icon }: { to: string; label: string; icon: typeof Eye }) {
