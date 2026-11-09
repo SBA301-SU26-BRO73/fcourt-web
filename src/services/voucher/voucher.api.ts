@@ -3,6 +3,8 @@ import { pageFromApi } from '@/common/utils/api-page'
 import { axiosClient } from '@/services/http/axios-client'
 import type {
   VoucherApplication,
+  VoucherRemoval,
+  VoucherValidation,
   Voucher,
   VoucherApiPage,
   VoucherListParams,
@@ -45,6 +47,21 @@ export async function applyVoucher(payload: { code: string; bookingId: number; t
     ...payload,
     code: normalizeVoucherCode(payload.code),
   })
+  return response.data
+}
+
+/** POST /api/vouchers/validate (CUSTOMER JWT): previews the discount for a booking, writes nothing. */
+export async function validateVoucher(payload: { code: string; bookingId: number }) {
+  const response = await axiosClient.post<VoucherValidation>(API_ENDPOINTS.vouchers.validate, {
+    bookingId: payload.bookingId,
+    code: normalizeVoucherCode(payload.code),
+  })
+  return response.data
+}
+
+/** DELETE /api/vouchers/apply/{bookingId} (CUSTOMER JWT): releases the voucher; idempotent. */
+export async function removeVoucher(bookingId: number) {
+  const response = await axiosClient.delete<VoucherRemoval>(API_ENDPOINTS.vouchers.remove(bookingId))
   return response.data
 }
 
