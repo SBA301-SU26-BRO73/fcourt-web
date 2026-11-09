@@ -53,3 +53,12 @@ describe('customer booking and payment api', () => {
     expect(http.post).toHaveBeenCalledWith('/payments/7/confirm-free')
   })
 })
+
+describe('voucher apply api', () => {
+  it('posts the upper-cased code with booking id and gross amount', async () => {
+    const { applyVoucher } = await import('@/services/voucher/voucher.api')
+    http.post.mockResolvedValue({ data: { finalAmount: 0 } })
+    await applyVoucher({ code: ' sale10 ', bookingId: 4, totalAmount: 90000 })
+    expect(http.post).toHaveBeenCalledWith('/vouchers/apply', { code: 'SALE10', bookingId: 4, totalAmount: 90000 })
+  })
+})

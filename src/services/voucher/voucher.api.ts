@@ -2,7 +2,7 @@ import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { pageFromApi } from '@/common/utils/api-page'
 import { axiosClient } from '@/services/http/axios-client'
 import type {
-  LegacyVoucher,
+  VoucherApplication,
   Voucher,
   VoucherApiPage,
   VoucherListParams,
@@ -31,9 +31,20 @@ export async function getVoucherDetail(voucherId: number) {
   return response.data
 }
 
-// TODO(F4): replaced by POST /vouchers/apply on an existing booking.
-export async function getVoucherByCode(code: string) {
-  const response = await axiosClient.get<LegacyVoucher>(API_ENDPOINTS.vouchers.code(code))
+/** Voucher codes are upper-case [A-Z0-9_-]{1,50} on the server. */
+export function normalizeVoucherCode(code: string) {
+  return code.trim().toUpperCase()
+}
+
+/**
+ * POST /api/vouchers/apply (CUSTOMER JWT): validates and reserves the code on a PENDING_PAYMENT booking.
+ * `totalAmount` must be the booking gross (original) amount. Re-applying the same code is idempotent.
+ */
+export async function applyVoucher(payload: { code: string; bookingId: number; totalAmount: number }) {
+  const response = await axiosClient.post<VoucherApplication>(API_ENDPOINTS.vouchers.apply, {
+    ...payload,
+    code: normalizeVoucherCode(payload.code),
+  })
   return response.data
 }
 

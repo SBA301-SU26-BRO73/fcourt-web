@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { QRPaymentCard } from '../../components/QRPaymentCard';
 import { UploadReceipt } from '../../components/UploadReceipt';
 import { BookingSummary } from '../../components/BookingSummary';
+import { VoucherApplyBox } from '../../components/VoucherApplyBox';
 import { PaymentLoading, PaymentMessage } from './payment-state-card';
 import {
   buildVietQrUrl,
@@ -246,7 +247,9 @@ function CheckoutView({ bookingId }: { bookingId: number }) {
             )}
           </div>
           <div>
-            <BookingSummary booking={booking} paymentCode={info.transferContent} payableAmount={info.amount} />
+            <BookingSummary booking={booking} paymentCode={info.transferContent} payableAmount={info.amount}>
+              <VoucherApplyBox booking={booking} disabled={isExpired} />
+            </BookingSummary>
             {!isFree && (
               <UploadReceipt
                 isExpired={isExpired}

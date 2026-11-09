@@ -135,10 +135,7 @@ export const API_ENDPOINTS = {
     list: joinEndpoint(API_PREFIXES.adminVouchers),
     detail: (id: Id) => joinEndpoint(API_PREFIXES.adminVouchers, id),
     usages: (id: Id) => joinEndpoint(API_PREFIXES.adminVouchers, id, 'usages'),
-    // TODO(F4): vouchers are applied to an existing booking: POST /vouchers/apply.
     apply: joinEndpoint('/vouchers/apply'),
-    // TODO(F4): lookup by code is gone; the customer applies the code to a booking instead.
-    code: (code: string) => joinEndpoint('/vouchers/code', code),
   },
   bookings: {
     adminList: joinEndpoint(API_PREFIXES.adminBookings),
