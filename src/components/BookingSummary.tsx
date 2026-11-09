@@ -88,8 +88,8 @@ export function BookingSummary({ data, paymentCode, onVoucherChange }: BookingSu
         onVoucherChange(voucher, calculatedDiscount);
       }
     } catch (err: unknown) {
-      const errorResponse = err as { response?: { data?: { message?: string } }; message?: string };
-      const serverMsg = errorResponse?.response?.data?.message || errorResponse?.message;
+      const errorResponse = err as { status?: number; detail?: string; message?: string };
+      const serverMsg = errorResponse?.detail || errorResponse?.message;
       setErrorMsg(serverMsg || 'Mã giảm giá không hợp lệ hoặc không tồn tại.');
     } finally {
       setIsValidating(false);

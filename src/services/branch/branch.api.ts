@@ -1,8 +1,6 @@
 import { axiosClient } from "../http/axios-client";
 import { API_ENDPOINTS } from "@/common/constants/api-endpoints";
-import type {
-  ApiResponse as AdminApiResponse,
-  Branch as AdminBranch,
+import type {  Branch as AdminBranch,
   BranchListParams,
   CreateBranchRequest,
   SpringPage,
@@ -43,7 +41,7 @@ export interface BranchFilterRequest {
   courtTypeName?: string; 
 }
 
-export interface ApiResponse<T> {
+export interface T {
   httpStatus: number;
   data: T;
   message: string;
@@ -99,54 +97,53 @@ export interface DailySlotResponse {
 // Client Side API
 export const branchApi = {
   getAll: async (page: number = 0, size: number = 6): Promise<PageContent<Branch>> => {
-    const response = await axiosClient.get<ApiResponse<PageContent<Branch>>>('/branches', {
+    // TODO(F1): GET /public/branches returns { content, page, size, totalElements, totalPages } with
+    // a different item shape (no adminName/sampleImageUrl/bank fields; adds minPrice, distanceKm...).
+    const response = await axiosClient.get<PageContent<Branch>>(API_ENDPOINTS.branches.list, {
       params: { page, size }
     });
-    return normalizePage(response.data.data);
+    return normalizePage(response.data);
   },
 
   search: async (filters: BranchFilterRequest, page: number = 0, size: number = 6): Promise<PageContent<Branch>> => {
-    const response = await axiosClient.get<ApiResponse<PageContent<Branch>>>('/branches/search', {
+    const response = await axiosClient.get<PageContent<Branch>>(API_ENDPOINTS.branches.list, {
       params: { 
         ...filters,
         page: page + 1,
         size: size 
       }
     });
-    return normalizePage(response.data.data);
+    // TODO(F1): search and list are merged; filter names are query, city, district, courtTypeId,
+    // minPrice, maxPrice, latitude, longitude (see gap report 2.3).
+    return normalizePage(response.data);
   },
 
   getById: async (id: string | number): Promise<Branch> => {
-    const response = await axiosClient.get<ApiResponse<Branch>>(`/branches/${id}`);
-    return response.data.data;
+    const response = await axiosClient.get<Branch>(API_ENDPOINTS.branches.detail(id));
+    return response.data;
   },
 
   getCourtsByBranch: async (branchId: string | number): Promise<CourtResponse[]> => {
-    const response = await axiosClient.get<ApiResponse<CourtResponse[]>>(`/branches/${branchId}/courts`);
-    return response.data.data;
+    const response = await axiosClient.get<CourtResponse[]>(API_ENDPOINTS.branches.courts(branchId));
+    return response.data;
   },
 
   getDailyCourtSchedule: async (courtId: number, date: string): Promise<DailySlotResponse[]> => {
-    const response = await axiosClient.get<ApiResponse<DailySlotResponse[]>>(`/courts/${courtId}/daily-schedule`, {
+    // TODO(F2): slots are identified by slotId and status HOLD replaces HOLDING (gap report 2.3, row 30).
+    const response = await axiosClient.get<DailySlotResponse[]>(API_ENDPOINTS.courtSlots(courtId), {
       params: { date }
     });
-    return response.data.data;
+    return response.data;
   },
 };
 
 // Admin Side Helper
-function requireData<T>(response: AdminApiResponse<T>): T {
-  if (response.data === undefined) {
-    throw new Error(response.message || 'The server returned no data.')
-  }
-  return response.data
-}
-
 // Admin Side API Functions
 export async function getBranches(params: BranchListParams) {
-  const response = await axiosClient.get<AdminApiResponse<SpringPage<AdminBranch>>>(
-    API_ENDPOINTS.branches.list,
+  const response = await axiosClient.get<SpringPage<AdminBranch>>(
+    API_ENDPOINTS.adminBranches.list,
     {
+      // TODO(F7): GET /admin/branches returns the owner's branches without paging parameters.
       params: {
         page: params.page,
         size: params.size,
@@ -154,35 +151,36 @@ export async function getBranches(params: BranchListParams) {
       },
     },
   )
-  return requireData(response.data)
+  return response.data
 }
 
 export async function getBranchDetail(branchId: number) {
-  const response = await axiosClient.get<AdminApiResponse<AdminBranch>>(
-    API_ENDPOINTS.branches.detail(branchId),
+  const response = await axiosClient.get<AdminBranch>(
+    API_ENDPOINTS.adminBranches.detail(branchId),
   )
-  return requireData(response.data)
+  return response.data
 }
 
+// TODO(F7): the create/update body now requires bankName, bankBin, bankAccountNumber, bankAccountName.
 export async function createBranch(payload: CreateBranchRequest) {
-  const response = await axiosClient.post<AdminApiResponse<AdminBranch>>(
-    API_ENDPOINTS.branches.list,
+  const response = await axiosClient.post<AdminBranch>(
+    API_ENDPOINTS.adminBranches.list,
     payload,
   )
-  return requireData(response.data)
+  return response.data
 }
 
 export async function updateBranch(
   branchId: number,
   payload: UpdateBranchRequest,
 ) {
-  const response = await axiosClient.put<AdminApiResponse<AdminBranch>>(
-    API_ENDPOINTS.branches.detail(branchId),
+  const response = await axiosClient.put<AdminBranch>(
+    API_ENDPOINTS.adminBranches.detail(branchId),
     payload,
   )
-  return requireData(response.data)
+  return response.data
 }
 
 export async function deleteBranch(branchId: number) {
-  await axiosClient.delete(API_ENDPOINTS.branches.detail(branchId))
+  await axiosClient.delete(API_ENDPOINTS.adminBranches.detail(branchId))
 }

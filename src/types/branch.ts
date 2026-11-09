@@ -41,13 +41,6 @@ export interface UpdateBranchRequest extends CreateBranchRequest {
   status: BranchStatus
 }
 
-export interface ApiResponse<T> {
-  httpStatus?: number
-  errorCode?: string
-  data?: T
-  message: string
-}
-
 export interface SpringPage<T> {
   content: T[]
   totalPages: number

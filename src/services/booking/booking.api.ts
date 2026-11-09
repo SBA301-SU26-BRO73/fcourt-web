@@ -1,6 +1,5 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type { ApiResponse } from '@/types/auth'
 import type { SpringPage } from '@/types/court'
 import type {
   BookingResponse,
@@ -10,21 +9,18 @@ import type {
   PaymentResponse,
 } from '@/types/booking'
 
-function requireData<T>(response: ApiResponse<T>): T {
-  if (response.data === undefined) {
-    throw new Error(response.message || 'The server returned no data.')
-  }
-  return response.data
-}
-
+// TODO(F2/F3): booking is now two steps: POST /bookings/hold-slots, then POST /bookings with an
+// Idempotency-Key header and { holdToken, courtId, date, slotIds }. One booking per court per day.
 export async function createBookings(payload: CreateBookingsRequest) {
-  const { data } = await axiosClient.post<ApiResponse<CreateBookingsResponse>>(
-    API_ENDPOINTS.bookings.list,
+  const { data } = await axiosClient.post<CreateBookingsResponse>(
+    API_ENDPOINTS.bookings.create,
     payload,
   )
-  return requireData(data)
+  return data
 }
 
+// TODO(F3): receipts upload per booking (POST /payments/{bookingId}/upload-receipt, part "file") after
+// GET /payments/checkout-info/{bookingId}; there is no multi-booking payment any more.
 export async function createPayment(payload: {
   branchId: number
   bookingIds: number[]
@@ -43,51 +39,51 @@ export async function createPayment(payload: {
     formData.append('voucherCode', payload.voucherCode)
   }
 
-  const { data } = await axiosClient.post<ApiResponse<PaymentResponse>>(
-    API_ENDPOINTS.payments.list,
+  const { data } = await axiosClient.post<PaymentResponse>(
+    API_ENDPOINTS.payments.legacy,
     formData,
     { headers: { 'Content-Type': 'multipart/form-data' } },
   )
-  return requireData(data)
+  return data
 }
 
 export async function getPaymentDetails(paymentId: number) {
-  const { data } = await axiosClient.get<ApiResponse<PaymentResponse>>(
-    API_ENDPOINTS.payments.detail(paymentId),
+  const { data } = await axiosClient.get<PaymentResponse>(
+    `${API_ENDPOINTS.payments.legacy}/${paymentId}`,
   )
-  return requireData(data)
+  return data
 }
 
 export async function getBookingDetails(bookingId: number) {
-  const { data } = await axiosClient.get<ApiResponse<BookingResponse>>(
-    `${API_ENDPOINTS.bookings.list}/${bookingId}`,
+  const { data } = await axiosClient.get<BookingResponse>(
+    API_ENDPOINTS.bookings.detail(bookingId),
   )
-  return requireData(data)
+  return data
 }
 
 export async function cancelBooking(bookingId: number, payload: CancelBookingRequest) {
-  const { data } = await axiosClient.post<ApiResponse<BookingResponse>>(
+  const { data } = await axiosClient.post<BookingResponse>(
     API_ENDPOINTS.bookings.cancel(bookingId),
     payload,
   )
-  return requireData(data)
+  return data
 }
 
 /** Booking history for the logged-in member. */
 export async function getMyBookings(page = 0, size = 20) {
-  const { data } = await axiosClient.get<ApiResponse<SpringPage<BookingResponse>>>(
+  const { data } = await axiosClient.get<SpringPage<BookingResponse>>(
     API_ENDPOINTS.bookings.my,
     { params: { page, size, sort: 'createdAt,desc' } },
   )
-  return requireData(data)
+  return data
 }
 
 /** Public guest lookup by booking code + the phone on the booking. */
 export async function lookupBooking(bookingCode: string, phone: string) {
-  const { data } = await axiosClient.get<ApiResponse<BookingResponse>>(
+  const { data } = await axiosClient.get<BookingResponse>(
     API_ENDPOINTS.bookings.lookup,
     { params: { bookingCode, phone } },
   )
-  return requireData(data)
+  return data
 }
 

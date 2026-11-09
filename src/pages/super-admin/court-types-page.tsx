@@ -195,7 +195,7 @@ export function CourtTypesPage() {
   const [toast, setToast] = useState('')
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  const list = data?.data?.content ?? []
+  const list = data?.content ?? []
 
   function showToast(msg: string) {
     clearTimeout(toastTimer.current)

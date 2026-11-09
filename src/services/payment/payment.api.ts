@@ -1,17 +1,13 @@
+import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type { ApiResponse, SpringPage } from '@/types/branch'
+import type { SpringPage } from '@/types/branch'
 import type { Payment, PaymentListParams } from '@/types/payment'
 
-function requireData<T>(response: ApiResponse<T>): T {
-  if (response.data === undefined) {
-    throw new Error(response.message || 'The server returned no data.')
-  }
-  return response.data
-}
-
 export async function getPayments(params: PaymentListParams) {
-  const response = await axiosClient.get<ApiResponse<SpringPage<Payment>>>(
-    '/payments',
+  const response = await axiosClient.get<SpringPage<Payment>>(
+    // TODO(F9): GET /admin/payments/transactions has no hasVoucher filter; adds transactionType,
+    // fromDate, toDate, status, search and returns { items, page, size, total }.
+    API_ENDPOINTS.payments.adminTransactions,
     {
       params: {
         page: params.page,
@@ -21,5 +17,5 @@ export async function getPayments(params: PaymentListParams) {
       },
     },
   )
-  return requireData(response.data)
+  return response.data
 }

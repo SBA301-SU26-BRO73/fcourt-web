@@ -1,8 +1,6 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type {
-  ApiResponse,
-  Court,
+import type {  Court,
   CourtListParams,
   CreateCourtRequest,
   SpringPage,
@@ -10,25 +8,38 @@ import type {
   UpdateCourtRequest,
 } from '@/types/court'
 
-function requireData<T>(response: ApiResponse<T>): T {
-  if (response.data === undefined) {
-    throw new Error(response.message || 'The server returned no data.')
-  }
-  return response.data
+// TODO(F7): the backend lists courts per branch only (GET /admin/branches/{branchId}/courts). Until the
+// screens work per branch, gather the owner's branches and merge their courts, then page on the client.
+export async function getCourts(params: CourtListParams) {
+  const branchesResponse = await axiosClient.get<unknown>(API_ENDPOINTS.adminBranches.list)
+  const raw = branchesResponse.data
+  const branches: Array<{ id: number }> = Array.isArray(raw)
+    ? raw
+    : ((raw as { content?: Array<{ id: number }> } | null)?.content ?? [])
+  const lists = await Promise.all(
+    branches.map((branch) => getCourtsOfBranch(branch.id)),
+  )
+  const all = lists.flat()
+  const field = params.sortField as keyof Court
+  const sign = params.sortDirection === 'desc' ? -1 : 1
+  all.sort((x, y) => {
+    const a = x[field] ?? ""
+    const b = y[field] ?? ""
+    return a > b ? sign : a < b ? -sign : 0
+  })
+  const start = params.page * params.size
+  return normalizePage<Court>({
+    content: all.slice(start, start + params.size),
+    size: params.size,
+    number: params.page,
+    totalElements: all.length,
+    totalPages: Math.ceil(all.length / Math.max(params.size, 1)),
+  })
 }
 
-export async function getCourts(params: CourtListParams) {
-  const response = await axiosClient.get<ApiResponse<SpringPagedPayload<Court>>>(
-    API_ENDPOINTS.courts.list,
-    {
-      params: {
-        page: params.page,
-        size: params.size,
-        sort: `${params.sortField},${params.sortDirection}`,
-      },
-    },
-  )
-  return normalizePage(requireData(response.data))
+async function getCourtsOfBranch(branchId: number): Promise<Court[]> {
+  const response = await axiosClient.get<Court[]>(API_ENDPOINTS.adminBranches.courts(branchId))
+  return response.data
 }
 
 function normalizePage<T>(payload: SpringPagedPayload<T>): SpringPage<T> {
@@ -53,44 +64,34 @@ function normalizePage<T>(payload: SpringPagedPayload<T>): SpringPage<T> {
 }
 
 export async function getCourtDetail(courtId: number) {
-  const response = await axiosClient.get<ApiResponse<Court>>(
+  const response = await axiosClient.get<Court>(
     API_ENDPOINTS.courts.detail(courtId),
   )
-  return requireData(response.data)
+  return response.data
 }
 
+// TODO(F7): the body no longer takes branchId (it moves into the path); status adds MAINTENANCE.
 export async function createCourt(payload: CreateCourtRequest) {
-  const response = await axiosClient.post<ApiResponse<Court>>(
-    API_ENDPOINTS.courts.list,
+  const response = await axiosClient.post<Court>(
+    API_ENDPOINTS.adminBranches.courts(payload.branchId),
     payload,
   )
-  return requireData(response.data)
+  return response.data
 }
 
 export async function updateCourt(courtId: number, payload: UpdateCourtRequest) {
-  const response = await axiosClient.put<ApiResponse<Court>>(
+  const response = await axiosClient.put<Court>(
     API_ENDPOINTS.courts.detail(courtId),
     payload,
   )
-  return requireData(response.data)
+  return response.data
 }
 
 export async function deleteCourt(courtId: number) {
   await axiosClient.delete(API_ENDPOINTS.courts.detail(courtId))
 }
 
-/**
- * Courts belonging to a branch.
- *
- * The backend exposes a paged, branch-agnostic `GET /api/courts`, so we pull a
- * large page and filter by branch on the client.
- */
+/** Courts belonging to a branch. */
 export async function getCourtsByBranch(branchId: number): Promise<Court[]> {
-  const page = await getCourts({
-    page: 0,
-    size: 200,
-    sortField: 'id',
-    sortDirection: 'asc',
-  })
-  return page.content.filter((court) => court.branchId === branchId)
+  return getCourtsOfBranch(branchId)
 }

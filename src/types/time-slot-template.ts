@@ -43,13 +43,6 @@ export interface ApplyTimeSlotTemplateResponse {
   copiedCount: number
 }
 
-export interface ApiResponse<T> {
-  httpStatus?: number
-  errorCode?: string
-  data?: T
-  message: string
-}
-
 export interface SpringPage<T> {
   content: T[]
   totalPages: number

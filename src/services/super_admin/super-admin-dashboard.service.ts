@@ -1,6 +1,5 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type { ApiResponse } from '@/types/auth'
 
 export interface RevenuePoint {
   month: string
@@ -73,25 +72,19 @@ export interface SuperAdminDashboardDetails {
   subscriptions: DashboardSubscriptionRow[]
 }
 
+// TODO(F14): stats and details are merged into GET /super-admin/dashboard/overview (accounts stats come
+// from /super-admin/stats/accounts, SaaS revenue from /super-admin/stats/saas-revenue); the field
+// mapping onto these types is part of F14.
 export async function getSuperAdminDashboardStats(): Promise<SuperAdminDashboardStats> {
-  const response = await axiosClient.get<ApiResponse<SuperAdminDashboardStats>>(
-    API_ENDPOINTS.superAdminDashboard.stats,
+  const response = await axiosClient.get<SuperAdminDashboardStats>(
+    API_ENDPOINTS.superAdminDashboard.overview,
   )
-
-  if (!response.data.data) {
-    throw new Error(response.data.message || 'Không thể tải thống kê bảng điều khiển.')
-  }
-
-  return response.data.data
+  return response.data
 }
+
 export async function getSuperAdminDashboardDetails(): Promise<SuperAdminDashboardDetails> {
-  const response = await axiosClient.get<ApiResponse<SuperAdminDashboardDetails>>(
-    API_ENDPOINTS.superAdminDashboard.details,
+  const response = await axiosClient.get<SuperAdminDashboardDetails>(
+    API_ENDPOINTS.superAdminDashboard.overview,
   )
-
-  if (!response.data.data) {
-    throw new Error(response.data.message || 'Không thể tải chi tiết bảng điều khiển.')
-  }
-
-  return response.data.data
+  return response.data
 }

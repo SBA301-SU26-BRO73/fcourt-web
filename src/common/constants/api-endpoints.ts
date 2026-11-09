@@ -1,23 +1,31 @@
+/**
+ * Paths are relative to VITE_API_URL (which ends with `/api`). Each path matches the
+ * route in the microservice backend; TODO(Fx) marks calls whose contract still has to
+ * be reworked in that work item of docs/api-gap-report.md (section 3.3).
+ */
 export const API_PREFIXES = {
   auth: '/auth',
-  users: '/users',
-  products: '/products',
-  orders: '/orders',
-  categories: '/categories',
-  staff: '/v1/staff',
-  staffBranches: '/v1/branches', // StaffController: /api/v1/branches/{id}/staff
+  users: '/users', // TODO(F14): no "list all users" endpoint in the backend
+  superAdmin: '/super-admin',
   courtTypes: '/court-types',
   plans: '/subscription-plans',
-  branches: '/branches',         // BranchController: /api/branches
-  courts: '/courts',             // CourtController: /api/courts
-  timeSlotTemplates: '/time-slot-templates',
-  vouchers: '/vouchers',
-  bookings: '/bookings',
-  payments: '/payments',
-  refundRequests: '/refund-requests',
-  superAdminDashboard: '/super-admin/dashboard',
   subscriptions: '/subscriptions',
+  publicBranches: '/public/branches',
+  publicCourts: '/public/courts',
+  adminBranches: '/admin/branches',
+  adminCourts: '/admin/courts',
+  adminTimeSlotTemplates: '/admin/time-slot-templates',
+  adminVouchers: '/admin/vouchers',
+  adminBookings: '/admin/bookings',
+  adminPayments: '/admin/payments',
+  adminRefunds: '/admin/refunds',
+  adminStaff: '/admin/staff',
+  adminPosProducts: '/admin/pos/products',
   adminDashboard: '/admin/dashboard',
+  superAdminDashboard: '/super-admin/dashboard',
+  bookings: '/bookings',
+  staff: '/staff',
+  staffPos: '/staff/pos',
 } as const
 
 function joinEndpoint(...segments: Array<string | number>) {
@@ -28,110 +36,130 @@ function joinEndpoint(...segments: Array<string | number>) {
     .replace(/^/, '/')
 }
 
+type Id = string | number
+
 export const API_ENDPOINTS = {
   auth: {
     login: joinEndpoint(API_PREFIXES.auth, 'login'),
-    register: joinEndpoint(API_PREFIXES.auth, 'register'),
     profile: joinEndpoint(API_PREFIXES.auth, 'profile'),
     changePassword: joinEndpoint(API_PREFIXES.auth, 'password'),
     registerCustomer: joinEndpoint(API_PREFIXES.auth, 'register/customer'),
     registerCourtOwner: joinEndpoint(API_PREFIXES.auth, 'register/court-owner'),
     refresh: joinEndpoint(API_PREFIXES.auth, 'refresh'),
+    logout: joinEndpoint(API_PREFIXES.auth, 'logout'),
   },
   users: {
+    // TODO(F14): GET /users (all users with role/status filters) does not exist in the backend.
     list: joinEndpoint(API_PREFIXES.users),
-    detail: (id: string | number) => joinEndpoint(API_PREFIXES.users, id),
-    approve: (id: string | number) => joinEndpoint(API_PREFIXES.users, id, 'approve'),
-    reject: (id: string | number) => joinEndpoint(API_PREFIXES.users, id, 'reject'),
-    lock: (id: string | number) => joinEndpoint(API_PREFIXES.users, id, 'lock'),
-    unlock: (id: string | number) => joinEndpoint(API_PREFIXES.users, id, 'unlock'),
+    pending: joinEndpoint(API_PREFIXES.superAdmin, 'court-admins/pending'),
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.superAdmin, 'court-admins', id),
+    approve: (id: Id) => joinEndpoint(API_PREFIXES.superAdmin, 'court-admins', id, 'approve'),
+    reject: (id: Id) => joinEndpoint(API_PREFIXES.superAdmin, 'court-admins', id, 'reject'),
+    // lock and unlock are merged into one toggle.
+    toggleStatus: (id: Id) => joinEndpoint(API_PREFIXES.superAdmin, 'users', id, 'toggle-status'),
   },
   courtTypes: {
     list: joinEndpoint(API_PREFIXES.courtTypes),
-    detail: (id: string | number) => joinEndpoint(API_PREFIXES.courtTypes, id),
-    update: (id: string | number) => joinEndpoint(API_PREFIXES.courtTypes, id),
-    delete: (id: string | number) => joinEndpoint(API_PREFIXES.courtTypes, id),
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.courtTypes, id),
+    update: (id: Id) => joinEndpoint(API_PREFIXES.courtTypes, id),
+    delete: (id: Id) => joinEndpoint(API_PREFIXES.courtTypes, id),
   },
   plans: {
     list: joinEndpoint(API_PREFIXES.plans),
-    detail: (id: string | number) => joinEndpoint(API_PREFIXES.plans, id),
-    update: (id: string | number) => joinEndpoint(API_PREFIXES.plans, id),
-    delete: (id: string | number) => joinEndpoint(API_PREFIXES.plans, id),
+    all: joinEndpoint(API_PREFIXES.plans, 'all'),
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.plans, id),
+    update: (id: Id) => joinEndpoint(API_PREFIXES.plans, id),
+    delete: (id: Id) => joinEndpoint(API_PREFIXES.plans, id),
   },
   products: {
-    list: joinEndpoint(API_PREFIXES.products),
-    detail: (id: string | number) => joinEndpoint(API_PREFIXES.products, id),
-    byBranch: (branchId: string | number) => joinEndpoint(API_PREFIXES.branches, branchId, 'products'),
-  },
-  orders: {
-    list: joinEndpoint(API_PREFIXES.orders),
-    detail: (id: string | number) => joinEndpoint(API_PREFIXES.orders, id),
-  },
-  categories: {
-    list: joinEndpoint(API_PREFIXES.categories),
+    // TODO(F11): there is no admin product list; the staff POS catalog is the only read endpoint.
+    list: joinEndpoint(API_PREFIXES.staffPos, 'products'),
+    // TODO(F11): the backend has no GET/DELETE product by id.
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.adminPosProducts, id),
+    create: joinEndpoint(API_PREFIXES.adminPosProducts),
   },
   staff: {
-    listByBranch: (branchId: number) =>
-      joinEndpoint(API_PREFIXES.staffBranches, branchId, 'staff'),
-    me: joinEndpoint(API_PREFIXES.staff, 'me'),
-    detail: (id: number) => joinEndpoint(API_PREFIXES.staff, id),
-    create: joinEndpoint(API_PREFIXES.staff),
-    update: (id: number) => joinEndpoint(API_PREFIXES.staff, id),
-    delete: (id: number) => joinEndpoint(API_PREFIXES.staff, id),
-    schedule: joinEndpoint(API_PREFIXES.staff, 'schedule'),
+    list: joinEndpoint(API_PREFIXES.adminStaff),
+    // TODO(F11): GET staff by id does not exist in the backend (only /admin/staff/accounts/{userId}).
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.adminStaff, id),
+    // TODO(F13): there is no court board endpoint; combine facility courts with public slots.
     courtBoard: joinEndpoint(API_PREFIXES.staff, 'court-board'),
-    checkin: joinEndpoint(API_PREFIXES.staff, 'checkin'),
-    walkInBooking: joinEndpoint(API_PREFIXES.staff, 'walk-in-bookings'),
-    checkout: joinEndpoint(API_PREFIXES.staff, 'checkout'),
-    posProducts: joinEndpoint(API_PREFIXES.staff, 'products'),
-    posOrders: joinEndpoint(API_PREFIXES.staff, 'orders'),
-    posOrderConfirm: (id: number) => joinEndpoint(API_PREFIXES.staff, 'orders', id, 'confirm'),
+    // TODO(F13): POS orders are created and settled in one call; there is no confirm step.
+    posOrderConfirm: (id: Id) => joinEndpoint(API_PREFIXES.staffPos, 'orders', id, 'confirm'),
+    me: joinEndpoint(API_PREFIXES.staff, 'me'),
+    create: joinEndpoint(API_PREFIXES.adminStaff),
+    update: (id: Id) => joinEndpoint(API_PREFIXES.adminStaff, id),
+    delete: (id: Id) => joinEndpoint(API_PREFIXES.adminStaff, id),
+    schedule: joinEndpoint(API_PREFIXES.staff, 'schedule'),
+    checkinManual: joinEndpoint(API_PREFIXES.staff, 'check-in/manual'),
+    walkInBooking: joinEndpoint(API_PREFIXES.staff, 'walk-in'),
+    checkout: (bookingId: Id) => joinEndpoint(API_PREFIXES.staff, 'bookings', bookingId, 'checkout'),
+    branchCourts: (branchId: Id) => joinEndpoint(API_PREFIXES.staff, 'branches', branchId, 'courts'),
+    posProducts: joinEndpoint(API_PREFIXES.staffPos, 'products'),
+    posOrders: joinEndpoint(API_PREFIXES.staffPos, 'orders'),
   },
+  // Customer-facing branch/court discovery.
   branches: {
-    list: joinEndpoint(API_PREFIXES.branches),
-    detail: (id: string | number) => joinEndpoint(API_PREFIXES.branches, id),
+    list: joinEndpoint(API_PREFIXES.publicBranches),
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.publicBranches, id),
+    courts: (id: Id) => joinEndpoint(API_PREFIXES.publicBranches, id, 'courts'),
+  },
+  courtSlots: (courtId: Id) => joinEndpoint(API_PREFIXES.publicCourts, courtId, 'slots'),
+  // Court owner side.
+  adminBranches: {
+    list: joinEndpoint(API_PREFIXES.adminBranches),
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.adminBranches, id),
+    courts: (branchId: Id) => joinEndpoint(API_PREFIXES.adminBranches, branchId, 'courts'),
   },
   courts: {
-    list: joinEndpoint(API_PREFIXES.courts),
-    detail: (id: string | number) => joinEndpoint(API_PREFIXES.courts, id),
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.adminCourts, id),
   },
   timeSlotTemplates: {
-    list: joinEndpoint(API_PREFIXES.timeSlotTemplates),
-    detail: (id: string | number) => joinEndpoint(API_PREFIXES.timeSlotTemplates, id),
-    byCourt: (courtId: string | number) =>
-      joinEndpoint(API_PREFIXES.timeSlotTemplates, 'court', courtId),
-    apply: (targetCourtId: string | number) =>
-      joinEndpoint(API_PREFIXES.timeSlotTemplates, 'apply', targetCourtId),
+    // TODO(F8): no global list, no get-by-id and no PUT for templates in the backend.
+    list: joinEndpoint('/time-slot-templates'),
+    byCourt: (courtId: Id) => joinEndpoint(API_PREFIXES.adminCourts, courtId, 'time-slot-templates'),
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.adminTimeSlotTemplates, id),
+    apply: (targetCourtId: Id) => joinEndpoint(API_PREFIXES.adminCourts, targetCourtId, 'apply-template'),
   },
   vouchers: {
-    list: joinEndpoint(API_PREFIXES.vouchers),
-    detail: (id: string | number) => joinEndpoint(API_PREFIXES.vouchers, id),
-    code: (code: string) => joinEndpoint(API_PREFIXES.vouchers, 'code', code),
+    list: joinEndpoint(API_PREFIXES.adminVouchers),
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.adminVouchers, id),
+    // TODO(F4): vouchers are applied to an existing booking: POST /vouchers/apply.
+    apply: joinEndpoint('/vouchers/apply'),
+    // TODO(F4): lookup by code is gone; the customer applies the code to a booking instead.
+    code: (code: string) => joinEndpoint('/vouchers/code', code),
   },
   bookings: {
-    list: joinEndpoint(API_PREFIXES.bookings),
+    adminList: joinEndpoint(API_PREFIXES.adminBookings),
+    create: joinEndpoint(API_PREFIXES.bookings),
     my: joinEndpoint(API_PREFIXES.bookings, 'my'),
+    // TODO(F5): guest lookup by bookingCode + phone has no equivalent endpoint (gap report 3.2 item 2).
     lookup: joinEndpoint(API_PREFIXES.bookings, 'lookup'),
-    revenue: joinEndpoint(API_PREFIXES.bookings, 'revenue'),
-    cancel: (id: string | number) => joinEndpoint(API_PREFIXES.bookings, id, 'cancel'),
+    detail: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id),
+    cancel: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id, 'cancel'),
   },
   payments: {
-    list: joinEndpoint(API_PREFIXES.payments),
-    detail: (id: string | number) => joinEndpoint(API_PREFIXES.payments, id),
+    adminTransactions: joinEndpoint(API_PREFIXES.adminPayments, 'transactions'),
+    confirm: (id: Id) => joinEndpoint(API_PREFIXES.adminPayments, id, 'confirm'),
+    reject: (id: Id) => joinEndpoint(API_PREFIXES.adminPayments, id, 'reject'),
+    status: (bookingId: Id) => joinEndpoint('/payments', bookingId, 'status'),
+    // TODO(F3): old POST /payments (multi-booking upload) and GET /payments/{id} are gone.
+    legacy: joinEndpoint('/payments'),
+    uploadReceipt: (bookingId: Id) => joinEndpoint('/payments', bookingId, 'upload-receipt'),
   },
-  refundRequests: {
-    list: joinEndpoint(API_PREFIXES.refundRequests),
-    confirm: (id: string | number) => joinEndpoint(API_PREFIXES.refundRequests, id, 'confirm'),
+  refunds: {
+    pending: joinEndpoint(API_PREFIXES.adminRefunds, 'pending'),
+    complete: (id: Id) => joinEndpoint(API_PREFIXES.adminRefunds, id, 'complete'),
   },
   subscriptions: {
-    plans: joinEndpoint(API_PREFIXES.subscriptions, 'plans'),
+    plans: joinEndpoint(API_PREFIXES.plans, 'all'),
     mySubscription: joinEndpoint(API_PREFIXES.subscriptions, 'my-subscription'),
     checkout: joinEndpoint(API_PREFIXES.subscriptions, 'checkout'),
-    payment: (orderCode: string | number) => joinEndpoint(API_PREFIXES.subscriptions, 'payments', orderCode),
+    payment: (orderCode: Id) => joinEndpoint(API_PREFIXES.subscriptions, 'payments', orderCode),
   },
   superAdminDashboard: {
-    stats: joinEndpoint(API_PREFIXES.superAdminDashboard, 'stats'),
-    details: joinEndpoint(API_PREFIXES.superAdminDashboard, 'details'),
+    // stats and details are merged into a single overview.
+    overview: joinEndpoint(API_PREFIXES.superAdminDashboard, 'overview'),
   },
   adminDashboard: {
     stats: joinEndpoint(API_PREFIXES.adminDashboard, 'stats'),
