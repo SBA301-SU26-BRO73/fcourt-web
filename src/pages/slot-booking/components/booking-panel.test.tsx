@@ -16,11 +16,30 @@ describe('BookingPanel', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('submits the prefilled phone of a signed-in customer', () => {
+  it('shows no phone field to a signed-in customer and books without one', () => {
     const onBook = vi.fn()
-    render(<BookingPanel selectedSlots={slots} venueName="CN" onBook={onBook} defaultPhone="0912345678" />)
+    render(<BookingPanel selectedSlots={slots} venueName="CN" onBook={onBook} requiresPhone={false} />)
+    expect(screen.queryByLabelText('Số điện thoại liên hệ')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Giữ chỗ khung giờ đã chọn/ }))
-    expect(onBook).toHaveBeenCalledWith('0912345678')
+    expect(onBook).toHaveBeenCalledWith('')
+  })
+
+  it('shows an inline error and does not book when a guest leaves the phone empty', () => {
+    const onBook = vi.fn()
+    render(<BookingPanel selectedSlots={slots} venueName="CN" onBook={onBook} />)
+    fireEvent.click(screen.getByRole('button', { name: /Giữ chỗ/ }))
+    expect(screen.getByRole('alert').textContent).toMatch(/Vui lòng nhập số điện thoại/)
+    expect(screen.getByLabelText('Số điện thoại liên hệ').getAttribute('aria-invalid')).toBe('true')
+    expect(onBook).not.toHaveBeenCalled()
+  })
+
+  it('rejects a malformed phone before calling onBook', () => {
+    const onBook = vi.fn()
+    render(<BookingPanel selectedSlots={slots} venueName="CN" onBook={onBook} />)
+    fireEvent.change(screen.getByLabelText('Số điện thoại liên hệ'), { target: { value: '12345' } })
+    fireEvent.click(screen.getByRole('button', { name: /Giữ chỗ/ }))
+    expect(screen.getByRole('alert').textContent).toMatch(/không hợp lệ/)
+    expect(onBook).not.toHaveBeenCalled()
   })
 
   it('lets a guest type the phone', () => {

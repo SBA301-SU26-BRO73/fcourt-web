@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import CourtAvailabilityGrid from './components/court-availability-grid';
 import type { Court } from './components/court-availability-grid';
-import BookingPanel from './components/booking-panel';
+import BookingPanel, { PHONE_INVALID_MESSAGE, PHONE_REQUIRED_MESSAGE } from './components/booking-panel';
 import type { SelectedSlot } from './components/booking-panel';
 import { toggleSlot, toHHmm, toMinutes } from './slot-selection';
 import { useAuth } from '@/hooks/use-auth-context';
@@ -18,7 +18,6 @@ import {
 } from '@/hooks/use-public-branches';
 import { useSlotHold } from '@/hooks/use-slot-hold';
 import { useSlotRealtime } from '@/hooks/use-slot-realtime';
-import { getProfile } from '@/services/auth/auth.service';
 import { formatLocalDate } from '@/common/utils/local-date';
 import { getApiErrorMessage, isApiError, toastApiError } from '@/common/utils/api-error';
 import { validators } from '@/utils/validators';
@@ -99,14 +98,6 @@ export default function SlotBookingPage() {
   const { slotsByCourt, isLoading: slotsLoading, error: slotsError, refetch } = usePublicCourtsSlots(courtIds, selectedDate);
   useSlotRealtime(courtIds, selectedDate);
 
-  const profileQuery = useQuery({
-    queryKey: ['auth', 'profile'],
-    queryFn: getProfile,
-    enabled: isAuthenticatedCustomer,
-    staleTime: 5 * 60_000,
-  });
-  const defaultPhone = profileQuery.data?.phone ?? '';
-
   const isLoading = branchQuery.isLoading || courtsQuery.isLoading || (courts.length > 0 && slotsLoading);
   const scheduleError = slotsError || branchQuery.error || courtsQuery.error
     ? getApiErrorMessage(slotsError || branchQuery.error || courtsQuery.error, 'Không thể tải lịch sân. Vui lòng thử lại sau.')
@@ -171,7 +162,7 @@ export default function SlotBookingPage() {
     // A signed-in customer may hold without a phone (booking-service knows the account); a guest must give one.
     const phoneOptional = isAuthenticatedCustomer && guestPhone === '';
     if (!phoneOptional && !validators.vnMobile(guestPhone)) {
-      setBookingError('Vui lòng nhập số điện thoại di động hợp lệ (10 chữ số, bắt đầu 03, 05, 07, 08 hoặc 09).');
+      setBookingError(guestPhone ? PHONE_INVALID_MESSAGE : PHONE_REQUIRED_MESSAGE);
       return;
     }
 
@@ -289,8 +280,7 @@ export default function SlotBookingPage() {
         selectedSlots={selectedSlots}
         venueName={venueName}
         onBook={handleHold}
-        defaultPhone={defaultPhone}
-        phoneOptional={isAuthenticatedCustomer}
+        requiresPhone={!isAuthenticatedCustomer}
         isSubmitting={holdStatus === 'holding'}
         error={bookingError}
         hold={hold ? {

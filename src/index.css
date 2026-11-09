@@ -39,6 +39,23 @@
     scrollbar-width: none; 
   }
 
+  /* Always-visible horizontal scrollbar for wide grids (slot table, date strip). */
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #9ca3af #f1f5f9;
+  }
+  .thin-scrollbar::-webkit-scrollbar {
+    height: 10px;
+  }
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 9999px;
+  }
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+    border-radius: 9999px;
+  }
+
   .active-scale:active {
     transform: scale(0.95);
     transition: transform 0.15s ease;
