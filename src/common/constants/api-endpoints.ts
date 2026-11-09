@@ -128,11 +128,25 @@ export const API_ENDPOINTS = {
     status: (id: Id) => joinEndpoint(API_PREFIXES.adminCourts, id, 'status'),
   },
   timeSlotTemplates: {
-    // TODO(F8): no global list, no get-by-id and no PUT for templates in the backend.
-    list: joinEndpoint('/time-slot-templates'),
     byCourt: (courtId: Id) => joinEndpoint(API_PREFIXES.adminCourts, courtId, 'time-slot-templates'),
+    preview: (courtId: Id) => joinEndpoint(API_PREFIXES.adminCourts, courtId, 'time-slot-templates', 'preview'),
+    /** DELETE, and PUT (backend PR "PUT /api/admin/time-slot-templates/{id}"). */
     detail: (id: Id) => joinEndpoint(API_PREFIXES.adminTimeSlotTemplates, id),
-    apply: (targetCourtId: Id) => joinEndpoint(API_PREFIXES.adminCourts, targetCourtId, 'apply-template'),
+    apply: (courtId: Id) => joinEndpoint(API_PREFIXES.adminCourts, courtId, 'apply-template'),
+    bulkApply: joinEndpoint(API_PREFIXES.adminCourts, 'bulk-apply-template'),
+    bulkPreview: joinEndpoint(API_PREFIXES.adminCourts, 'bulk-apply-template', 'preview'),
+  },
+  pricingRules: {
+    list: (courtId: Id) => joinEndpoint(API_PREFIXES.adminCourts, courtId, 'pricing-rules'),
+    detail: (courtId: Id, ruleId: Id) => joinEndpoint(API_PREFIXES.adminCourts, courtId, 'pricing-rules', ruleId),
+    copyWeekdayToWeekend: (courtId: Id) =>
+      joinEndpoint(API_PREFIXES.adminCourts, courtId, 'pricing-rules', 'copy-weekday-to-weekend'),
+  },
+  courtLocks: {
+    slots: joinEndpoint(API_PREFIXES.adminCourts, 'lock-slots'),
+    slot: (id: Id) => joinEndpoint(API_PREFIXES.adminCourts, 'lock-slots', id),
+    outOfService: joinEndpoint(API_PREFIXES.adminCourts, 'out-of-service'),
+    group: (groupId: Id) => joinEndpoint(API_PREFIXES.adminCourts, 'out-of-service', groupId),
   },
   vouchers: {
     list: joinEndpoint(API_PREFIXES.adminVouchers),

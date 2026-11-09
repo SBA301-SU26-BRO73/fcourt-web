@@ -1,63 +1,38 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type {  ApplyTimeSlotTemplateRequest,
+import type {
+  ApplyTimeSlotTemplateRequest,
   ApplyTimeSlotTemplateResponse,
+  BulkApplyResponse,
+  BulkApplyTemplateRequest,
+  BulkPreviewResponse,
   CreateTimeSlotTemplateRequest,
-  TimeSlotTemplateBatchResponse,
-  SpringPage,
-  TimeSlotListParams,
+  TemplatePreviewResponse,
   TimeSlotTemplate,
   UpdateTimeSlotTemplateRequest,
 } from '@/types/time-slot-template'
 
-// TODO(F8): no global list in the backend; templates are read per court (getTimeSlotTemplatesByCourt).
-export async function getTimeSlotTemplates(params: TimeSlotListParams) {
-  const response = await axiosClient.get<SpringPage<TimeSlotTemplate>>(
-    API_ENDPOINTS.timeSlotTemplates.list,
-    {
-      params: {
-        page: params.page,
-        size: params.size,
-        sort: `${params.sortField},${params.sortDirection}`,
-      },
-    },
-  )
-  return response.data
-}
-
-// TODO(F8): no get-by-id in the backend.
-export async function getTimeSlotTemplateDetail(id: number) {
-  const response = await axiosClient.get<TimeSlotTemplate>(
-    API_ENDPOINTS.timeSlotTemplates.detail(id),
-  )
-  return response.data
-}
-
-export async function getTimeSlotTemplatesByCourt(courtId: number) {
+/** Templates exist per court only: there is no global list and no get-by-id. */
+export async function getTimeSlotTemplatesByCourt(courtId: number, dayOfWeek?: number) {
   const response = await axiosClient.get<TimeSlotTemplate[]>(
     API_ENDPOINTS.timeSlotTemplates.byCourt(courtId),
+    dayOfWeek === undefined ? undefined : { params: { dayOfWeek } },
   )
   return response.data
 }
 
-// TODO(F8): templates belong to a court (POST /admin/courts/{courtId}/time-slot-templates, plus /preview).
-export async function createTimeSlotTemplate(payload: CreateTimeSlotTemplateRequest) {
-  const response = await axiosClient.post<TimeSlotTemplateBatchResponse>(
-    API_ENDPOINTS.timeSlotTemplates.list,
+/** One 30-minute slot on one day. */
+export async function createTimeSlotTemplate(courtId: number, payload: CreateTimeSlotTemplateRequest) {
+  const response = await axiosClient.post<TimeSlotTemplate>(
+    API_ENDPOINTS.timeSlotTemplates.byCourt(courtId),
     payload,
   )
   return response.data
 }
 
-// TODO(F8): no PUT in the backend; delete and recreate instead.
-export async function updateTimeSlotTemplate(
-  id: number,
-  payload: UpdateTimeSlotTemplateRequest,
-) {
-  const response = await axiosClient.put<TimeSlotTemplate>(
-    API_ENDPOINTS.timeSlotTemplates.detail(id),
-    payload,
-  )
+/** Depends on the backend PR adding PUT /api/admin/time-slot-templates/{id}. */
+export async function updateTimeSlotTemplate(id: number, payload: UpdateTimeSlotTemplateRequest) {
+  const response = await axiosClient.put<TimeSlotTemplate>(API_ENDPOINTS.timeSlotTemplates.detail(id), payload)
   return response.data
 }
 
@@ -65,13 +40,31 @@ export async function deleteTimeSlotTemplate(id: number) {
   await axiosClient.delete(API_ENDPOINTS.timeSlotTemplates.detail(id))
 }
 
-export async function applyTimeSlotTemplates(
-  targetCourtId: number,
-  payload: ApplyTimeSlotTemplateRequest,
-) {
-  const response = await axiosClient.post<ApplyTimeSlotTemplateResponse>(
-    API_ENDPOINTS.timeSlotTemplates.apply(targetCourtId),
+/** Dry run: the slots `applyTimeSlotTemplate` would generate. */
+export async function previewTimeSlotTemplate(courtId: number, payload: ApplyTimeSlotTemplateRequest) {
+  const response = await axiosClient.post<TemplatePreviewResponse>(
+    API_ENDPOINTS.timeSlotTemplates.preview(courtId),
     payload,
   )
+  return response.data
+}
+
+/** Replaces the templates of every chosen day of the court by the generated 30-minute slots. */
+export async function applyTimeSlotTemplate(courtId: number, payload: ApplyTimeSlotTemplateRequest) {
+  const response = await axiosClient.post<ApplyTimeSlotTemplateResponse>(
+    API_ENDPOINTS.timeSlotTemplates.apply(courtId),
+    payload,
+  )
+  return response.data
+}
+
+export async function previewBulkTimeSlotTemplate(payload: BulkApplyTemplateRequest) {
+  const response = await axiosClient.post<BulkPreviewResponse>(API_ENDPOINTS.timeSlotTemplates.bulkPreview, payload)
+  return response.data
+}
+
+/** All or nothing: one court that cannot take the template answers 409 and nothing is written. */
+export async function bulkApplyTimeSlotTemplate(payload: BulkApplyTemplateRequest) {
+  const response = await axiosClient.post<BulkApplyResponse>(API_ENDPOINTS.timeSlotTemplates.bulkApply, payload)
   return response.data
 }
