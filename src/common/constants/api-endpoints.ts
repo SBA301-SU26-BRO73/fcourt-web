@@ -159,6 +159,8 @@ export const API_ENDPOINTS = {
     detail: (id: Id) => joinEndpoint(API_PREFIXES.adminVouchers, id),
     usages: (id: Id) => joinEndpoint(API_PREFIXES.adminVouchers, id, 'usages'),
     apply: joinEndpoint('/vouchers/apply'),
+    validate: joinEndpoint('/vouchers/validate'),
+    remove: (bookingId: Id) => joinEndpoint('/vouchers/apply', bookingId),
   },
   bookings: {
     adminList: joinEndpoint(API_PREFIXES.adminBookings),

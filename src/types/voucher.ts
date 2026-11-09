@@ -99,3 +99,33 @@ export interface VoucherApplication {
   finalAmount: number
   expiresAt: string
 }
+
+export type VoucherValidateReason =
+  | 'VALID'
+  | 'ALREADY_APPLIED'
+  | 'NOT_FOUND'
+  | 'WRONG_BRANCH'
+  | 'EXPIRED'
+  | 'NOT_STARTED'
+  | 'USAGE_LIMIT_REACHED'
+  | 'MIN_ORDER_NOT_MET'
+  | 'ALREADY_USED'
+  | 'BOOKING_LOCKED'
+  | 'BOOKING_HAS_VOUCHER'
+
+/** POST /api/vouchers/validate response: a preview, nothing is written. */
+export interface VoucherValidation {
+  valid: boolean
+  reason: VoucherValidateReason
+  bookingId: number
+  originalAmount: number
+  discountAmount: number
+  finalAmount: number
+}
+
+/** DELETE /api/vouchers/apply/{bookingId} response (idempotent: `removed` is false on repeat). */
+export interface VoucherRemoval {
+  bookingId: number
+  removed: boolean
+  totalAmount: number
+}

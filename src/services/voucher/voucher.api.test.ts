@@ -9,8 +9,10 @@ import {
   getOwnerBranches,
   getVoucherUsages,
   getVouchers,
+  removeVoucher,
   setVoucherStatus,
   updateVoucher,
+  validateVoucher,
   voucherToRequest,
 } from './voucher.api'
 
@@ -102,5 +104,21 @@ describe('voucher api', () => {
     http.get.mockResolvedValue({ data: [{ id: 1, name: 'A', city: 'x' }] })
     await expect(getOwnerBranches()).resolves.toEqual([{ id: 1, name: 'A' }])
     expect(http.get).toHaveBeenCalledWith('/admin/branches')
+  })
+
+  it('previews a voucher with the code upper-cased', async () => {
+    const data = { valid: true, reason: 'VALID', bookingId: 123, originalAmount: 100000, discountAmount: 20000, finalAmount: 80000 }
+    http.post.mockResolvedValue({ data })
+    const result = await validateVoucher({ code: ' save20 ', bookingId: 123 })
+    expect(http.post).toHaveBeenCalledWith('/vouchers/validate', { code: 'SAVE20', bookingId: 123 })
+    expect(result).toEqual(data)
+  })
+
+  it('removes the voucher of a booking with DELETE', async () => {
+    const data = { bookingId: 123, removed: true, totalAmount: 100000 }
+    http.delete.mockResolvedValue({ data })
+    const result = await removeVoucher(123)
+    expect(http.delete).toHaveBeenCalledWith('/vouchers/apply/123')
+    expect(result).toEqual(data)
   })
 })

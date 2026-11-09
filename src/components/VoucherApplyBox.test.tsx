@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/common/utils/api-error'
-import { applyVoucher } from '@/services/voucher/voucher.api'
+import { applyVoucher, removeVoucher, validateVoucher } from '@/services/voucher/voucher.api'
 import type { MyBooking } from '@/types/my-booking'
 
 import { VoucherApplyBox } from './VoucherApplyBox'
@@ -11,6 +11,8 @@ import { VoucherApplyBox } from './VoucherApplyBox'
 vi.mock('@/services/voucher/voucher.api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/voucher/voucher.api')>()),
   applyVoucher: vi.fn(),
+  validateVoucher: vi.fn(),
+  removeVoucher: vi.fn(),
 }))
 
 const booking = { id: 9, totalPrice: 100000, originalAmount: 100000, discountAmount: null, voucherApplicationId: null } as MyBooking
@@ -50,5 +52,30 @@ describe('VoucherApplyBox', () => {
     renderBox({ ...booking, voucherApplicationId: 'u', discountAmount: 20000 })
     expect(screen.getByText(/Đã áp dụng mã giảm giá/)).toBeTruthy()
     expect(screen.queryByLabelText('Mã giảm giá')).toBeNull()
+  })
+
+  it('previews the discount without applying', async () => {
+    vi.mocked(validateVoucher).mockResolvedValue({ valid: true, reason: 'VALID', bookingId: 9, originalAmount: 100000, discountAmount: 20000, finalAmount: 80000 })
+    renderBox(booking)
+    fireEvent.change(screen.getByLabelText('Mã giảm giá'), { target: { value: 'save20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra' }))
+    expect((await screen.findByRole('status')).textContent).toContain('Giảm')
+    expect(validateVoucher).toHaveBeenCalledWith({ code: 'save20', bookingId: 9 })
+    expect(applyVoucher).not.toHaveBeenCalled()
+  })
+
+  it('maps an invalid reason to a Vietnamese message', async () => {
+    vi.mocked(validateVoucher).mockResolvedValue({ valid: false, reason: 'EXPIRED', bookingId: 9, originalAmount: 100000, discountAmount: 0, finalAmount: 100000 })
+    renderBox(booking)
+    fireEvent.change(screen.getByLabelText('Mã giảm giá'), { target: { value: 'OLD' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('hết hạn')
+  })
+
+  it('removes an applied voucher', async () => {
+    vi.mocked(removeVoucher).mockResolvedValue({ bookingId: 9, removed: true, totalAmount: 100000 })
+    renderBox({ ...booking, voucherApplicationId: 'u', discountAmount: 20000 })
+    fireEvent.click(screen.getByRole('button', { name: 'Gỡ mã' }))
+    await waitFor(() => expect(removeVoucher).toHaveBeenCalledWith(9))
   })
 })

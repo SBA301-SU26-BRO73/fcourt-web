@@ -9,7 +9,7 @@ import {
   getPaymentStatus,
   uploadReceipt,
 } from '@/services/payment/customer-payment.api'
-import { applyVoucher } from '@/services/voucher/voucher.api'
+import { applyVoucher, removeVoucher, validateVoucher } from '@/services/voucher/voucher.api'
 import type { CreateBookingRequest } from '@/types/checkout'
 import type { MyBooking } from '@/types/my-booking'
 import { nextPollDelay } from '@/pages/payment/payment.utils'
@@ -77,6 +77,27 @@ export function useApplyVoucher(bookingId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: { code: string; totalAmount: number }) => applyVoucher({ ...input, bookingId }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: checkoutKeys.booking(bookingId) }),
+        queryClient.invalidateQueries({ queryKey: checkoutKeys.info(bookingId) }),
+      ])
+    },
+  })
+}
+
+/** Preview only: nothing is written, so no query is invalidated. */
+export function useValidateVoucher(bookingId: number) {
+  return useMutation({
+    mutationFn: (code: string) => validateVoucher({ code, bookingId }),
+  })
+}
+
+/** Removing the code restores the gross amount, so booking and checkout-info are read again. */
+export function useRemoveVoucher(bookingId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => removeVoucher(bookingId),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: checkoutKeys.booking(bookingId) }),
