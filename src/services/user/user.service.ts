@@ -71,7 +71,8 @@ export async function approveUser(id: number): Promise<UserAdminItem> {
   return res.data
 }
 
-export async function rejectUser(id: number, reason = 'Rejected by super admin'): Promise<UserAdminItem> {
+/** `reason` is required by the backend (shown to the owner). */
+export async function rejectUser(id: number, reason: string): Promise<UserAdminItem> {
   const res = await axiosClient.put<UserAdminItem>(API_ENDPOINTS.users.reject(id), { reason })
   return res.data
 }

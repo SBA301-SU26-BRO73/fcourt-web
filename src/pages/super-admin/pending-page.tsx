@@ -104,6 +104,89 @@ function Avatar({ name, email }: { name: string | null; email: string }) {
   )
 }
 
+const REASON_MAX = 500
+
+function RejectDialog({ open, ...props }: { open: boolean; name: string; loading: boolean; onConfirm: (reason: string) => void; onClose: () => void }) {
+  return open ? <RejectForm {...props} /> : null
+}
+
+function RejectForm({
+  name,
+  loading,
+  onConfirm,
+  onClose,
+}: {
+  name: string
+  loading: boolean
+  onConfirm: (reason: string) => void
+  onClose: () => void
+}) {
+  const [reason, setReason] = useState('')
+  const [touched, setTouched] = useState(false)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  const trimmed = reason.trim()
+  const invalid = trimmed.length === 0
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full max-w-sm mx-4 bg-white rounded-2xl shadow-xl p-6">
+        <h3 className="text-[17px] font-bold text-slate-900 mb-2">Từ chối đăng ký?</h3>
+        <p className="text-[13.5px] text-slate-500 leading-relaxed mb-4">
+          Đăng ký của "{name}" sẽ bị từ chối. Lý do sẽ được gửi cho chủ sân.
+        </p>
+        <label className="block">
+          <span className="text-[12.5px] font-semibold text-slate-600">
+            Lý do từ chối <span className="text-red-500">*</span>
+          </span>
+          <textarea
+            value={reason}
+            maxLength={REASON_MAX}
+            onChange={(e) => setReason(e.target.value)}
+            onBlur={() => setTouched(true)}
+            rows={3}
+            placeholder="Ví dụ: Giấy tờ pháp lý không rõ ràng"
+            className={`mt-1.5 w-full resize-none rounded-xl border px-3 py-2 text-[13.5px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
+              touched && invalid
+                ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20'
+                : 'border-slate-200 focus:border-green-500 focus:ring-green-500/20'
+            }`}
+          />
+        </label>
+        <div className="mt-1 mb-5 flex justify-between text-[12px]">
+          <span className="text-red-500">{touched && invalid ? 'Vui lòng nhập lý do từ chối' : ''}</span>
+          <span className="text-slate-400">{trimmed.length}/{REASON_MAX}</span>
+        </div>
+        <div className="flex gap-2.5 justify-end">
+          <button
+            className="px-4 py-2 rounded-xl text-[13.5px] font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Huỷ
+          </button>
+          <button
+            className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-white bg-red-500 hover:bg-red-600 transition disabled:opacity-60"
+            onClick={() => {
+              if (invalid) { setTouched(true); return }
+              onConfirm(trimmed)
+            }}
+            disabled={loading || (touched && invalid)}
+          >
+            {loading ? 'Đang xử lý…' : 'Từ chối'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function RegDrawer({
   item,
   onClose,
@@ -113,7 +196,7 @@ function RegDrawer({
   item: UserAdminItem | null
   onClose: () => void
   onApprove: (item: UserAdminItem) => void
-  onReject: (item: UserAdminItem) => void
+  onReject: (item: UserAdminItem, reason: string) => void
 }) {
   const [confirmApprove, setConfirmApprove] = useState(false)
   const [confirmReject, setConfirmReject] = useState(false)
@@ -200,14 +283,11 @@ function RegDrawer({
         onConfirm={() => { onApprove(item); setConfirmApprove(false) }}
         onClose={() => setConfirmApprove(false)}
       />
-      <ConfirmDialog
+      <RejectDialog
         open={confirmReject}
-        title="Từ chối đăng ký?"
-        body={`Đăng ký của "${item.fullName ?? item.email}" sẽ bị từ chối.`}
-        confirmLabel="Từ chối"
-        danger
+        name={item.fullName ?? item.email}
         loading={isRejecting}
-        onConfirm={() => { onReject(item); setConfirmReject(false) }}
+        onConfirm={(reason) => { onReject(item, reason); setConfirmReject(false) }}
         onClose={() => setConfirmReject(false)}
       />
     </>
@@ -243,8 +323,8 @@ export function PendingPage() {
     })
   }
 
-  function handleReject(item: UserAdminItem) {
-    rejectUser.mutate(item.id, {
+  function handleReject(item: UserAdminItem, reason: string) {
+    rejectUser.mutate({ id: item.id, reason }, {
       onSuccess: () => { setSel(null); showToast(`Đã từ chối "${item.fullName ?? item.email}"`) },
       onError: (e) => toastApiError(e, 'Không thể từ chối chủ sân'),
     })
