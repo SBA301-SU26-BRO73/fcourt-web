@@ -82,3 +82,13 @@ export function toCourtPayload(values: CourtFormValues): CourtRequest {
     status: values.status,
   }
 }
+
+export const COURT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+export const COURT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+
+/** Returns an error message when the file cannot be uploaded as a court photo, else null. */
+export function validateCourtImageFile(file: File): string | null {
+  if (!COURT_IMAGE_TYPES.includes(file.type)) return 'Chỉ nhận ảnh JPEG, PNG hoặc WebP.'
+  if (file.size > COURT_IMAGE_MAX_BYTES) return 'Dung lượng ảnh không được vượt quá 5 MB.'
+  return null
+}

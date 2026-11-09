@@ -10,6 +10,8 @@ import {
   getCourtsByBranch,
   toCourt,
   updateCourt,
+  uploadCourtImage,
+  deleteCourtImage,
 } from './court.api'
 
 vi.mock('@/services/http/axios-client', () => ({
@@ -92,5 +94,26 @@ describe('court api', () => {
     http.patch.mockResolvedValue({ data: dto(1, 1, 'N') })
     await changeCourtStatus(1, 'MAINTENANCE')
     expect(http.patch).toHaveBeenCalledWith('/admin/courts/1/status', { status: 'MAINTENANCE' })
+  })
+})
+
+describe('court image', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('posts the file as multipart field "file" to the court image endpoint', async () => {
+    http.post.mockResolvedValue({ data: dto(5, 1, 'Sân 1') })
+    const file = new File([new Uint8Array([1, 2, 3])], 'court.png', { type: 'image/png' })
+    await uploadCourtImage(5, file)
+    const [url, body, config] = http.post.mock.calls[0]
+    expect(url).toMatch(/admin\/courts\/5\/image$/)
+    expect((body as FormData).get('file')).toBe(file)
+    expect(config).toMatchObject({ headers: { 'Content-Type': 'multipart/form-data' } })
+  })
+
+  it('deletes the court image and returns the updated court', async () => {
+    http.delete.mockResolvedValue({ data: dto(5, 1, 'Sân 1') })
+    const result = await deleteCourtImage(5)
+    expect(http.delete.mock.calls[0][0]).toMatch(/admin\/courts\/5\/image$/)
+    expect(result.id).toBe(5)
   })
 })

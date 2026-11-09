@@ -133,6 +133,8 @@ export const API_ENDPOINTS = {
   courts: {
     detail: (id: Id) => joinEndpoint(API_PREFIXES.adminCourts, id),
     status: (id: Id) => joinEndpoint(API_PREFIXES.adminCourts, id, 'status'),
+    /** POST multipart `file` uploads or replaces the court photo; DELETE removes it. */
+    image: (id: Id) => joinEndpoint(API_PREFIXES.adminCourts, id, 'image'),
   },
   timeSlotTemplates: {
     byCourt: (courtId: Id) => joinEndpoint(API_PREFIXES.adminCourts, courtId, 'time-slot-templates'),

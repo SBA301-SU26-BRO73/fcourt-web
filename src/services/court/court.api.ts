@@ -100,4 +100,20 @@ export async function deleteCourt(courtId: number) {
   await axiosClient.delete(API_ENDPOINTS.courts.detail(courtId))
 }
 
+/** Multipart field `file`; JPEG, PNG or WebP up to 5 MB. Replaces the current photo and returns the updated court. */
+export async function uploadCourtImage(courtId: number, file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await axiosClient.post<CourtDto>(API_ENDPOINTS.courts.image(courtId), formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60_000,
+  })
+  return response.data
+}
+
+export async function deleteCourtImage(courtId: number) {
+  const response = await axiosClient.delete<CourtDto>(API_ENDPOINTS.courts.image(courtId))
+  return response.data
+}
+
 export type { CourtRequest }
