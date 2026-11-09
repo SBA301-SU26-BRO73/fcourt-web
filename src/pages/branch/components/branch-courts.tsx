@@ -92,6 +92,7 @@ function CourtRow({ court, onViewAvailability }: { court: CourtView; onViewAvail
   const defaultSportImage = isTennis
     ? "https://lh3.googleusercontent.com/aida-public/AB6AXuCixMWLwvgosiwYViy13L4fCQ7VFkcQXOODOJU_s1mkUAlElpUHrRvspI1ApBDtkkj1Alhpzkyi_nXa2g-xSCNOSZFUB8QjowFo517vq7t3w8pt2Ei9Nmoc5ZAWzNO9A0HQYTjLV-bCQfqxtkjdqoLO_AsZx9KLZRWrGKUIYHtJj3knvtfjAv44HncnbLf-ivyJkfSPsSuOrqO_ksbUUAxG8HHMkBf7YumW3mDpUHH_bv38vIIbgNLj-RrIR0AhwjVjVxNsqU7XuzA"
     : "https://lh3.googleusercontent.com/aida-public/AB6AXuDkf1-dSdwtoABJkWeg8R_dEK6FxEDzKiL2xWYUVxhTLeiLg0TJOcxu0LTobNbkpWaPhhCFNcXwEtjckUaTiV9duWZVJnJIwqinb8kyiDyEBNy59ffqH4pY-MgnwHVwChqQi7dCGYoPV6NQ3x6jdZizWiifMKP-taxp_2DQyxSqWRj8eZ7KtIZVLqFULfyD4m_FYr18YJWSQBm3KtkEKJr7w2uKo7TLWBEy8HR9KVjjr_GTLewEHo-d6uJdI7vpUtHJuMwWKaS3m8Y";
+  const [imageFailed, setImageFailed] = useState(false);
   const { data: todaySlots, isPending, isError } = usePublicCourtSlots(court.id, formatLocalDate(new Date()));
   const availableToday = (todaySlots ?? []).filter((slot) => slot.status === "AVAILABLE");
   const lowestPrice = availableToday.length > 0 ? Math.min(...availableToday.map((slot) => slot.price)) : court.defaultPricePerHour;
@@ -99,7 +100,7 @@ function CourtRow({ court, onViewAvailability }: { court: CourtView; onViewAvail
   return (
     <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-xl overflow-hidden flex flex-col md:flex-row hover:border-primary transition-all hover:shadow-lg group">
       <div className="md:w-1/3 h-48 md:h-auto overflow-hidden bg-surface-container">
-        <img alt={court.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={defaultSportImage} />
+        <img alt={court.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={court.imageUrl && !imageFailed ? court.imageUrl : defaultSportImage} onError={() => setImageFailed(true)} />
       </div>
       <div className="p-stack-lg flex-1 flex flex-col justify-between">
         <div className="flex justify-between items-start gap-4">

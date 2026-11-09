@@ -2,14 +2,16 @@ import { useSearchParams } from "react-router-dom";
 import DetailedBranchCard from "../../../components/ui/detailed-branch-card";
 import SkeletonCard from "../../../components/ui/skeleton-card";
 import { usePublicBranchSearch } from "@/hooks/use-public-branches";
+import { useCourtTypes } from "@/hooks/use-court-types";
 import { getApiErrorMessage } from "@/common/utils/api-error";
-import { formatPriceRange, paramsFromUrl } from "../branch-search.utils";
+import { formatHour, formatPriceRange, paramsFromUrl } from "../branch-search.utils";
 
 export default function BranchList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = paramsFromUrl(searchParams);
   const currentPage = params.page ?? 0;
   const { data, isPending, isFetching, error } = usePublicBranchSearch(params);
+  const courtTypeNames = new Map((useCourtTypes().data?.content ?? []).map((type) => [type.id, type.name]));
   const branches = data?.content ?? [];
   const totalElements = data?.totalElements ?? 0;
   const totalPages = data?.totalPages ?? 0;
@@ -39,6 +41,7 @@ export default function BranchList() {
           const price = formatPriceRange(branch.minPrice, branch.maxPrice);
           const tags = [
             { label: `${branch.courtCount} sân`, isHighlight: branch.courtCount > 0 },
+            ...(branch.openTime && branch.closeTime ? [{ label: `${formatHour(branch.openTime)} - ${formatHour(branch.closeTime)}` }] : []),
             ...(branch.reviewCount > 0 ? [{ label: `${branch.averageRating.toFixed(1)} ★ (${branch.reviewCount})` }] : []),
             ...(price ? [{ label: price }] : []),
             ...(branch.distanceKm != null ? [{ label: `${branch.distanceKm.toFixed(1)} km` }] : []),
@@ -49,8 +52,8 @@ export default function BranchList() {
               id={branch.id.toString()}
               title={branch.name}
               address={[branch.address, branch.district, branch.city].filter(Boolean).join(", ")}
-              imageUrl={null}
-              courtTypes={[]}
+              imageUrl={branch.imageUrl ?? null}
+              courtTypes={(branch.courtTypeIds ?? []).map((typeId) => courtTypeNames.get(typeId)).filter((name): name is string => Boolean(name))}
               tags={tags}
             />
           );

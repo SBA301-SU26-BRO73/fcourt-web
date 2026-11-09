@@ -1,6 +1,6 @@
 import type { PublicBranchDetail } from '@/types/public-branch';
 import type { CourtView } from '../branch-detail.types';
-import { formatPriceRange } from '../branch-search.utils';
+import { formatHour, formatPriceRange } from '../branch-search.utils';
 
 interface BranchInfoProps {
   branch: PublicBranchDetail;
@@ -32,6 +32,18 @@ export default function BranchInfo({ branch, courts }: BranchInfoProps) {
               <span>Mỗi giờ</span>
               <span className="font-medium">{priceRange ?? 'Chưa có giá'}</span>
             </div>
+            {branch.openTime && branch.closeTime ? (
+              <div className="mt-stack-md flex justify-between font-body-sm text-body-sm">
+                <span>Giờ hoạt động</span>
+                <span className="font-medium">{formatHour(branch.openTime)} – {formatHour(branch.closeTime)}</span>
+              </div>
+            ) : null}
+            {branch.phone ? (
+              <div className="mt-stack-md flex justify-between font-body-sm text-body-sm">
+                <span>Số điện thoại</span>
+                <a href={`tel:${branch.phone}`} className="font-medium text-primary hover:underline">{branch.phone}</a>
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="space-y-stack-md">
