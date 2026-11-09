@@ -1,24 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { branchApi, type Branch, type CourtResponse, type DailySlotResponse } from '../../../services/branch/branch.api';
-import { findDistrictForWard } from '@/data/sample-locations';
+import { usePublicCourtSlots } from '@/hooks/use-public-branches';
 import { getApiErrorMessage } from '@/common/utils/api-error';
+import type { PublicBranchDetail } from '@/types/public-branch';
+import type { CourtView } from '../branch-detail.types';
 
 interface BookingPanelProps {
-  branch: Branch;
-  courts: CourtResponse[];
+  branch: PublicBranchDetail;
+  courts: CourtView[];
 }
 
 export default function BookingPanel({ branch, courts }: BookingPanelProps) {
   const navigate = useNavigate();
-  const activeCourts = courts.filter((court) => court.status === 'ACTIVE');
+  const activeCourts = courts;
   const todayStr = formatLocalDate(new Date());
   const [selectedCourtId, setSelectedCourtId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [schedule, setSchedule] = useState<DailySlotResponse[]>([]);
-  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
-  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const slotsQuery = usePublicCourtSlots(selectedCourtId, selectedDate);
+  const schedule = slotsQuery.data ?? [];
+  const isLoadingSchedule = slotsQuery.isFetching;
+  const scheduleError = slotsQuery.error ? getApiErrorMessage(slotsQuery.error, 'Không thể tải lịch sân.') : null;
 
   useEffect(() => {
     if (activeCourts.length > 0 && !activeCourts.some((court) => court.id === selectedCourtId)) {
@@ -27,38 +29,10 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
   }, [activeCourts, selectedCourtId]);
 
   useEffect(() => {
-    if (!selectedCourtId) {
-      setSchedule([]);
-      setSelectedTime('');
-      return;
-    }
-
-    let cancelled = false;
-    setIsLoadingSchedule(true);
-    setScheduleError(null);
-    branchApi.getDailyCourtSchedule(selectedCourtId, selectedDate)
-      .then((slots) => {
-        if (cancelled) return;
-        setSchedule(slots);
-        setSelectedTime((current) => slots.some((slot) => slot.startTime === current && slot.status === 'AVAILABLE')
-          ? current
-          : slots.find((slot) => slot.status === 'AVAILABLE')?.startTime ?? '');
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setSchedule([]);
-          setSelectedTime('');
-          setScheduleError(getApiErrorMessage(error, 'Không thể tải lịch sân.'));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingSchedule(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedCourtId, selectedDate]);
+    setSelectedTime((current) => schedule.some((slot) => slot.startTime === current && slot.status === 'AVAILABLE')
+      ? current
+      : schedule.find((slot) => slot.status === 'AVAILABLE')?.startTime ?? '');
+  }, [slotsQuery.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBookNow = () => {
     if (!selectedCourtId || !selectedTime) return;
@@ -75,8 +49,7 @@ export default function BookingPanel({ branch, courts }: BookingPanelProps) {
   const availableSlots = schedule.filter((slot) => slot.status === 'AVAILABLE');
   const selectedSlot = schedule.find((slot) => slot.startTime === selectedTime && slot.status === 'AVAILABLE');
   const selectedCourt = activeCourts.find((court) => court.id === selectedCourtId);
-  const district = findDistrictForWard(branch.city, branch.ward ?? '')?.name;
-  const mapQuery = [branch.name, branch.address, branch.ward, district, branch.city]
+  const mapQuery = [branch.name, branch.address, branch.city]
     .filter(Boolean)
     .join(', ');
 

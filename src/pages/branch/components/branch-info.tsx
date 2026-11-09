@@ -1,8 +1,10 @@
-import type { Branch, CourtResponse } from '../../../services/branch/branch.api';
+import type { PublicBranchDetail } from '@/types/public-branch';
+import type { CourtView } from '../branch-detail.types';
+import { formatPriceRange } from '../branch-search.utils';
 
 interface BranchInfoProps {
-  branch: Branch;
-  courts: CourtResponse[];
+  branch: PublicBranchDetail;
+  courts: CourtView[];
 }
 
 export default function BranchInfo({ branch, courts }: BranchInfoProps) {
@@ -14,7 +16,9 @@ export default function BranchInfo({ branch, courts }: BranchInfoProps) {
       { icon: "wifi", label: "WiFi tốc độ cao" },
       { icon: "shower", label: "Phòng tắm" },
     ];
-  
+    const prices = courts.map((court) => court.defaultPricePerHour);
+    const priceRange = prices.length > 0 ? formatPriceRange(Math.min(...prices), Math.max(...prices)) : null;
+
     return (
       <section className="grid md:grid-cols-2 gap-gutter">
         <div className="space-y-stack-md">
@@ -23,10 +27,10 @@ export default function BranchInfo({ branch, courts }: BranchInfoProps) {
             {branch.name} hiện có {courts.length} sân thể thao. Chọn sân và khung giờ phù hợp để bắt đầu đặt sân.
           </p>
           <div className="bg-surface-container rounded-xl p-stack-lg border border-outline-variant/30">
-            <h3 className="font-label-md text-label-md mb-stack-md uppercase tracking-wider">Giờ hoạt động</h3>
+            <h3 className="font-label-md text-label-md mb-stack-md uppercase tracking-wider">Giá tham khảo</h3>
             <div className="flex justify-between font-body-sm text-body-sm">
-              <span>Hằng ngày</span>
-              <span className="font-medium">{formatTime(branch.openTime)} – {formatTime(branch.closeTime)}</span>
+              <span>Mỗi giờ</span>
+              <span className="font-medium">{priceRange ?? 'Chưa có giá'}</span>
             </div>
           </div>
         </div>
@@ -44,7 +48,3 @@ export default function BranchInfo({ branch, courts }: BranchInfoProps) {
       </section>
     );
   }
-
-function formatTime(value: string) {
-  return value?.slice(0, 5) || '--:--';
-}
