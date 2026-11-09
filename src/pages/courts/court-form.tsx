@@ -1,6 +1,5 @@
 import type { FormEvent } from 'react'
 
-import { ImageUploadField } from '@/components/ui/image-upload-field'
 import type { CourtTypeData } from '@/types/admin'
 import type { BranchStatus } from '@/types/branch'
 import type { CourtStatus } from '@/types/court'
@@ -16,9 +15,6 @@ type CourtFormProps = {
   isSubmitting: boolean
   submitLabel: string
   onChange: (field: keyof CourtFormValues, value: string) => void
-  imageFile: File | null
-  onImageFileChange: (file: File | null) => void
-  onClearImage: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
 
@@ -43,9 +39,6 @@ export function CourtForm({
   isSubmitting,
   submitLabel,
   onChange,
-  imageFile,
-  onImageFileChange,
-  onClearImage,
   onSubmit,
 }: CourtFormProps) {
   const inputClass = (hasError: boolean) =>
@@ -133,6 +126,22 @@ export function CourtForm({
             </select>
           </label>
 
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-slate-700">Giá mỗi giờ (VND) *</span>
+            <input
+              name="defaultPricePerHour"
+              type="number"
+              min={0}
+              step="1000"
+              value={values.defaultPricePerHour}
+              aria-invalid={Boolean(errors.defaultPricePerHour)}
+              aria-describedby={errors.defaultPricePerHour ? 'defaultPricePerHour-error' : undefined}
+              onChange={(event) => onChange('defaultPricePerHour', event.target.value)}
+              className={inputClass(Boolean(errors.defaultPricePerHour))}
+            />
+            <ErrorText id="defaultPricePerHour-error" message={errors.defaultPricePerHour} />
+          </label>
+
           <label className="block space-y-2 md:col-span-2">
             <span className="text-sm font-semibold text-slate-700">Mô tả</span>
             <textarea
@@ -144,16 +153,21 @@ export function CourtForm({
             />
           </label>
 
-          <div className="md:col-span-2">
-            <ImageUploadField
-              label="Ảnh sân"
+          <label className="block space-y-2 md:col-span-2">
+            <span className="text-sm font-semibold text-slate-700">Ảnh sân (đường dẫn)</span>
+            <input
+              name="imageUrl"
+              type="url"
+              maxLength={2048}
+              placeholder="https://..."
               value={values.imageUrl}
-              file={imageFile}
-              error={errors.imageUrl}
-              onFileChange={onImageFileChange}
-              onClear={onClearImage}
+              aria-invalid={Boolean(errors.imageUrl)}
+              onChange={(event) => onChange('imageUrl', event.target.value)}
+              className={inputClass(Boolean(errors.imageUrl))}
             />
-          </div>
+            <ErrorText id="imageUrl-error" message={errors.imageUrl} />
+            <span className="block text-xs text-slate-500">Hệ thống mới chưa có API tải ảnh sân lên, hãy dán đường dẫn ảnh.</span>
+          </label>
         </div>
       </section>
 

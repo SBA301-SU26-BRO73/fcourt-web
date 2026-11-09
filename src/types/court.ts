@@ -1,36 +1,39 @@
 export type CourtStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
 
-export interface Court {
+/** CourtResponse of facility-service. */
+export interface CourtDto {
   id: number
   branchId: number
-  branchName: string
-  slotDurationMinutes: 30 | 60
   name: string
   courtTypeId: number
-  courtTypeName: string
   description: string | null
   imageUrl: string | null
+  defaultPricePerHour: number
   status: CourtStatus
   createdAt: string
   updatedAt: string
 }
 
-export interface CreateCourtRequest {
-  branchId: number
+/** The response carries no names, so the API module adds them from the branch and the court type. */
+export interface Court extends CourtDto {
+  /** Taken from the branch: the court itself has no slot length. */
+  slotDurationMinutes: 30 | 60
+  branchName: string
+  courtTypeName: string
+}
+
+/** CourtRequest: branchId lives in the path; PUT is a full replacement. */
+export interface CourtRequest {
   name: string
   courtTypeId: number
   description?: string | null
   imageUrl?: string | null
+  defaultPricePerHour: number
   status?: CourtStatus | null
 }
 
-export interface UpdateCourtRequest {
-  name?: string | null
-  courtTypeId?: number | null
-  description?: string | null
-  imageUrl?: string | null
-  status?: CourtStatus | null
-}
+export type CreateCourtRequest = CourtRequest
+export type UpdateCourtRequest = CourtRequest
 
 export interface SpringPage<T> {
   content: T[]
@@ -42,16 +45,6 @@ export interface SpringPage<T> {
   first: boolean
   last: boolean
   empty: boolean
-}
-
-export interface SpringPagedPayload<T> extends Partial<SpringPage<T>> {
-  content: T[]
-  page?: {
-    size: number
-    number: number
-    totalElements: number
-    totalPages: number
-  }
 }
 
 export type CourtSortField = 'id' | 'name' | 'status' | 'createdAt' | 'updatedAt'

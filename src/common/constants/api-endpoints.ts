@@ -116,9 +116,13 @@ export const API_ENDPOINTS = {
     list: joinEndpoint(API_PREFIXES.adminBranches),
     detail: (id: Id) => joinEndpoint(API_PREFIXES.adminBranches, id),
     courts: (branchId: Id) => joinEndpoint(API_PREFIXES.adminBranches, branchId, 'courts'),
+    images: (branchId: Id) => joinEndpoint(API_PREFIXES.adminBranches, branchId, 'images'),
+    // The delete route is not nested under the branch id: DELETE /admin/branches/images/{imageId}.
+    image: (imageId: Id) => joinEndpoint(API_PREFIXES.adminBranches, 'images', imageId),
   },
   courts: {
     detail: (id: Id) => joinEndpoint(API_PREFIXES.adminCourts, id),
+    status: (id: Id) => joinEndpoint(API_PREFIXES.adminCourts, id, 'status'),
   },
   timeSlotTemplates: {
     // TODO(F8): no global list, no get-by-id and no PUT for templates in the backend.

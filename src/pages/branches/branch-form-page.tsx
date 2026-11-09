@@ -2,14 +2,20 @@ import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 
+import { toast } from 'sonner'
+
+import { toastApiError } from '@/common/utils/api-error'
 import {
   createBranch,
+  deleteBranchImage,
   getBranchDetail,
+  getBranchImages,
   updateBranch,
+  uploadBranchImages,
 } from '@/services/branch/branch.api'
-import { useAuth } from '@/hooks/use-auth-context'
-import type { Branch } from '@/types/branch'
+import type { Branch, BranchImage } from '@/types/branch'
 import { BranchForm } from './branch-form'
+import { BranchGallery } from './branch-gallery'
 import {
   getBranchErrorCode,
   getBranchErrorMessage,
@@ -18,16 +24,15 @@ import {
 import {
   branchToFormValues,
   emptyBranchFormValues,
-  toCreateBranchPayload,
-  toUpdateBranchPayload,
+  toBranchPayload,
   validateBranchForm,
+  validateGalleryFiles,
   type BranchFormErrors,
   type BranchFormValues,
 } from './branch-form.utils'
 import { findLocationCity, findLocationDistrict, sampleLocations } from '@/data/sample-locations'
 
 import { UpgradePlanModal } from '@/components/admin/UpgradePlanModal'
-import { uploadImage } from '@/services/upload/image-upload.api'
 
 type BranchFormPageProps = {
   mode: 'create' | 'edit'
@@ -89,13 +94,13 @@ type BranchEditorProps = {
 function BranchEditor({ mode, branch }: BranchEditorProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { user } = useAuth()
   const isEdit = mode === 'edit'
   const [values, setValues] = useState<BranchFormValues>(() =>
     branch ? branchToFormValues(branch) : emptyBranchFormValues,
   )
   const [errors, setErrors] = useState<BranchFormErrors>({})
-  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [stagedImages, setStagedImages] = useState<File[]>([])
+  const [galleryError, setGalleryError] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [limitMessage, setLimitMessage] = useState<string | null>(null)
@@ -116,21 +121,47 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
     ...(values.ward ? [values.ward] : []),
   ]))
 
+  const imagesQuery = useQuery({
+    queryKey: ['branches', 'images', branch?.id],
+    queryFn: () => getBranchImages(branch!.id),
+    enabled: isEdit && Boolean(branch),
+  })
+  const existingImages = imagesQuery.data ?? []
+
+  const deleteImageMutation = useMutation({
+    mutationFn: (image: BranchImage) => deleteBranchImage(image.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['branches', 'images', branch?.id] })
+      toast.success('Đã xóa ảnh.')
+    },
+    onError: (error) => toastApiError(error, 'Không thể xóa ảnh.'),
+  })
+
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!user || !Number.isInteger(user.id) || user.id <= 0) {
-        throw new Error('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.')
+      const saved = isEdit && branch
+        ? await updateBranch(branch.id, toBranchPayload(values, branch))
+        : await createBranch(toBranchPayload(values))
+      // The branch exists now; a failed upload must not hide that.
+      let uploadFailed: unknown = null
+      if (stagedImages.length > 0) {
+        try {
+          await uploadBranchImages(saved.id, stagedImages)
+        } catch (error) {
+          uploadFailed = error
+        }
       }
-      const bankQrImageUrl = imageFile
-        ? await uploadImage(imageFile, 'branch-qr')
-        : values.bankQrImageUrl
-      if (isEdit && branch) {
-        return updateBranch(branch.id, { ...toUpdateBranchPayload(values, user.id), bankQrImageUrl: bankQrImageUrl || null })
-      }
-      return createBranch({ ...toCreateBranchPayload(values, user.id), bankQrImageUrl: bankQrImageUrl || null })
+      return { saved, uploadFailed }
     },
-    onSuccess: async () => {
+    onSuccess: async ({ saved, uploadFailed }) => {
       await queryClient.invalidateQueries({ queryKey: ['branches'] })
+      if (uploadFailed) {
+        toastApiError(uploadFailed, 'Đã lưu chi nhánh nhưng không tải được ảnh. Hãy thử thêm ảnh lại.')
+        if (!isEdit) {
+          navigate(`/admin/branches/${saved.id}/edit`, { replace: true })
+          return
+        }
+      }
       navigate('/admin/branches', {
         replace: true,
         state: {
@@ -181,11 +212,6 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
     setErrors(nextErrors)
     setSubmitError('')
 
-    if (!user) {
-      setSubmitError('Bạn cần đăng nhập để quản lý chi nhánh.')
-      return
-    }
-
     if (Object.keys(nextErrors).length === 0) mutation.mutate()
   }
 
@@ -226,15 +252,25 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
         isSubmitting={mutation.isPending}
         submitLabel={isEdit ? 'Cập nhật chi nhánh' : 'Tạo chi nhánh'}
         onChange={handleChange}
-        imageFile={imageFile}
-        onImageFileChange={(file) => {
-          setImageFile(file)
-          setErrors((current) => ({ ...current, bankQrImageUrl: undefined }))
-        }}
-        onClearImage={() => {
-          setImageFile(null)
-          handleChange('bankQrImageUrl', '')
-        }}
+        gallery={
+          <BranchGallery
+            existing={existingImages}
+            staged={stagedImages}
+            error={galleryError}
+            disabled={mutation.isPending || deleteImageMutation.isPending}
+            onAddFiles={(files) => {
+              const problem = validateGalleryFiles(existingImages.length, stagedImages, files)
+              setGalleryError(problem ?? '')
+              if (!problem) setStagedImages((current) => [...current, ...files])
+            }}
+            onRemoveStaged={(index) =>
+              setStagedImages((current) => current.filter((_, position) => position !== index))
+            }
+            onDeleteExisting={(image) => {
+              if (window.confirm('Xóa ảnh này khỏi thư viện?')) deleteImageMutation.mutate(image)
+            }}
+          />
+        }
         onSubmit={handleSubmit}
         cities={cityOptions}
         districts={districtOptions}

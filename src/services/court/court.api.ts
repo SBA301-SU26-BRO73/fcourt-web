@@ -1,89 +1,98 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
+import { pageOf, sortedBy } from '@/common/utils/paging'
 import { axiosClient } from '@/services/http/axios-client'
-import type {  Court,
+import type { Branch } from '@/types/branch'
+import type {
+  Court,
+  CourtDto,
   CourtListParams,
+  CourtRequest,
+  CourtStatus,
   CreateCourtRequest,
-  SpringPage,
-  SpringPagedPayload,
   UpdateCourtRequest,
 } from '@/types/court'
 
-// TODO(F7): the backend lists courts per branch only (GET /admin/branches/{branchId}/courts). Until the
-// screens work per branch, gather the owner's branches and merge their courts, then page on the client.
-export async function getCourts(params: CourtListParams) {
-  const branchesResponse = await axiosClient.get<unknown>(API_ENDPOINTS.adminBranches.list)
-  const raw = branchesResponse.data
-  const branches: Array<{ id: number }> = Array.isArray(raw)
-    ? raw
-    : ((raw as { content?: Array<{ id: number }> } | null)?.content ?? [])
-  const lists = await Promise.all(
-    branches.map((branch) => getCourtsOfBranch(branch.id)),
+type NamedType = { id: number; name: string }
+
+/** `GET /court-types` may answer with an array or a page; both are read. */
+async function getCourtTypeNames(): Promise<Map<number, string>> {
+  const response = await axiosClient.get<NamedType[] | { content?: NamedType[] }>(
+    API_ENDPOINTS.courtTypes.list,
+    { params: { size: 100 } },
   )
-  const all = lists.flat()
-  const field = params.sortField as keyof Court
-  const sign = params.sortDirection === 'desc' ? -1 : 1
-  all.sort((x, y) => {
-    const a = x[field] ?? ""
-    const b = y[field] ?? ""
-    return a > b ? sign : a < b ? -sign : 0
-  })
-  const start = params.page * params.size
-  return normalizePage<Court>({
-    content: all.slice(start, start + params.size),
-    size: params.size,
-    number: params.page,
-    totalElements: all.length,
-    totalPages: Math.ceil(all.length / Math.max(params.size, 1)),
-  })
+  const raw = response.data
+  const list = Array.isArray(raw) ? raw : (raw?.content ?? [])
+  return new Map(list.map((type) => [type.id, type.name]))
 }
 
-async function getCourtsOfBranch(branchId: number): Promise<Court[]> {
-  const response = await axiosClient.get<Court[]>(API_ENDPOINTS.adminBranches.courts(branchId))
-  return response.data
-}
-
-function normalizePage<T>(payload: SpringPagedPayload<T>): SpringPage<T> {
-  const metadata = payload.page ?? payload
-  const size = metadata.size ?? payload.content.length
-  const number = metadata.number ?? 0
-  const totalElements = metadata.totalElements ?? payload.content.length
-  const totalPages = metadata.totalPages ?? (totalElements === 0 ? 0 : Math.ceil(totalElements / Math.max(size, 1)))
-  const numberOfElements = payload.numberOfElements ?? payload.content.length
-
+/** CourtResponse has neither branch nor court-type names, so they are joined in here. */
+export function toCourt(
+  dto: CourtDto,
+  branch: Pick<Branch, 'name' | 'slotDurationMinutes'> | undefined,
+  typeNames: Map<number, string>,
+): Court {
   return {
-    content: payload.content,
-    size,
-    number,
-    totalElements,
-    totalPages,
-    numberOfElements,
-    first: payload.first ?? number === 0,
-    last: payload.last ?? (totalPages === 0 || number >= totalPages - 1),
-    empty: payload.empty ?? numberOfElements === 0,
+    ...dto,
+    branchName: branch?.name ?? `Chi nhánh #${dto.branchId}`,
+    courtTypeName: typeNames.get(dto.courtTypeId) ?? `Loại sân #${dto.courtTypeId}`,
+    slotDurationMinutes: branch?.slotDurationMinutes ?? 30,
   }
 }
 
-export async function getCourtDetail(courtId: number) {
-  const response = await axiosClient.get<Court>(
-    API_ENDPOINTS.courts.detail(courtId),
-  )
+async function getCourtDtos(branchId: number) {
+  const response = await axiosClient.get<CourtDto[]>(API_ENDPOINTS.adminBranches.courts(branchId))
   return response.data
 }
 
-// TODO(F7): the body no longer takes branchId (it moves into the path); status adds MAINTENANCE.
-export async function createCourt(payload: CreateCourtRequest) {
-  const response = await axiosClient.post<Court>(
-    API_ENDPOINTS.adminBranches.courts(payload.branchId),
-    payload,
+async function getBranchRef(branchId: number) {
+  const response = await axiosClient.get<Branch>(API_ENDPOINTS.adminBranches.detail(branchId))
+  return response.data
+}
+
+/** Courts of one branch (the only list the backend offers). */
+export async function getCourtsByBranch(branchId: number): Promise<Court[]> {
+  const [dtos, branch, typeNames] = await Promise.all([
+    getCourtDtos(branchId),
+    getBranchRef(branchId),
+    getCourtTypeNames(),
+  ])
+  return dtos.map((dto) => toCourt(dto, branch, typeNames))
+}
+
+/** Every court of the owner: one request per branch, merged, sorted and paged on the client. */
+export async function getCourts(params: CourtListParams) {
+  const [branchesResponse, typeNames] = await Promise.all([
+    axiosClient.get<Branch[]>(API_ENDPOINTS.adminBranches.list),
+    getCourtTypeNames(),
+  ])
+  const branches = branchesResponse.data
+  const lists = await Promise.all(
+    branches.map(async (branch) =>
+      (await getCourtDtos(branch.id)).map((dto) => toCourt(dto, branch, typeNames)),
+    ),
   )
+  return pageOf(sortedBy(lists.flat(), params.sortField, params.sortDirection), params.page, params.size)
+}
+
+export async function getCourtDetail(courtId: number): Promise<Court> {
+  const response = await axiosClient.get<CourtDto>(API_ENDPOINTS.courts.detail(courtId))
+  const [branch, typeNames] = await Promise.all([getBranchRef(response.data.branchId), getCourtTypeNames()])
+  return toCourt(response.data, branch, typeNames)
+}
+
+export async function createCourt(branchId: number, payload: CreateCourtRequest) {
+  const response = await axiosClient.post<CourtDto>(API_ENDPOINTS.adminBranches.courts(branchId), payload)
   return response.data
 }
 
 export async function updateCourt(courtId: number, payload: UpdateCourtRequest) {
-  const response = await axiosClient.put<Court>(
-    API_ENDPOINTS.courts.detail(courtId),
-    payload,
-  )
+  const response = await axiosClient.put<CourtDto>(API_ENDPOINTS.courts.detail(courtId), payload)
+  return response.data
+}
+
+/** PATCH /admin/courts/{id}/status with `{ status }`: ACTIVE, MAINTENANCE or INACTIVE. */
+export async function changeCourtStatus(courtId: number, status: CourtStatus) {
+  const response = await axiosClient.patch<CourtDto>(API_ENDPOINTS.courts.status(courtId), { status })
   return response.data
 }
 
@@ -91,7 +100,4 @@ export async function deleteCourt(courtId: number) {
   await axiosClient.delete(API_ENDPOINTS.courts.detail(courtId))
 }
 
-/** Courts belonging to a branch. */
-export async function getCourtsByBranch(branchId: number): Promise<Court[]> {
-  return getCourtsOfBranch(branchId)
-}
+export type { CourtRequest }
