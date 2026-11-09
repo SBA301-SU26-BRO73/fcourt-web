@@ -1,3 +1,4 @@
+import { ZoomableImage } from '@/components/ui/image-viewer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   keepPreviousData,
@@ -592,10 +593,11 @@ function CourtList({
               className="flex scroll-mt-6 items-center gap-4 py-6"
             >
               {court.imageUrl ? (
-                <img
+                <ZoomableImage
                   src={court.imageUrl}
                   alt={court.name}
-                  className="size-16 shrink-0 rounded-xl bg-slate-100 object-cover"
+                  buttonClassName="shrink-0 cursor-zoom-in"
+                  className="size-16 rounded-xl bg-slate-100 object-cover"
                   onError={(event) => {
                     event.currentTarget.style.display = 'none'
                   }}

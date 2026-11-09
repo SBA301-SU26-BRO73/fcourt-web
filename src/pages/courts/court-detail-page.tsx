@@ -1,3 +1,4 @@
+import { ZoomableImage } from '@/components/ui/image-viewer'
 import { useQuery } from '@tanstack/react-query'
 import { CalendarDays, ImageOff, MapPin, Pencil, Shapes } from 'lucide-react'
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
@@ -67,7 +68,7 @@ export function CourtDetailPage() {
         </div>
 
         <article className="mt-6 overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white shadow-sm">
-          {court.imageUrl ? <img src={court.imageUrl} alt={court.name} className="h-72 w-full bg-slate-100 object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} /> : <div className="grid h-56 place-items-center bg-emerald-50 text-emerald-300"><ImageOff className="size-14" aria-label="Không có ảnh sân" /></div>}
+          {court.imageUrl ? <ZoomableImage src={court.imageUrl} alt={court.name} buttonClassName="block w-full cursor-zoom-in" className="h-72 w-full bg-slate-100 object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} /> : <div className="grid h-56 place-items-center bg-emerald-50 text-emerald-300"><ImageOff className="size-14" aria-label="Không có ảnh sân" /></div>}
           <div className="p-6 sm:p-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div><p className="text-sm font-bold uppercase tracking-[0.2em] text-[#10B981]">Court #{court.id}</p><h1 className="mt-2 text-3xl font-black tracking-tight">{court.name}</h1></div>
