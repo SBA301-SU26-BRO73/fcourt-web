@@ -44,6 +44,8 @@ describe('payment utils', () => {
     expect(classifyCheckoutError(err(409))).toBe('not-awaiting-payment')
     expect(classifyCheckoutError(err(403))).toBe('forbidden')
     expect(classifyCheckoutError(err(404))).toBe('not-found')
+    expect(classifyCheckoutError(err(422))).toBe('bank-not-configured')
+    expect(classifyCheckoutError(err(503))).toBe('other')
     expect(classifyCheckoutError(new Error('x'))).toBe('other')
   })
 
