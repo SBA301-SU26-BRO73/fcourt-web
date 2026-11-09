@@ -168,7 +168,7 @@ function RegDrawer({
           {isLoadingDetail ? (
             <div className="mt-5 py-8 text-center text-sm text-slate-400">Đang tải hồ sơ…</div>
           ) : (
-            <DocumentGallery documents={detail?.data?.documents ?? []} />
+            <DocumentGallery documents={detail?.documents ?? []} />
           )}
         </div>
 
@@ -221,7 +221,7 @@ export function PendingPage() {
   const [toast, setToast] = useState('')
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  const list = data?.data?.content ?? []
+  const list = data?.content ?? []
   const filtered = list.filter(
     (u) =>
       (u.fullName ?? '').toLowerCase().includes(q.toLowerCase()) ||

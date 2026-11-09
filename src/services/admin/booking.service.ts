@@ -1,3 +1,4 @@
+import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
 
 export interface BookingSlotResponse {
@@ -57,7 +58,7 @@ export interface PageResponse<T> {
     number: number
 }
 
-export interface ApiResponse<T> {
+export interface T {
     success: boolean
     message: string
     data: T
@@ -69,8 +70,8 @@ export const bookingService = {
         size = 10,
     ): Promise<PageResponse<Booking>> => {
         const response = await axiosClient.get<
-            ApiResponse<PageResponse<Booking>>
-        >('/bookings', {
+            PageResponse<Booking>
+        >(API_ENDPOINTS.bookings.adminList, {
             params: {
                 page,
                 size,
@@ -78,34 +79,37 @@ export const bookingService = {
             },
         })
 
-        return response.data.data
+        return response.data
     },
 
+    // TODO(F9): the backend has no manual booking status change; status follows the payment,
+    // cancel, check-in and checkout flows. This call is expected to fail until F9 replaces it.
     updateStatus: async (
         id: number,
         payload: UpdateBookingStatusRequest,
     ): Promise<Booking | null> => {
-        const response = await axiosClient.put<ApiResponse<Booking | null>>(
+        const response = await axiosClient.put<Booking | null>(
             `/bookings/${id}/status`,
             payload,
         )
 
-        return response.data.data
+        return response.data
     },
 
+    // The path key is the paymentId; the method changed from POST to PUT.
     approvePayment: async (paymentId: number) => {
-        const response = await axiosClient.post<ApiResponse<unknown>>(
-            `/payments/${paymentId}/approve`,
+        const response = await axiosClient.put<unknown>(
+            API_ENDPOINTS.payments.confirm(paymentId),
         )
 
-        return response.data.data
+        return response.data
     },
 
     rejectPayment: async (paymentId: number) => {
-        const response = await axiosClient.post<ApiResponse<unknown>>(
-            `/payments/${paymentId}/reject`,
+        const response = await axiosClient.put<unknown>(
+            API_ENDPOINTS.payments.reject(paymentId),
         )
 
-        return response.data.data
+        return response.data
     },
 }

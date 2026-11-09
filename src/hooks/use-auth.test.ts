@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { ApiResponse, LoginRequest, TokenResponse } from '@/types/auth'
+import type { LoginRequest, TokenResponse } from '@/types/auth'
 
 import { useLogin } from './use-auth'
 
@@ -35,15 +35,16 @@ vi.mock('@/utils/token', () => ({
 const tokens: TokenResponse = {
   accessToken: 'access-token',
   refreshToken: 'refresh-token',
-  expiresIn: 123,
+  expiresIn: 900,
 }
 
 interface CapturedLoginMutation {
-  mutationFn: (data: LoginRequest) => Promise<ApiResponse<TokenResponse>>
-  onSuccess: (response: ApiResponse<TokenResponse>) => void
+  mutationFn: (data: LoginRequest) => Promise<TokenResponse>
+  onSuccess: (response: TokenResponse) => void
 }
 
 function captureLoginMutation() {
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- useLogin is invoked outside a component on purpose (mocked hooks)
   return useLogin() as unknown as CapturedLoginMutation
 }
 
@@ -53,7 +54,7 @@ describe('useLogin', () => {
   })
 
   it('uses the auth login service as its mutation function', async () => {
-    const response = { data: tokens }
+    const response = tokens
     loginMock.mockResolvedValueOnce(response)
 
     const mutation = captureLoginMutation()
@@ -77,21 +78,11 @@ describe('useLogin', () => {
     })
 
     const mutation = captureLoginMutation()
-    mutation.onSuccess({ data: tokens })
+    mutation.onSuccess(tokens)
 
     expect(setAuth).toHaveBeenCalledWith(tokens)
     expect(decodeJwtMock).toHaveBeenCalledWith(tokens.accessToken)
     expect(navigate).toHaveBeenCalledWith(route)
-  })
-
-  it('does nothing when login response has no token data', () => {
-    const mutation = captureLoginMutation()
-
-    mutation.onSuccess({ message: 'Missing token' })
-
-    expect(setAuth).not.toHaveBeenCalled()
-    expect(decodeJwtMock).not.toHaveBeenCalled()
-    expect(navigate).not.toHaveBeenCalled()
   })
 
   it('keeps login errors rejected from the mutation function', async () => {

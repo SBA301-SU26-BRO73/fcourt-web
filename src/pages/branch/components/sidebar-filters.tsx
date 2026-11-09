@@ -11,7 +11,7 @@ export default function SidebarFilters() {
   const district = searchParams.get('district') ?? ''
   const ward = searchParams.get('ward') ?? ''
   const [keyword, setKeyword] = useState(searchParams.get('keyword') ?? '')
-  const activeCourtTypes = data?.data?.content.filter((type) => type.active) ?? []
+  const activeCourtTypes = data?.content.filter((type) => type.active) ?? []
   const districts = findLocationCity(city)?.districts ?? []
   const wards = findLocationDistrict(city, district)?.wards ?? []
 

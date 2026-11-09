@@ -48,7 +48,7 @@ function Toast({ msg }: { msg: string }) {
 
 export function ProfilePage() {
   const navigate = useNavigate()
-  const { user, isLoggedIn, clearAuth } = useAuth()
+  const { user, isLoggedIn, clearAuth, logout: logoutSession } = useAuth()
   const hasRecoverableSession = !!tokenStorage.getAccessToken() || !!tokenStorage.getRefreshToken()
 
   useEffect(() => {
@@ -110,11 +110,12 @@ export function ProfilePage() {
     setLoadingProfile(true)
     getProfile()
       .then((response) => {
-        if (!active || !response.data) return
+        if (!active) return
+        tokenStorage.setUser({ id: response.id, email: response.email, role: response.role, fullName: response.fullName })
         setF({
-          name: response.data.fullName ?? '',
-          phone: response.data.phone ?? '',
-          email: response.data.email,
+          name: response.fullName ?? '',
+          phone: response.phone ?? '',
+          email: response.email,
         })
       })
       .catch((error) => {
@@ -137,9 +138,7 @@ export function ProfilePage() {
     setSaving(true)
     try {
       const response = await updateProfile({ fullName: f.name.trim(), phone: f.phone })
-      if (response.data) {
-        setF({ name: response.data.fullName ?? '', phone: response.data.phone ?? '', email: response.data.email })
-      }
+      setF({ name: response.fullName ?? '', phone: response.phone ?? '', email: response.email })
       setEditing(false)
       showToast('Cập nhật thông tin thành công!')
     } catch (error) {
@@ -170,8 +169,8 @@ export function ProfilePage() {
     }
   }
 
-  function logout() {
-    clearAuth()
+  async function logout() {
+    await logoutSession()
     navigate('/auth/role-pick')
   }
 

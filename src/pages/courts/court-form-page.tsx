@@ -134,9 +134,9 @@ function CourtEditor({
       })
     },
     onError: (error: unknown) => {
-      const errorObj = error as { response?: { data?: { code?: string; message?: string } }; message?: string }
-      const errCode = errorObj?.response?.data?.code || ''
-      const errServerMsg = errorObj?.response?.data?.message || errorObj?.message || ''
+      const errorObj = error as { status?: number; detail?: string; message?: string }
+      const errCode = String(errorObj?.status ?? '')
+      const errServerMsg = errorObj?.detail || errorObj?.message || ''
 
       if (
         errCode === 'court_limit_exceeded' ||
@@ -178,7 +178,7 @@ function CourtEditor({
       status: 'ACTIVE',
     })
   }
-  const courtTypes = courtTypesQuery.data?.data?.content ?? []
+  const courtTypes = courtTypesQuery.data?.content ?? []
   const selectableCourtTypes = courtTypes.filter((courtType) => (
     courtType.active || String(courtType.id) === values.courtTypeId
   ))

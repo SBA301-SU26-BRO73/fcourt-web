@@ -147,7 +147,7 @@ export function UserManagementPage() {
   const query = useUserManagement({ role, status, page, size: 10 })
   const lockMutation = useLockUser()
   const unlockMutation = useUnlockUser()
-  const pageData = query.data?.data
+  const pageData = query.data
   const users = pageData?.content ?? []
   const filteredUsers = useMemo(() => {
     const keyword = search.trim().toLowerCase()

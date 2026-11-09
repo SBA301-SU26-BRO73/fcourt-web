@@ -77,9 +77,9 @@ export function StaffFormModal({
       queryClient.invalidateQueries({ queryKey: ['staff', branchId] })
       onClose()
     },
-    onError: (err: { response?: { data?: { message?: string } } }) => {
+    onError: (err: { detail?: string }) => {
       setServerError(
-        err?.response?.data?.message ?? 'Có lỗi xảy ra, vui lòng thử lại.',
+        err?.detail ?? 'Có lỗi xảy ra, vui lòng thử lại.',
       )
     },
   })
@@ -91,9 +91,9 @@ export function StaffFormModal({
       queryClient.invalidateQueries({ queryKey: ['staff', branchId] })
       onClose()
     },
-    onError: (err: { response?: { data?: { message?: string } } }) => {
+    onError: (err: { detail?: string }) => {
       setServerError(
-        err?.response?.data?.message ?? 'Có lỗi xảy ra, vui lòng thử lại.',
+        err?.detail ?? 'Có lỗi xảy ra, vui lòng thử lại.',
       )
     },
   })

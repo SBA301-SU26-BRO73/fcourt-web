@@ -1,7 +1,7 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
 import type { PageResponse, UserAdminItem, UserDetailItem } from '@/types/admin'
-import type { ApiResponse, UserRole, UserStatus } from '@/types/auth'
+import type { UserRole, UserStatus } from '@/types/auth'
 
 export interface UserListParams {
   role?: Extract<UserRole, 'CUSTOMER' | 'ADMIN'> | ''
@@ -43,15 +43,17 @@ function normalizeUserManagementPage<T>(page: SpringPagedPayload<T>): UserManage
   }
 }
 
-export async function getPendingUsers(): Promise<ApiResponse<PageResponse<UserAdminItem>>> {
-  const res = await axiosClient.get(API_ENDPOINTS.users.list, {
-    params: { role: 'ADMIN', status: 'PENDING_APPROVAL', size: 100 },
-  })
-  return res.data
+/** Pending court owners. The backend returns a bare array; wrap it so pages keep the page shape. */
+export async function getPendingUsers(): Promise<PageResponse<UserAdminItem>> {
+  const res = await axiosClient.get<UserAdminItem[]>(API_ENDPOINTS.users.pending)
+  const content = res.data
+  return { content, totalElements: content.length, totalPages: 1, size: content.length, number: 0 }
 }
 
-export async function getUsers(params: UserListParams): Promise<ApiResponse<UserManagementPageResponse<UserAdminItem>>> {
-  const res = await axiosClient.get<ApiResponse<SpringPagedPayload<UserAdminItem>>>(API_ENDPOINTS.users.list, {
+// TODO(F14): the backend has no endpoint that lists all users (customers and owners) with
+// role/status filters, so this call is expected to fail until the team decides (gap report 3.2 item 1).
+export async function getUsers(params: UserListParams): Promise<UserManagementPageResponse<UserAdminItem>> {
+  const res = await axiosClient.get<SpringPagedPayload<UserAdminItem>>(API_ENDPOINTS.users.list, {
     params: {
       role: params.role || undefined,
       status: params.status || undefined,
@@ -59,33 +61,32 @@ export async function getUsers(params: UserListParams): Promise<ApiResponse<User
       size: params.size ?? 10,
     },
   })
-  return {
-    ...res.data,
-    data: res.data.data ? normalizeUserManagementPage(res.data.data) : undefined,
-  }
+  return normalizeUserManagementPage(res.data)
 }
 
-export async function getUserDetail(id: number): Promise<ApiResponse<UserDetailItem>> {
-  const res = await axiosClient.get(API_ENDPOINTS.users.detail(id))
+export async function getUserDetail(id: number): Promise<UserDetailItem> {
+  const res = await axiosClient.get<UserDetailItem>(API_ENDPOINTS.users.detail(id))
   return res.data
 }
 
-export async function approveUser(id: number): Promise<ApiResponse<UserAdminItem>> {
-  const res = await axiosClient.patch(API_ENDPOINTS.users.approve(id))
+export async function approveUser(id: number): Promise<UserAdminItem> {
+  const res = await axiosClient.put<UserAdminItem>(API_ENDPOINTS.users.approve(id))
   return res.data
 }
 
-export async function rejectUser(id: number): Promise<ApiResponse<UserAdminItem>> {
-  const res = await axiosClient.patch(API_ENDPOINTS.users.reject(id))
+export async function rejectUser(id: number, reason = 'Rejected by super admin'): Promise<UserAdminItem> {
+  const res = await axiosClient.put<UserAdminItem>(API_ENDPOINTS.users.reject(id), { reason })
   return res.data
 }
 
-export async function lockUser(id: number, reason: string): Promise<ApiResponse<UserAdminItem>> {
-  const res = await axiosClient.patch(API_ENDPOINTS.users.lock(id), { reason })
+// TODO(F14): lock and unlock are merged into one toggle-status call (PUT, optional reason) that
+// returns { id, status }. Both helpers hit it until the user-management screen is reworked.
+export async function lockUser(id: number, reason: string): Promise<UserAdminItem> {
+  const res = await axiosClient.put<UserAdminItem>(API_ENDPOINTS.users.toggleStatus(id), { reason })
   return res.data
 }
 
-export async function unlockUser(id: number): Promise<ApiResponse<UserAdminItem>> {
-  const res = await axiosClient.patch(API_ENDPOINTS.users.unlock(id))
+export async function unlockUser(id: number): Promise<UserAdminItem> {
+  const res = await axiosClient.put<UserAdminItem>(API_ENDPOINTS.users.toggleStatus(id))
   return res.data
 }

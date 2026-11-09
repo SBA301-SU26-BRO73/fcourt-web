@@ -57,7 +57,7 @@ export function BranchFormPage({ mode }: BranchFormPageProps) {
   }
 
   if (detailQuery.isError) {
-    const notFound = getBranchErrorCode(detailQuery.error) === 'branch_not_found'
+    const notFound = getBranchErrorCode(detailQuery.error) === '404'
     return (
       <PageMessage
         title={notFound ? 'Không tìm thấy chi nhánh' : 'Không thể tải thông tin chi nhánh'}
@@ -141,9 +141,9 @@ function BranchEditor({ mode, branch }: BranchEditorProps) {
       })
     },
     onError: (error: unknown) => {
-      const errorObj = error as { response?: { data?: { code?: string; message?: string } }; message?: string }
-      const errCode = errorObj?.response?.data?.code || ''
-      const errServerMsg = errorObj?.response?.data?.message || errorObj?.message || ''
+      const errorObj = error as { status?: number; detail?: string; message?: string }
+      const errCode = String(errorObj?.status ?? '')
+      const errServerMsg = errorObj?.detail || errorObj?.message || ''
 
       if (
         errCode === 'branch_limit_exceeded' ||

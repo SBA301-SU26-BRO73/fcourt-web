@@ -1,8 +1,6 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type {
-  ApiResponse,
-  ApplyTimeSlotTemplateRequest,
+import type {  ApplyTimeSlotTemplateRequest,
   ApplyTimeSlotTemplateResponse,
   CreateTimeSlotTemplateRequest,
   TimeSlotTemplateBatchResponse,
@@ -12,15 +10,9 @@ import type {
   UpdateTimeSlotTemplateRequest,
 } from '@/types/time-slot-template'
 
-function requireData<T>(response: ApiResponse<T>): T {
-  if (response.data === undefined) {
-    throw new Error(response.message || 'The server returned no data.')
-  }
-  return response.data
-}
-
+// TODO(F8): no global list in the backend; templates are read per court (getTimeSlotTemplatesByCourt).
 export async function getTimeSlotTemplates(params: TimeSlotListParams) {
-  const response = await axiosClient.get<ApiResponse<SpringPage<TimeSlotTemplate>>>(
+  const response = await axiosClient.get<SpringPage<TimeSlotTemplate>>(
     API_ENDPOINTS.timeSlotTemplates.list,
     {
       params: {
@@ -30,40 +22,43 @@ export async function getTimeSlotTemplates(params: TimeSlotListParams) {
       },
     },
   )
-  return requireData(response.data)
+  return response.data
 }
 
+// TODO(F8): no get-by-id in the backend.
 export async function getTimeSlotTemplateDetail(id: number) {
-  const response = await axiosClient.get<ApiResponse<TimeSlotTemplate>>(
+  const response = await axiosClient.get<TimeSlotTemplate>(
     API_ENDPOINTS.timeSlotTemplates.detail(id),
   )
-  return requireData(response.data)
+  return response.data
 }
 
 export async function getTimeSlotTemplatesByCourt(courtId: number) {
-  const response = await axiosClient.get<ApiResponse<TimeSlotTemplate[]>>(
+  const response = await axiosClient.get<TimeSlotTemplate[]>(
     API_ENDPOINTS.timeSlotTemplates.byCourt(courtId),
   )
-  return requireData(response.data)
+  return response.data
 }
 
+// TODO(F8): templates belong to a court (POST /admin/courts/{courtId}/time-slot-templates, plus /preview).
 export async function createTimeSlotTemplate(payload: CreateTimeSlotTemplateRequest) {
-  const response = await axiosClient.post<ApiResponse<TimeSlotTemplateBatchResponse>>(
+  const response = await axiosClient.post<TimeSlotTemplateBatchResponse>(
     API_ENDPOINTS.timeSlotTemplates.list,
     payload,
   )
-  return requireData(response.data)
+  return response.data
 }
 
+// TODO(F8): no PUT in the backend; delete and recreate instead.
 export async function updateTimeSlotTemplate(
   id: number,
   payload: UpdateTimeSlotTemplateRequest,
 ) {
-  const response = await axiosClient.put<ApiResponse<TimeSlotTemplate>>(
+  const response = await axiosClient.put<TimeSlotTemplate>(
     API_ENDPOINTS.timeSlotTemplates.detail(id),
     payload,
   )
-  return requireData(response.data)
+  return response.data
 }
 
 export async function deleteTimeSlotTemplate(id: number) {
@@ -74,9 +69,9 @@ export async function applyTimeSlotTemplates(
   targetCourtId: number,
   payload: ApplyTimeSlotTemplateRequest,
 ) {
-  const response = await axiosClient.post<ApiResponse<ApplyTimeSlotTemplateResponse>>(
+  const response = await axiosClient.post<ApplyTimeSlotTemplateResponse>(
     API_ENDPOINTS.timeSlotTemplates.apply(targetCourtId),
     payload,
   )
-  return requireData(response.data)
+  return response.data
 }

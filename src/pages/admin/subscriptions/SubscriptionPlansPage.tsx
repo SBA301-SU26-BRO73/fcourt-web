@@ -37,8 +37,8 @@ export default function SubscriptionPlansPage() {
       setErrorMessage(null)
     },
     onError: (err: unknown) => {
-      const errorResponse = err as { response?: { data?: { message?: string } }; message?: string }
-      const msg = errorResponse?.response?.data?.message || errorResponse?.message || 'Không thể đăng ký gói dịch vụ.'
+      const errorResponse = err as { status?: number; detail?: string; message?: string }
+      const msg = errorResponse?.detail || errorResponse?.message || 'Không thể đăng ký gói dịch vụ.'
       setErrorMessage(msg)
       setTimeout(() => setErrorMessage(null), 6000)
     },

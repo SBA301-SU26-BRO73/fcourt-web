@@ -96,8 +96,8 @@ export function UploadReceipt({
       });
     } catch (err: unknown) {
       setSubmitting(false);
-      const errorResponse = err as { response?: { data?: { message?: string } }; message?: string };
-      const serverMsg = errorResponse?.response?.data?.message || errorResponse?.message || 'Không thể gửi biên lai.';
+      const errorResponse = err as { status?: number; detail?: string; message?: string };
+      const serverMsg = errorResponse?.detail || errorResponse?.message || 'Không thể gửi biên lai.';
       setError(serverMsg);
     }
   };

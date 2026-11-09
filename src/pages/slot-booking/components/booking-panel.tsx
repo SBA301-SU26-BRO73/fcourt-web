@@ -30,8 +30,8 @@ export default function BookingPanel({ selectedSlots, venueName, onBook, require
   const sortedSlots = [...selectedSlots].sort((a, b) => a.startTime.localeCompare(b.startTime));
   
   // Group consecutive slots by court
-  let slotText = '';
-  let courtText = '';
+  let slotText: string;
+  let courtText: string;
 
   const uniqueCourts = Array.from(new Set(sortedSlots.map(s => s.courtName)));
   
@@ -108,7 +108,7 @@ export default function BookingPanel({ selectedSlots, venueName, onBook, require
 
 function formatTimeAMPM(time24: string) {
   const parts = time24.split(':');
-  let hour = parseInt(parts[0], 10);
+  const hour = parseInt(parts[0], 10);
   const minutes = parts[1] || '00';
   return `${String(hour).padStart(2, '0')}:${minutes}`;
 }

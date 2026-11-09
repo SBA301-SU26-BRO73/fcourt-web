@@ -1,6 +1,5 @@
 import { axiosClient } from '@/services/http/axios-client'
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
-import type { ApiResponse } from '@/types/auth'
 import type {
   StaffPage,
   StaffResponse,
@@ -19,59 +18,54 @@ import type {
 } from '@/types/booking'
 import type { PosProduct, CreateOrderRequest, OrderResponse } from '@/types/pos'
 
-function requireData<T>(response: ApiResponse<T>): T {
-  if (response.data === undefined) {
-    throw new Error(response.message || 'The server returned no data.')
-  }
-  return response.data
-}
-
+// TODO(F11): GET /admin/staff?branchId&limit&offset (limit/offset paging, not page/size).
 export async function getStaffByBranch(
   branchId: number,
   page = 0,
   size = 20,
 ): Promise<StaffPage> {
-  const { data } = await axiosClient.get<ApiResponse<StaffPage>>(
-    API_ENDPOINTS.staff.listByBranch(branchId),
-    { params: { page, size, sort: 'id,desc' } },
+  const { data } = await axiosClient.get<StaffPage>(
+    API_ENDPOINTS.staff.list,
+    { params: { branchId, limit: size, offset: page * size } },
   )
-  return requireData(data)
+  return data
 }
 
+// TODO(F11): no staff-by-id endpoint in the backend.
 export async function getStaffDetail(id: number): Promise<StaffResponse> {
-  const { data } = await axiosClient.get<ApiResponse<StaffResponse>>(
+  const { data } = await axiosClient.get<StaffResponse>(
     API_ENDPOINTS.staff.detail(id),
   )
-  return requireData(data)
+  return data
 }
 
 /** The logged-in staff's own profile (id, branchId, branchName), resolved from the JWT. */
 export async function getCurrentStaff(): Promise<StaffResponse> {
-  const { data } = await axiosClient.get<ApiResponse<StaffResponse>>(
+  const { data } = await axiosClient.get<StaffResponse>(
     API_ENDPOINTS.staff.me,
   )
-  return requireData(data)
+  return data
 }
 
 export async function createStaff(
   payload: CreateStaffRequest,
 ): Promise<StaffResponse> {
-  const { data } = await axiosClient.post<ApiResponse<StaffResponse>>(
+  const { data } = await axiosClient.post<StaffResponse>(
     API_ENDPOINTS.staff.create,
     payload,
   )
-  return requireData(data)
+  return data
 }
 
 export async function updateStaff(
   id: number,
   payload: UpdateStaffRequest,
 ): Promise<StaffResponse> {
-  const { data } = await axiosClient.patch<ApiResponse<StaffResponse>>(
+  const { data } = await axiosClient.put<StaffResponse>(
     API_ENDPOINTS.staff.update(id),
     payload,
   )
-  return requireData(data)
+  return data
 }
 
 export async function deleteStaff(id: number): Promise<void> {
@@ -83,84 +77,87 @@ export async function deleteStaff(id: number): Promise<void> {
  * `date` is optional (ISO date, defaults to today UTC on the backend).
  */
 export async function getTodaySchedule(date?: string): Promise<StaffScheduleItem[]> {
-  const { data } = await axiosClient.get<ApiResponse<StaffScheduleItem[]>>(
+  const { data } = await axiosClient.get<StaffScheduleItem[]>(
     API_ENDPOINTS.staff.schedule,
     { params: date ? { date } : {} },
   )
-  return requireData(data)
+  return data
 }
 
 /** Realtime status of every court in the acting staff's branch. */
+// TODO(F13): no court board endpoint; needs facility courts joined with public slots.
 export async function getCourtBoard(): Promise<CourtBoardItem[]> {
-  const { data } = await axiosClient.get<ApiResponse<CourtBoardItem[]>>(
+  const { data } = await axiosClient.get<CourtBoardItem[]>(
     API_ENDPOINTS.staff.courtBoard,
   )
-  return requireData(data)
+  return data
 }
 
 /** Check a booking in by its UUID check-in code. */
 export async function checkIn(
   payload: StaffCheckinRequest,
 ): Promise<StaffCheckinResponse> {
-  const { data } = await axiosClient.post<ApiResponse<StaffCheckinResponse>>(
-    API_ENDPOINTS.staff.checkin,
+  const { data } = await axiosClient.post<StaffCheckinResponse>(
+    // TODO(F13): check-in is verify, preview, manual with body { checkInCode }.
+    API_ENDPOINTS.staff.checkinManual,
     payload,
   )
-  return requireData(data)
+  return data
 }
 
 /** Create a walk-in booking at the counter (status auto-set to CHECKED_IN). */
 export async function createWalkInBooking(
   payload: WalkInBookingRequest,
 ): Promise<WalkInBookingResponse> {
-  const { data } = await axiosClient.post<ApiResponse<WalkInBookingResponse>>(
+  const { data } = await axiosClient.post<WalkInBookingResponse>(
     API_ENDPOINTS.staff.walkInBooking,
     payload,
   )
-  return requireData(data)
+  return data
 }
 
 /** Complete a booking — transitions CHECKED_IN → COMPLETED. */
 export async function staffCheckout(
   payload: StaffCheckoutRequest,
 ): Promise<StaffCheckoutResponse> {
-  const { data } = await axiosClient.post<ApiResponse<StaffCheckoutResponse>>(
-    API_ENDPOINTS.staff.checkout,
-    payload,
+  const { data } = await axiosClient.put<StaffCheckoutResponse>(
+    // TODO(F13): GET /staff/bookings/{id}/checkout-preview comes first.
+    API_ENDPOINTS.staff.checkout(payload.bookingId),
   )
-  return requireData(data)
+  return data
 }
 
 /** Active retail products for the acting staff's branch. */
 export async function getPosProducts(): Promise<PosProduct[]> {
-  const { data } = await axiosClient.get<ApiResponse<PosProduct[]>>(
+  const { data } = await axiosClient.get<PosProduct[]>(
     API_ENDPOINTS.staff.posProducts,
   )
-  return requireData(data)
+  return data
 }
 
 /** Create a retail order — merged into a booking, or a standalone bill. */
 export async function createPosOrder(payload: CreateOrderRequest): Promise<OrderResponse> {
-  const { data } = await axiosClient.post<ApiResponse<OrderResponse>>(
+  const { data } = await axiosClient.post<OrderResponse>(
     API_ENDPOINTS.staff.posOrders,
     payload,
   )
-  return requireData(data)
+  return data
 }
 
 /** Mark a pending (bank-transfer) order as paid once the money has arrived. */
+// TODO(F13): the backend has no separate confirm step for POS orders.
 export async function confirmPosOrder(orderId: number): Promise<OrderResponse> {
-  const { data } = await axiosClient.post<ApiResponse<OrderResponse>>(
+  const { data } = await axiosClient.post<OrderResponse>(
     API_ENDPOINTS.staff.posOrderConfirm(orderId),
   )
-  return requireData(data)
+  return data
 }
 
 /** Today's (or a given date's) retail orders for the branch. */
 export async function getPosOrders(date?: string): Promise<OrderResponse[]> {
-  const { data } = await axiosClient.get<ApiResponse<OrderResponse[]>>(
+  const { data } = await axiosClient.get<OrderResponse[]>(
     API_ENDPOINTS.staff.posOrders,
     { params: date ? { date } : {} },
   )
-  return requireData(data)
+  return data
 }

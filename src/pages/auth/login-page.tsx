@@ -58,14 +58,7 @@ function getLoginRoleConfig(role: string | null) {
 }
 
 function getServerErrorMessage(error: unknown) {
-  if (!(error instanceof Error)) return null
-
-  const apiError = error as Error & {
-    response?: { data?: { message?: unknown } }
-  }
-  const message = apiError.response?.data?.message
-
-  return typeof message === 'string' ? message : error.message
+  return error instanceof Error ? error.message : null
 }
 
 export function LoginPage() {

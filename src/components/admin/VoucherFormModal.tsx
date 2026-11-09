@@ -81,8 +81,8 @@ export default function VoucherFormModal({
       onSuccess('Tạo mã giảm giá thành công.')
       onClose()
     },
-    onError: (err: any) => {
-      setErrorMsg(err.response?.data?.message || err.message || 'Lỗi khi tạo mã giảm giá.')
+    onError: (err: { detail?: string; message?: string }) => {
+      setErrorMsg(err.detail || err.message || 'Lỗi khi tạo mã giảm giá.')
     },
   })
 
@@ -94,8 +94,8 @@ export default function VoucherFormModal({
       onSuccess('Cập nhật mã giảm giá thành công.')
       onClose()
     },
-    onError: (err: any) => {
-      setErrorMsg(err.response?.data?.message || err.message || 'Lỗi khi cập nhật mã giảm giá.')
+    onError: (err: { detail?: string; message?: string }) => {
+      setErrorMsg(err.detail || err.message || 'Lỗi khi cập nhật mã giảm giá.')
     },
   })
 

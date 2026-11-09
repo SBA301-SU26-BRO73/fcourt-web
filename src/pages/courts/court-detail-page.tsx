@@ -27,7 +27,7 @@ export function CourtDetailPage() {
 
   if (!hasValidId) return <Navigate to="/admin/courts" replace />
   if (courtQuery.isPending) return <PageState title="Đang tải thông tin sân..." />
-  if (courtQuery.isError) return <PageState title={getCourtErrorCode(courtQuery.error) === 'RESOURCE_NOT_FOUND' ? 'Không tìm thấy sân' : 'Không thể tải thông tin sân'} description={getCourtErrorMessage(courtQuery.error)} />
+  if (courtQuery.isError) return <PageState title={getCourtErrorCode(courtQuery.error) === '404' ? 'Không tìm thấy sân' : 'Không thể tải thông tin sân'} description={getCourtErrorMessage(courtQuery.error)} />
 
   const court = courtQuery.data
   return (

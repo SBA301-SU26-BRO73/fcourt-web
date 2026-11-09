@@ -28,7 +28,9 @@ npm run lint
 
 | Biến | Ý nghĩa |
 |---|---|
-| `VITE_API_URL` | Base URL của API, mặc định `http://localhost:8080/api`. Với backend microservice, trỏ vào API gateway của `fcourt-backend` (mọi route đều bắt đầu bằng `/api`). |
+| `VITE_API_URL` | Base URL của API, mặc định `/api` (cùng origin). `npm run dev` proxy từng prefix `/api/...` sang đúng service qua `vite.config.ts`; image production dùng nginx proxy `/api` và `/ws-fcourt` sang `API_UPSTREAM`. |
+| `DEV_BACKEND_HOST` | Chỉ dùng khi dev: host chạy các service (mặc định `localhost`). |
+| `API_UPSTREAM` | Chỉ dùng khi chạy container: origin của gateway/ALB, mặc định `http://gateway:8080`. |
 
 `.env` và `.env.local` không được commit; chỉ `.env.example` nằm trong git.
 

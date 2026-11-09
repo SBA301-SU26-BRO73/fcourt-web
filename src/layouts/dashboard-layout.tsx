@@ -19,7 +19,7 @@ const NAV = [
 
 export function DashboardLayout() {
   const navigate = useNavigate()
-  const { user, isLoggedIn, clearAuth } = useAuth()
+  const { user, isLoggedIn, logout: logoutSession } = useAuth()
   const { data: usersData } = useUsers()
 
   useEffect(() => {
@@ -27,10 +27,10 @@ export function DashboardLayout() {
     if (user?.role !== 'SUPER_ADMIN') { navigate('/403', { replace: true }) }
   }, [isLoggedIn, user, navigate])
 
-  const pendingCount = usersData?.data?.content.length ?? 0
+  const pendingCount = usersData?.content.length ?? 0
 
-  function logout() {
-    clearAuth()
+  async function logout() {
+    await logoutSession()
     navigate('/auth/role-pick')
   }
 
