@@ -180,6 +180,8 @@ export const API_ENDPOINTS = {
     my: joinEndpoint(API_PREFIXES.bookings, 'my'),
     /** booking-service: POST { bookingCode, phone } for a guest booking (rate limited, 404 on any miss). */
     lookup: joinEndpoint('/public/bookings', 'lookup'),
+    /** booking-service: POST { bookingCode, phone, reason? } cancels a guest booking (same limit as lookup). */
+    guestCancel: joinEndpoint('/public/bookings', 'cancel'),
     detail: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id),
     cancel: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id, 'cancel'),
     cancellationPolicy: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id, 'cancellation-policy'),

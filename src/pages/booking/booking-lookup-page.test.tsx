@@ -2,12 +2,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/common/utils/api-error'
-import { lookupGuestBooking } from '@/services/booking/booking.api'
+import { cancelGuestBooking, lookupGuestBooking } from '@/services/booking/booking.api'
 import type { GuestBooking } from '@/types/booking'
 
-import { BookingLookupPage, lookupErrorMessage } from './booking-lookup-page'
+import { BookingLookupPage, cancelErrorMessage, lookupErrorMessage } from './booking-lookup-page'
 
-vi.mock('@/services/booking/booking.api', () => ({ lookupGuestBooking: vi.fn() }))
+vi.mock('@/services/booking/booking.api', () => ({ lookupGuestBooking: vi.fn(), cancelGuestBooking: vi.fn() }))
 vi.mock('@/components/booking/CheckinQrCard', () => ({
   CheckinQrCard: ({ checkinCode }: { checkinCode: string }) => <div>QR {checkinCode}</div>,
 }))
@@ -69,5 +69,61 @@ describe('lookupErrorMessage', () => {
     expect(lookupErrorMessage(new ApiError({ status: 429, message: 'x' }))).toMatch(/ít phút/)
     expect(lookupErrorMessage(new ApiError({ status: 400, message: 'x' }))).toMatch(/định dạng/)
     expect(lookupErrorMessage(new Error('boom'))).toMatch(/Không thể tra cứu/)
+  })
+})
+
+describe('guest cancel', () => {
+  it('offers the cancel button only for cancellable statuses', async () => {
+    for (const status of ['COMPLETED', 'CANCELLED', 'CHECKED_IN'] as const) {
+      vi.mocked(lookupGuestBooking).mockResolvedValue({ ...base, status, checkInCode: null })
+      render(<BookingLookupPage />)
+      await submit()
+      await screen.findByText('Sân 1')
+      expect(screen.queryByRole('button', { name: /Hủy đặt sân/ })).toBeNull()
+      cleanup()
+    }
+  })
+
+  it('asks for confirmation, cancels with the looked-up code and phone and shows the new status', async () => {
+    vi.mocked(lookupGuestBooking).mockResolvedValue(base)
+    vi.mocked(cancelGuestBooking).mockResolvedValue({ bookingCode: 'FC12345678', status: 'CANCELLED', refundAmount: 100000, currency: 'VND' })
+    render(<BookingLookupPage />)
+    await submit()
+    fireEvent.click(await screen.findByRole('button', { name: /Hủy đặt sân/ }))
+    expect(cancelGuestBooking).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText(/Lý do hủy/), { target: { value: ' Bận việc ' } })
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận hủy/ }))
+    expect(await screen.findByRole('status')).toBeTruthy()
+    expect(cancelGuestBooking).toHaveBeenCalledWith('fc12345678', '0912345678', ' Bận việc ')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Hủy đặt sân/ })).toBeNull()
+    expect(screen.queryByText('QR 999')).toBeNull()
+  })
+
+  it('keeps the dialog open and shows the server reason when the cut-off has passed', async () => {
+    vi.mocked(lookupGuestBooking).mockResolvedValue(base)
+    vi.mocked(cancelGuestBooking).mockRejectedValue(new ApiError({ status: 400, message: 'Đã quá thời hạn hủy' }))
+    render(<BookingLookupPage />)
+    await submit()
+    fireEvent.click(await screen.findByRole('button', { name: /Hủy đặt sân/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận hủy/ }))
+    expect(await screen.findByText('Đã quá thời hạn hủy')).toBeTruthy()
+    expect(screen.getByRole('dialog')).toBeTruthy()
+  })
+
+  it('closing the dialog does not cancel', async () => {
+    vi.mocked(lookupGuestBooking).mockResolvedValue(base)
+    render(<BookingLookupPage />)
+    await submit()
+    fireEvent.click(await screen.findByRole('button', { name: /Hủy đặt sân/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Giữ đơn/ }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(cancelGuestBooking).not.toHaveBeenCalled()
+  })
+
+  it('maps cancel errors', () => {
+    expect(cancelErrorMessage(new ApiError({ status: 404, message: 'x' }))).toMatch(/Không tìm thấy/)
+    expect(cancelErrorMessage(new ApiError({ status: 429, message: 'x' }))).toMatch(/quá nhiều/)
+    expect(cancelErrorMessage(new Error('boom'))).toMatch(/Không thể hủy/)
   })
 })
