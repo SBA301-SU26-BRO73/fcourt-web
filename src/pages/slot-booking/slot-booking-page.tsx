@@ -7,6 +7,7 @@ import type { Court } from './components/court-availability-grid';
 import BookingPanel, { PHONE_INVALID_MESSAGE, PHONE_REQUIRED_MESSAGE } from './components/booking-panel';
 import type { SelectedSlot } from './components/booking-panel';
 import { toggleSlot, toHHmm, toMinutes } from './slot-selection';
+import ActiveOrderDialog from './components/active-order-dialog';
 import { useAuth } from '@/hooks/use-auth-context';
 import { useCourtTypes } from '@/hooks/use-court-types';
 import {
@@ -22,6 +23,10 @@ import { formatLocalDate } from '@/common/utils/local-date';
 import { getApiErrorMessage, isApiError, toastApiError } from '@/common/utils/api-error';
 import { validators } from '@/utils/validators';
 import { formatCountdown } from '@/utils/hold-countdown';
+import { isHoldOutdated } from '@/utils/hold-validation';
+import { cancelMyBooking } from '@/services/booking/my-booking.api';
+import { findUnpaidBooking } from '@/services/booking/unpaid-booking';
+import type { MyBooking } from '@/types/my-booking';
 import type { ActiveHold } from '@/types/hold';
 import type { CourtSlot } from '@/types/public-branch';
 
@@ -40,6 +45,13 @@ export default function SlotBookingPage() {
   // null = untouched, so the slot linked from the branch page can be preselected without an effect.
   const [pickedState, setPicked] = useState<SelectedSlot[] | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
+  // Notices instead of silently sending the customer back to an older order.
+  const [promptRequested, setPromptRequested] = useState(false);
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+  const [unpaid, setUnpaid] = useState<MyBooking | null>(null);
+  const [unpaidBusy, setUnpaidBusy] = useState(false);
+  const [unpaidError, setUnpaidError] = useState<string | null>(null);
+  const [checkingUnpaid, setCheckingUnpaid] = useState(false);
 
   const refreshSlots = () => queryClient.invalidateQueries({ queryKey: ['public-courts', 'slots'] });
 
@@ -51,6 +63,7 @@ export default function SlotBookingPage() {
     isBusy,
     start: startHold,
     release: releaseHold,
+    discard: discardHold,
     dismissExpired,
   } = useSlotHold({
     onExpired: () => {
@@ -60,10 +73,11 @@ export default function SlotBookingPage() {
     },
   });
 
-  // The day comes from the URL; a restored hold decides the day and the branch.
-  const selectedDate = hold?.date ?? dateParam ?? todayStr;
+  const selectedDate = dateParam ?? todayStr;
+  // A restored hold only decides the branch and day when the URL names none; otherwise the customer
+  // is asked what to do (see the dialog below) instead of being sent back to it.
   useEffect(() => {
-    if (hold?.branchId && branchIdParam !== String(hold.branchId)) {
+    if (!branchIdParam && hold?.branchId) {
       setSearchParams(
         { branchId: String(hold.branchId), ...(hold.date !== todayStr ? { date: hold.date } : {}) },
         { replace: true },
@@ -74,10 +88,10 @@ export default function SlotBookingPage() {
   // No branch in the URL: fall back to the first listed branch.
   const fallbackBranch = usePublicBranchSearch({ page: 0, size: 1 });
   useEffect(() => {
-    if (branchIdParam) return;
+    if (branchIdParam || hold?.branchId) return;
     const first = fallbackBranch.data?.content[0];
     if (first) setSearchParams({ branchId: String(first.id) }, { replace: true });
-  }, [branchIdParam, fallbackBranch.data, setSearchParams]);
+  }, [branchIdParam, hold?.branchId, fallbackBranch.data, setSearchParams]);
 
   const selectedBranchId = branchIdParam ? Number(branchIdParam) : null;
   const branchQuery = usePublicBranch(branchIdParam ?? undefined);
@@ -112,6 +126,30 @@ export default function SlotBookingPage() {
     return court && slot ? [toSelected(court, slot, selectedDate)] : [];
   }, [startTimeParam, courtIdParam, selectedDate, slotsByCourt, courts, slotsLoading]);
   const picked = pickedState ?? linked;
+
+  // The URL points somewhere other than the live hold (other branch, day or court).
+  const courtIdNum = courtIdParam ? Number(courtIdParam) : null;
+  const holdConflict = Boolean(hold) && (
+    (hold!.branchId != null && selectedBranchId != null && hold!.branchId !== selectedBranchId) ||
+    hold!.date !== selectedDate ||
+    (courtIdNum !== null && courtIdNum !== hold!.courtId)
+  );
+  const conflictKey = `${selectedBranchId}|${selectedDate}|${courtIdParam}`;
+  const holdPromptOpen = Boolean(hold) && (promptRequested || (holdConflict && dismissedKey !== conflictKey));
+
+  // The server has no "get my hold": a restored hold is checked against freshly fetched slots so a
+  // hold that was released, expired or sealed elsewhere never lingers from sessionStorage.
+  useEffect(() => {
+    if (!hold || holdStatus !== 'active' || hold.date !== selectedDate) return;
+    const state = queryClient.getQueryState(publicBranchKeys.slots(hold.courtId, hold.date));
+    if (!state || state.fetchStatus !== 'idle') return;
+    if (isHoldOutdated(hold, slotsByCourt[hold.courtId], state.dataUpdatedAt)) {
+      discardHold();
+      toast.warning('Giữ chỗ không còn hiệu lực. Vui lòng chọn lại khung giờ.');
+      setPicked([]);
+      void refreshSlots();
+    }
+  });
   const selectedSlots = useMemo(() => (hold ? holdToSelected(hold) : picked), [hold, picked]);
 
   // Scroll to specific court row if courtId is in query params
@@ -133,7 +171,10 @@ export default function SlotBookingPage() {
   }, [courtIdParam, courts, isLoading]);
 
   const handleDateChange = (newDate: string) => {
-    if (hold) return;
+    if (hold) {
+      setPromptRequested(true);
+      return;
+    }
     setPicked([]);
     setBookingError(null);
 
@@ -147,15 +188,18 @@ export default function SlotBookingPage() {
   };
 
   const handleSlotClick = (court: Court, slot: CourtSlot) => {
-    if (hold) return;
+    if (hold) {
+      setPromptRequested(true);
+      return;
+    }
     setBookingError(null);
     const result = toggleSlot(picked, toSelected(court, slot, selectedDate));
     setPicked(result.slots);
     if (result.notice) toast.info(result.notice);
   };
 
-  const handleHold = async (phone: string) => {
-    if (isBusy || hold || selectedSlots.length === 0) return;
+  const handleHold = async (phone: string, skipUnpaidCheck = false) => {
+    if (isBusy || checkingUnpaid || hold || selectedSlots.length === 0) return;
 
     setBookingError(null);
     const guestPhone = phone.trim();
@@ -164,6 +208,22 @@ export default function SlotBookingPage() {
     if (!phoneOptional && !validators.vnMobile(guestPhone)) {
       setBookingError(guestPhone ? PHONE_INVALID_MESSAGE : PHONE_REQUIRED_MESSAGE);
       return;
+    }
+
+    if (isAuthenticatedCustomer && !skipUnpaidCheck) {
+      setCheckingUnpaid(true);
+      try {
+        const existing = await findUnpaidBooking();
+        if (existing) {
+          setUnpaidError(null);
+          setUnpaid(existing);
+          return;
+        }
+      } catch {
+        // The check is a courtesy; the server still enforces slot ownership.
+      } finally {
+        setCheckingUnpaid(false);
+      }
     }
 
     const first = selectedSlots[0];
@@ -203,6 +263,38 @@ export default function SlotBookingPage() {
       toastApiError(error, 'Không thể hủy giữ chỗ trên máy chủ. Khung giờ sẽ tự mở lại khi hết hạn.');
     } finally {
       setPicked([]);
+      void refreshSlots();
+    }
+  };
+
+  const handleReplaceUnpaid = async () => {
+    if (!unpaid) return;
+    setUnpaidBusy(true);
+    setUnpaidError(null);
+    try {
+      await cancelMyBooking(unpaid.id, 'Khách hủy đơn chưa thanh toán để đặt sân khác');
+      void queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
+      void refreshSlots();
+      setUnpaid(null);
+      toast.success('Đã hủy đơn chưa thanh toán.');
+      await handleHold('', true);
+    } catch (error) {
+      setUnpaidError(getApiErrorMessage(error, 'Không thể hủy đơn này. Bạn có thể tiếp tục thanh toán hoặc chờ đơn hết hạn.'));
+    } finally {
+      setUnpaidBusy(false);
+    }
+  };
+
+  // Release the live hold so the customer can book what the URL points at.
+  const handleReplaceHold = async () => {
+    setPromptRequested(false);
+    try {
+      await releaseHold();
+      toast.success('Đã hủy giữ chỗ cũ.');
+    } catch (error) {
+      toastApiError(error, 'Không thể hủy giữ chỗ trên máy chủ. Khung giờ sẽ tự mở lại khi hết hạn.');
+    } finally {
+      setPicked(null);
       void refreshSlots();
     }
   };
@@ -275,6 +367,36 @@ export default function SlotBookingPage() {
             locked={Boolean(hold) || isBusy}
           />
         )}
+
+      {unpaid ? (
+        <ActiveOrderDialog
+          title="Bạn đang có đơn chưa thanh toán"
+          description="Hoàn tất thanh toán đơn này, hoặc hủy đơn để đặt khung giờ mới."
+          detail={`Mã đơn ${unpaid.bookingCode} - ${unpaid.courtName}`}
+          continueLabel="Tiếp tục thanh toán"
+          replaceLabel="Hủy đơn đó và đặt mới"
+          busy={unpaidBusy}
+          error={unpaidError}
+          onContinue={() => navigate(`/payment?bookingId=${unpaid.id}`)}
+          onReplace={() => void handleReplaceUnpaid()}
+          onDismiss={() => setUnpaid(null)}
+        />
+      ) : hold && holdPromptOpen ? (
+        <ActiveOrderDialog
+          title="Bạn đang giữ chỗ một khung giờ khác"
+          description="Hoàn tất thanh toán cho khung giờ đang giữ, hoặc hủy giữ chỗ đó để đặt khung giờ mới."
+          detail={`${hold.courtName} - ${hold.date} - còn ${formatCountdown(remaining)}`}
+          continueLabel="Tiếp tục thanh toán"
+          replaceLabel="Hủy giữ chỗ và đặt mới"
+          busy={holdStatus === 'releasing'}
+          onContinue={() => navigate('/payment')}
+          onReplace={() => void handleReplaceHold()}
+          onDismiss={() => {
+            setPromptRequested(false);
+            setDismissedKey(conflictKey);
+          }}
+        />
+      ) : null}
 
       <BookingPanel
         selectedSlots={selectedSlots}

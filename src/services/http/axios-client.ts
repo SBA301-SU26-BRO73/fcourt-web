@@ -21,7 +21,14 @@ export const axiosClient = axios.create({
   },
 })
 
+/** Marker header: the request is a capability call (e.g. a hold token) and must not carry the session. */
+export const SKIP_AUTH_HEADER = 'X-Skip-Auth'
+
 axiosClient.interceptors.request.use((config) => {
+  if (config.headers?.[SKIP_AUTH_HEADER]) {
+    config.headers.delete(SKIP_AUTH_HEADER)
+    return config
+  }
   const token = tokenStorage.getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
