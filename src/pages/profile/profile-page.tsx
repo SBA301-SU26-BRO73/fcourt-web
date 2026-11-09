@@ -386,7 +386,7 @@ function FeaturedCourtCard({
   isError,
   onOpen,
 }: {
-  topCourt: { courtId: number; courtName: string; branchName: string; bookingCount: number; bookedSlots: number; revenue: number } | null
+  topCourt: { courtId: number | null; courtName: string; branchName: string; bookingCount: number; bookedSlots: number; revenue: number } | null
   isLoading: boolean
   isError: boolean
   onOpen: () => void
