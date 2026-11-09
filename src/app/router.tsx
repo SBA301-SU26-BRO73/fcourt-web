@@ -45,7 +45,8 @@ import { StaffPosPage } from '@/pages/staff/staff-pos-page'
 import { ProfilePage } from '@/pages/profile/profile-page'
 import { PaymentPage } from '@/pages/payment/PaymentPage'
 import { ConfirmationPage } from '@/pages/payment/ConfirmationPage'
-import { TimeSlotDetailPage } from '@/pages/time-slots/time-slot-detail-page'
+import { CourtLocksPage } from '@/pages/court-locks/court-locks-page'
+import { PricingRulesPage } from '@/pages/pricing-rules/pricing-rules-page'
 import { TimeSlotFormPage } from '@/pages/time-slots/time-slot-form-page'
 import { TimeSlotListPage } from '@/pages/time-slots/time-slot-list-page'
 import HomePage from '@/pages/home/home-page'
@@ -125,10 +126,6 @@ export const router = createBrowserRouter([
         element: <TimeSlotFormPage mode="create" />,
       },
       {
-        path: 'time-slots/:timeSlotId',
-        element: <TimeSlotDetailPage />,
-      },
-      {
         path: 'time-slots/:timeSlotId/edit',
         element: <TimeSlotFormPage mode="edit" />,
       },
@@ -203,12 +200,16 @@ export const router = createBrowserRouter([
         element: <TimeSlotFormPage mode="create" />,
       },
       {
-        path: 'time-slots/:timeSlotId',
-        element: <TimeSlotDetailPage />,
-      },
-      {
         path: 'time-slots/:timeSlotId/edit',
         element: <TimeSlotFormPage mode="edit" />,
+      },
+      {
+        path: 'pricing-rules',
+        element: <PricingRulesPage />,
+      },
+      {
+        path: 'court-locks',
+        element: <CourtLocksPage />,
       },
       {
         path: 'bookings',
