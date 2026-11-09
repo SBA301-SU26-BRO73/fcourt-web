@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { branchApi, type Branch, type CourtResponse } from "../../services/branch/branch.api";
+import { usePublicBranch, usePublicBranchCourts, usePublicBranchReviews } from "@/hooks/use-public-branches";
+import { useCourtTypes } from "@/hooks/use-court-types";
+import type { CourtView } from "./branch-detail.types";
 
 import BranchGallery from "./components/branch-gallery";
 import BranchInfo from "./components/branch-info";
@@ -10,37 +12,20 @@ import BookingPanel from "./components/booking-panel";
 import { getApiErrorMessage } from "@/common/utils/api-error";
 
 export default function BranchDetailPage() {
-  const { id } = useParams<{ id: string }>(); 
-  const [branch, setBranch] = useState<Branch | null>(null);
-  const [courts, setCourts] = useState<CourtResponse[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isLoadingCourts, setIsLoadingCourts] = useState<boolean>(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { id } = useParams<{ id: string }>();
+  const branchQuery = usePublicBranch(id);
+  const courtsQuery = usePublicBranchCourts(id);
+  const courtTypesQuery = useCourtTypes();
+  const reviewSummary = usePublicBranchReviews(id, 0).data;
+  const branch = branchQuery.data ?? null;
+  const isLoading = branchQuery.isPending;
+  const loadError = branchQuery.error ? getApiErrorMessage(branchQuery.error, "Không thể tải thông tin cơ sở.") : null;
 
-  useEffect(() => {
-    const fetchBranchDetail = async () => {
-      if (!id) return;
-      try {
-        setIsLoading(true);
-        setIsLoadingCourts(true);
-        setLoadError(null);
-        const data = await branchApi.getById(id);
-        setBranch(data);
-        
-        const courtsData = await branchApi.getCourtsByBranch(id);
-        setCourts(courtsData);
-      } catch (error) {
-        setBranch(null);
-        setCourts([]);
-        setLoadError(getApiErrorMessage(error, "Không thể tải thông tin cơ sở."));
-      } finally {
-        setIsLoading(false);
-        setIsLoadingCourts(false);
-      }
-    };
-
-    fetchBranchDetail();
-  }, [id]);
+  const courts = useMemo<CourtView[]>(() => {
+    const names = new Map((courtTypesQuery.data?.content ?? []).map((type) => [type.id, type.name]));
+    return (courtsQuery.data ?? []).map((court) => ({ ...court, courtTypeName: names.get(court.courtTypeId) ?? "" }));
+  }, [courtsQuery.data, courtTypesQuery.data]);
+  const isLoadingCourts = courtsQuery.isPending || courtTypesQuery.isPending;
 
   // Loading Skeleton cho toàn trang Detail
   if (isLoading) {
@@ -63,7 +48,7 @@ export default function BranchDetailPage() {
           <nav className="flex items-center gap-unit text-on-surface-variant font-label-sm text-label-sm">
             <Link to="/branches" className="hover:text-primary">Địa điểm</Link>
             <span className="material-symbols-outlined text-sm">chevron_right</span>
-            <span className="hover:text-primary cursor-pointer">{branch.city}</span>
+            <Link to={`/branches?city=${encodeURIComponent(branch.city)}`} className="hover:text-primary">{branch.city}</Link>
             <span className="material-symbols-outlined text-sm">chevron_right</span>
             <span className="text-on-surface">{branch.name}</span>
           </nav>
@@ -73,7 +58,7 @@ export default function BranchDetailPage() {
               <h1 className="font-headline-lg text-headline-lg text-on-surface">{branch.name}</h1>
               <p className="font-body-md text-body-md text-on-surface-variant flex items-center gap-unit mt-unit">
                 <span className="material-symbols-outlined text-primary text-lg">location_on</span>
-                {[branch.address, branch.ward, branch.city].filter(Boolean).join(', ')}
+                {[branch.address, branch.city].filter(Boolean).join(', ')}
               </p>
             </div>
             <div className="flex items-center gap-stack-sm">
@@ -82,19 +67,21 @@ export default function BranchDetailPage() {
                    <span className="w-2 h-2 rounded-full bg-secondary"></span> Đang mở cửa
                  </span>
               )}
-              <div className="flex items-center gap-unit text-on-surface">
-                <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                <span className="font-label-md text-label-md">4.9 (124 đánh giá)</span>
-              </div>
+              {reviewSummary && reviewSummary.totalElements > 0 && (
+                <div className="flex items-center gap-unit text-on-surface">
+                  <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                  <span className="font-label-md text-label-md">{reviewSummary.averageRating.toFixed(1)} ({reviewSummary.totalElements} đánh giá)</span>
+                </div>
+              )}
             </div>
           </div>
         </header>
 
         {/* Các component con có thể được pass prop branch vào sau này nếu cần */}
-        <BranchGallery />
+        <BranchGallery branchId={String(branch.id)} branchName={branch.name} />
         <BranchInfo branch={branch} courts={courts} />
         <BranchCourts courts={courts} isLoading={isLoadingCourts} branchId={branch.id} />
-        <BranchReviews />
+        <BranchReviews branchId={String(branch.id)} />
         
       </div>
 

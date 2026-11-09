@@ -97,24 +97,10 @@ export interface DailySlotResponse {
 // Client Side API
 export const branchApi = {
   getAll: async (page: number = 0, size: number = 6): Promise<PageContent<Branch>> => {
-    // TODO(F1): GET /public/branches returns { content, page, size, totalElements, totalPages } with
-    // a different item shape (no adminName/sampleImageUrl/bank fields; adds minPrice, distanceKm...).
+    // TODO(F2): slot-booking still uses this legacy shape; customer browse (F1) uses public-branch.api.ts.
     const response = await axiosClient.get<PageContent<Branch>>(API_ENDPOINTS.branches.list, {
       params: { page, size }
     });
-    return normalizePage(response.data);
-  },
-
-  search: async (filters: BranchFilterRequest, page: number = 0, size: number = 6): Promise<PageContent<Branch>> => {
-    const response = await axiosClient.get<PageContent<Branch>>(API_ENDPOINTS.branches.list, {
-      params: { 
-        ...filters,
-        page: page + 1,
-        size: size 
-      }
-    });
-    // TODO(F1): search and list are merged; filter names are query, city, district, courtTypeId,
-    // minPrice, maxPrice, latitude, longitude (see gap report 2.3).
     return normalizePage(response.data);
   },
 

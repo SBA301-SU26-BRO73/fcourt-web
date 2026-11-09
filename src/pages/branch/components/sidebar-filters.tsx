@@ -1,19 +1,18 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useCourtTypes } from '@/hooks/use-court-types'
-import { findLocationCity, findLocationDistrict, sampleLocations } from '@/data/sample-locations'
+import { findLocationCity, sampleLocations } from '@/data/sample-locations'
 import { useSearchParams } from 'react-router-dom'
 
 export default function SidebarFilters() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { data, isPending, isError } = useCourtTypes()
-  const currentCourtType = searchParams.get('courtTypeName')
+  const currentCourtType = searchParams.get('courtTypeId')
+  const onlyAvailable = searchParams.get('available') === '1'
   const city = searchParams.get('city') ?? ''
   const district = searchParams.get('district') ?? ''
-  const ward = searchParams.get('ward') ?? ''
   const [keyword, setKeyword] = useState(searchParams.get('keyword') ?? '')
   const activeCourtTypes = data?.content.filter((type) => type.active) ?? []
   const districts = findLocationCity(city)?.districts ?? []
-  const wards = findLocationDistrict(city, district)?.wards ?? []
 
   useEffect(() => setKeyword(searchParams.get('keyword') ?? ''), [searchParams])
 
@@ -41,11 +40,11 @@ export default function SidebarFilters() {
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#717a6d]">search</span>
               <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm theo tên sân hoặc địa điểm" className="w-full rounded-xl border-0 bg-[#f3f4f5] py-3 pl-12 pr-4 text-sm text-[#191c1d] outline-none ring-0 placeholder:text-[#717a6d] focus:ring-2 focus:ring-[#2e7d32]" />
             </label>
-            <select value={city} onChange={(event) => updateParams({ city: event.target.value || null, district: null, ward: null })} className="rounded-xl border-0 bg-[#f3f4f5] px-4 py-3 text-sm text-[#41493e] outline-none focus:ring-2 focus:ring-[#2e7d32]">
+            <select value={city} onChange={(event) => updateParams({ city: event.target.value || null, district: null })} className="rounded-xl border-0 bg-[#f3f4f5] px-4 py-3 text-sm text-[#41493e] outline-none focus:ring-2 focus:ring-[#2e7d32]">
               <option value="">Tất cả thành phố</option>
               {sampleLocations.map((location) => <option key={location.city}>{location.city}</option>)}
             </select>
-            <select value={district} disabled={!city} onChange={(event) => updateParams({ district: event.target.value || null, ward: null })} className="rounded-xl border-0 bg-[#f3f4f5] px-4 py-3 text-sm text-[#41493e] outline-none focus:ring-2 focus:ring-[#2e7d32] disabled:cursor-not-allowed disabled:opacity-60">
+            <select value={district} disabled={!city} onChange={(event) => updateParams({ district: event.target.value || null })} className="rounded-xl border-0 bg-[#f3f4f5] px-4 py-3 text-sm text-[#41493e] outline-none focus:ring-2 focus:ring-[#2e7d32] disabled:cursor-not-allowed disabled:opacity-60">
               <option value="">Tất cả quận/huyện</option>
               {districts.map((item) => <option key={item.name}>{item.name}</option>)}
             </select>
@@ -54,17 +53,12 @@ export default function SidebarFilters() {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <span className="mr-1 text-sm font-medium text-[#41493e]">Loại sân:</span>
             {isPending ? <span className="text-sm text-[#717a6d]">Đang tải...</span> : isError ? <span className="text-sm text-red-600">Không tải được loại sân.</span> : activeCourtTypes.map((type) => (
-              <button key={type.id} type="button" onClick={() => updateParams({ courtTypeName: currentCourtType === type.name ? null : type.name })} className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${currentCourtType === type.name ? 'bg-[#2e7d32] text-white' : 'bg-[#edeeef] text-[#41493e] hover:bg-[#c8e6c9] hover:text-[#2e7d32]'}`}>
+              <button key={type.id} type="button" onClick={() => updateParams({ courtTypeId: currentCourtType === String(type.id) ? null : String(type.id) })} className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${currentCourtType === String(type.id) ? 'bg-[#2e7d32] text-white' : 'bg-[#edeeef] text-[#41493e] hover:bg-[#c8e6c9] hover:text-[#2e7d32]'}`}>
                 {type.name}
               </button>
             ))}
-            {city && district && (
-              <select value={ward} onChange={(event) => updateParams({ ward: event.target.value || null })} className="ml-1 rounded-full border-0 bg-[#edeeef] px-3 py-1.5 text-xs text-[#41493e] outline-none focus:ring-2 focus:ring-[#2e7d32]">
-                <option value="">Tất cả phường/xã</option>
-                {wards.map((item) => <option key={item.name}>{item.name}</option>)}
-              </select>
-            )}
-            {(keyword || city || district || ward || currentCourtType) && <button type="button" onClick={() => { setKeyword(''); setSearchParams({}) }} className="ml-auto text-xs font-semibold text-[#2e7d32] hover:underline">Xóa bộ lọc</button>}
+            <button type="button" aria-pressed={onlyAvailable} onClick={() => updateParams({ available: onlyAvailable ? null : '1' })} className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${onlyAvailable ? 'bg-[#2e7d32] text-white' : 'bg-[#edeeef] text-[#41493e] hover:bg-[#c8e6c9] hover:text-[#2e7d32]'}`}>Còn sân hôm nay</button>
+            {(keyword || city || district || currentCourtType || onlyAvailable) && <button type="button" onClick={() => { setKeyword(''); setSearchParams({}) }} className="ml-auto text-xs font-semibold text-[#2e7d32] hover:underline">Xóa bộ lọc</button>}
           </div>
         </div>
       </div>

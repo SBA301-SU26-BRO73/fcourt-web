@@ -103,6 +103,8 @@ export const API_ENDPOINTS = {
     list: joinEndpoint(API_PREFIXES.publicBranches),
     detail: (id: Id) => joinEndpoint(API_PREFIXES.publicBranches, id),
     courts: (id: Id) => joinEndpoint(API_PREFIXES.publicBranches, id, 'courts'),
+    images: (id: Id) => joinEndpoint(API_PREFIXES.publicBranches, id, 'images'),
+    reviews: (id: Id) => joinEndpoint(API_PREFIXES.publicBranches, id, 'reviews'),
   },
   courtSlots: (courtId: Id) => joinEndpoint(API_PREFIXES.publicCourts, courtId, 'slots'),
   // Court owner side.
