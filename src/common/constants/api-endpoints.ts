@@ -215,6 +215,7 @@ export const API_ENDPOINTS = {
   superAdminDashboard: {
     // stats and details are merged into a single overview.
     overview: joinEndpoint(API_PREFIXES.superAdminDashboard, 'overview'),
+    details: joinEndpoint(API_PREFIXES.superAdminDashboard, 'details'),
   },
   adminDashboard: {
     stats: joinEndpoint(API_PREFIXES.adminDashboard, 'stats'),

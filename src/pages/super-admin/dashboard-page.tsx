@@ -1,8 +1,9 @@
 import type { ElementType, ReactNode } from 'react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   BarChart3,
   Building2,
+  CalendarCheck2,
   CircleDollarSign,
   Layers,
   RefreshCw,
@@ -10,14 +11,18 @@ import {
   X,
 } from 'lucide-react'
 
-import { useSuperAdminDashboard } from '@/hooks/use-super-admin-dashboard'
+import { useSuperAdminDashboard, useSuperAdminDashboardDetails } from '@/hooks/use-super-admin-dashboard'
 import type {
+  DashboardBranchRow,
+  DashboardCourtRow,
+  DashboardSubscriptionRow,
   OverviewMonthlyPoint,
   OverviewTopOwner,
+  PlanSalesRow,
 } from '@/services/super_admin/super-admin-dashboard.service'
 import { getApiErrorMessage } from '@/common/utils/api-error'
 
-type DetailModal = 'revenue'
+type DetailModal = 'revenue' | 'plans' | 'branches' | 'courts' | 'subscriptions'
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('vi-VN', {
@@ -291,25 +296,279 @@ function RevenueDetail({ rows }: { rows: OverviewMonthlyPoint[] }) {
   )
 }
 
+function LoadingDetail() {
+  return (
+    <div className="grid place-items-center rounded-2xl bg-slate-50 px-6 py-12 text-center text-sm font-semibold text-slate-500">
+      Đang tải chi tiết...
+    </div>
+  )
+}
+
+function PlanSalesDetail({ rows }: { rows: PlanSalesRow[] }) {
+  if (rows.length === 0) return <EmptyDetail label="Chưa có doanh thu gói thành viên để hiển thị." />
+
+  return (
+    <div className="overflow-hidden rounded-2xl ring-1 ring-slate-100">
+      <table className="w-full min-w-[620px] text-left text-sm">
+        <thead>
+          <tr className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400">
+            <th className="px-5 py-4 font-bold">Gói thành viên</th>
+            <th className="px-5 py-4 text-right font-bold">Đã bán</th>
+            <th className="px-5 py-4 text-right font-bold">Còn hạn / Hết hạn</th>
+            <th className="px-5 py-4 text-right font-bold">Doanh thu</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.planId} className="border-t border-slate-100">
+              <td className="px-5 py-4 font-bold text-slate-900">{row.planName}</td>
+              <td className="px-5 py-4 text-right font-semibold text-slate-600">{row.sold}</td>
+              <td className="px-5 py-4 text-right font-semibold text-slate-600">{row.active} / {row.expired}</td>
+              <td className="px-5 py-4 text-right font-extrabold text-slate-900">{formatCurrency(row.revenue)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function BranchDetail({ rows }: { rows: DashboardBranchRow[] }) {
+  if (rows.length === 0) return <EmptyDetail label="Chưa có chi nhánh đang hoạt động." />
+
+  return (
+    <div className="overflow-hidden rounded-2xl ring-1 ring-slate-100">
+      <table className="w-full min-w-[760px] text-left text-sm">
+        <thead>
+          <tr className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400">
+            <th className="px-5 py-4 font-bold">Chi nhánh</th>
+            <th className="px-5 py-4 font-bold">Chủ sân</th>
+            <th className="px-5 py-4 font-bold">Địa chỉ</th>
+            <th className="px-5 py-4 text-right font-bold">Số sân</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id} className="border-t border-slate-100 align-top">
+              <td className="px-5 py-4">
+                <div className="font-bold text-slate-900">{row.name}</div>
+                <div className="mt-1 text-[12px] font-medium text-slate-400">{row.phone ?? 'Chưa có số điện thoại'}</div>
+              </td>
+              <td className="px-5 py-4">
+                <div className="font-semibold text-slate-700">{row.ownerName || 'Chưa cập nhật'}</div>
+                <div className="mt-1 text-[12px] font-medium text-slate-400">{row.ownerEmail ?? 'Chưa có email'}</div>
+              </td>
+              <td className="px-5 py-4 font-medium text-slate-600">
+                {[row.address, row.ward, row.district, row.city].filter(Boolean).join(', ')}
+              </td>
+              <td className="px-5 py-4 text-right font-bold text-slate-900">{row.courtCount}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+const COURT_STATUS_LABEL: Record<string, string> = {
+  ACTIVE: 'Hoạt động',
+  INACTIVE: 'Ngừng hoạt động',
+  MAINTENANCE: 'Bảo trì',
+}
+
+function CourtDetail({ rows }: { rows: DashboardCourtRow[] }) {
+  if (rows.length === 0) return <EmptyDetail label="Chưa có sân nào." />
+
+  return (
+    <div className="overflow-hidden rounded-2xl ring-1 ring-slate-100">
+      <table className="w-full min-w-[640px] text-left text-sm">
+        <thead>
+          <tr className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400">
+            <th className="px-5 py-4 font-bold">Sân</th>
+            <th className="px-5 py-4 font-bold">Chi nhánh</th>
+            <th className="px-5 py-4 font-bold">Loại sân</th>
+            <th className="px-5 py-4 text-right font-bold">Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id} className="border-t border-slate-100">
+              <td className="px-5 py-4 font-bold text-slate-900">{row.name}</td>
+              <td className="px-5 py-4 font-semibold text-slate-600">{row.branchName}</td>
+              <td className="px-5 py-4 font-medium text-slate-500">{row.courtTypeName ?? 'Chưa phân loại'}</td>
+              <td className="px-5 py-4 text-right">
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-[12px] font-bold text-emerald-700">
+                  {COURT_STATUS_LABEL[row.status] ?? row.status}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function SubscriptionDetail({ rows }: { rows: DashboardSubscriptionRow[] }) {
+  if (rows.length === 0) return <EmptyDetail label="Chưa có gói thành viên nào." />
+
+  return (
+    <div className="overflow-hidden rounded-2xl ring-1 ring-slate-100">
+      <table className="w-full min-w-[760px] text-left text-sm">
+        <thead>
+          <tr className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400">
+            <th className="px-5 py-4 font-bold">Chủ sân</th>
+            <th className="px-5 py-4 font-bold">Gói thành viên</th>
+            <th className="px-5 py-4 font-bold">Thời hạn</th>
+            <th className="px-5 py-4 text-right font-bold">Giới hạn</th>
+            <th className="px-5 py-4 text-right font-bold">Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id} className="border-t border-slate-100 align-top">
+              <td className="px-5 py-4">
+                <div className="font-semibold text-slate-700">{row.ownerName || 'Chưa cập nhật'}</div>
+                <div className="mt-1 text-[12px] font-medium text-slate-400">{row.ownerEmail ?? 'Chưa có email'}</div>
+              </td>
+              <td className="px-5 py-4 font-bold text-slate-900">{row.planName}</td>
+              <td className="px-5 py-4 font-semibold text-slate-600">{row.startDate} - {row.endDate}</td>
+              <td className="px-5 py-4 text-right font-medium text-slate-600">
+                {row.maxBranches} chi nhánh / {row.maxCourts} sân
+              </td>
+              <td className="px-5 py-4 text-right">
+                <span
+                  className={`rounded-full px-3 py-1 text-[12px] font-bold ${
+                    row.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                  }`}
+                >
+                  {row.status === 'ACTIVE' ? 'Còn hiệu lực' : 'Đã hết hạn'}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export function DashboardPage() {
   const [activeModal, setActiveModal] = useState<DetailModal | null>(null)
   const { data, isLoading, isError, error, refetch, isFetching } = useSuperAdminDashboard()
+  const {
+    data: details,
+    isLoading: isDetailsLoading,
+    isError: isDetailsError,
+    error: detailsError,
+  } = useSuperAdminDashboardDetails(activeModal !== null && activeModal !== 'revenue')
 
   const loading = isLoading
   const fetching = isFetching
   const hasError = isError
   const displayError = getApiErrorMessage(error, 'Không thể tải bảng điều khiển.')
 
+  const activeSubscriptions = useMemo(
+    () => details?.subscriptions.filter((item) => item.status === 'ACTIVE') ?? [],
+    [details],
+  )
+  const expiredSubscriptions = useMemo(
+    () => details?.subscriptions.filter((item) => item.status === 'EXPIRED') ?? [],
+    [details],
+  )
+
   function renderModalContent() {
-    if (activeModal !== 'revenue' || !data) return null
+    if (!activeModal || !data) return null
+    const close = () => setActiveModal(null)
+
+    if (activeModal === 'revenue') {
+      return (
+        <DetailModalShell
+          title="Chi tiết doanh thu theo tháng"
+          subtitle={`Tổng doanh thu gói thành viên ${formatCurrency(data.saasRevenue)}, doanh thu đặt sân ${formatCurrency(data.gmv)}`}
+          onClose={close}
+        >
+          <RevenueDetail rows={data.monthly} />
+        </DetailModalShell>
+      )
+    }
+
+    if (isDetailsLoading) {
+      return (
+        <DetailModalShell
+          title="Đang tải chi tiết"
+          subtitle="Hệ thống đang lấy dữ liệu mới nhất từ máy chủ."
+          onClose={close}
+        >
+          <LoadingDetail />
+        </DetailModalShell>
+      )
+    }
+
+    if (isDetailsError || !details) {
+      return (
+        <DetailModalShell
+          title="Không thể tải chi tiết"
+          subtitle={getApiErrorMessage(detailsError, 'Vui lòng thử lại sau.')}
+          onClose={close}
+        >
+          <EmptyDetail label="Không thể tải dữ liệu chi tiết." />
+        </DetailModalShell>
+      )
+    }
+
+    if (activeModal === 'plans') {
+      return (
+        <DetailModalShell
+          title="Chi tiết doanh thu gói thành viên"
+          subtitle={`${details.planSales.reduce((total, plan) => total + plan.sold, 0)} lượt đăng ký, tổng cộng ${formatCurrency(details.planSales.reduce((total, plan) => total + plan.revenue, 0))}`}
+          onClose={close}
+        >
+          <PlanSalesDetail rows={details.planSales} />
+        </DetailModalShell>
+      )
+    }
+
+    if (activeModal === 'branches') {
+      return (
+        <DetailModalShell
+          title="Chi nhánh đang hoạt động"
+          subtitle={`${details.activeBranches.length} chi nhánh đang hoạt động`}
+          onClose={close}
+        >
+          <BranchDetail rows={details.activeBranches} />
+        </DetailModalShell>
+      )
+    }
+
+    if (activeModal === 'courts') {
+      return (
+        <DetailModalShell
+          title="Danh sách sân"
+          subtitle={`${details.courts.length} sân hiện có trong hệ thống`}
+          onClose={close}
+        >
+          <CourtDetail rows={details.courts} />
+        </DetailModalShell>
+      )
+    }
 
     return (
       <DetailModalShell
-        title="Chi tiết doanh thu theo tháng"
-        subtitle={`Tổng doanh thu gói thành viên ${formatCurrency(data.saasRevenue)}, doanh thu đặt sân ${formatCurrency(data.gmv)}`}
-        onClose={() => setActiveModal(null)}
+        title="Chi tiết gói thành viên"
+        subtitle={`${activeSubscriptions.length} còn hiệu lực / ${expiredSubscriptions.length} đã hết hạn`}
+        onClose={close}
       >
-        <RevenueDetail rows={data.monthly} />
+        <div className="space-y-6">
+          <div>
+            <h3 className="mb-3 text-sm font-extrabold text-slate-900">Còn hiệu lực</h3>
+            <SubscriptionDetail rows={activeSubscriptions} />
+          </div>
+          <div>
+            <h3 className="mb-3 text-sm font-extrabold text-slate-900">Đã hết hạn</h3>
+            <SubscriptionDetail rows={expiredSubscriptions} />
+          </div>
+        </div>
       </DetailModalShell>
     )
   }
@@ -323,6 +582,15 @@ export function DashboardPage() {
           </p>
           <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Bảng điều khiển Super Admin</h1>
         </div>
+        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveModal('plans')}
+          className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[13px] font-bold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+        >
+          <CircleDollarSign className="h-4 w-4" />
+          Doanh thu theo gói
+        </button>
         <button
           onClick={() => {
             refetch()
@@ -334,6 +602,7 @@ export function DashboardPage() {
           <RefreshCw className={`h-4 w-4 text-white ${fetching ? 'animate-spin' : ''}`} />
           Làm mới
         </button>
+        </div>
       </div>
 
       {loading && (
@@ -350,7 +619,7 @@ export function DashboardPage() {
 
       {data && (
         <>
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
             <StatCard
               icon={CircleDollarSign}
               gradient="from-emerald-400 to-teal-600"
@@ -372,6 +641,7 @@ export function DashboardPage() {
               label="Chi nhánh hoạt động"
               value={data.branches.active}
               foot={`${data.branches.total} chi nhánh trong hệ thống`}
+              onClick={() => setActiveModal('branches')}
             />
             <StatCard
               icon={Layers}
@@ -379,6 +649,15 @@ export function DashboardPage() {
               label="Tổng số sân"
               value={data.courts}
               foot="Sân hiện có trong hệ thống"
+              onClick={() => setActiveModal('courts')}
+            />
+            <StatCard
+              icon={CalendarCheck2}
+              gradient="from-rose-400 to-pink-600"
+              label="Gói còn hạn / hết hạn"
+              value={details ? `${details.activeSubscriptionCount} / ${details.expiredSubscriptionCount}` : 'Xem'}
+              foot="Danh sách gói thành viên của chủ sân"
+              onClick={() => setActiveModal('subscriptions')}
             />
           </div>
 
