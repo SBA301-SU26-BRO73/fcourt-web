@@ -51,3 +51,70 @@ export async function getSuperAdminOverview(months = OVERVIEW_DEFAULT_MONTHS): P
   })
   return response.data
 }
+
+export interface DashboardBranchRow {
+  id: number
+  name: string
+  ownerId: number
+  ownerName: string
+  ownerEmail: string | null
+  address: string
+  ward: string
+  district: string
+  city: string
+  phone: string | null
+  status: string
+  courtCount: number
+}
+
+export interface DashboardCourtRow {
+  id: number
+  name: string
+  branchId: number
+  branchName: string
+  courtTypeId: number | null
+  courtTypeName: string | null
+  status: string
+}
+
+export interface DashboardSubscriptionRow {
+  id: number
+  ownerId: number
+  ownerName: string
+  ownerEmail: string | null
+  planId: number
+  planName: string
+  maxCourts: number
+  maxBranches: number
+  /** yyyy-MM-dd */
+  startDate: string
+  /** yyyy-MM-dd */
+  endDate: string
+  status: 'ACTIVE' | 'EXPIRED'
+  starter: boolean
+  price: number | null
+}
+
+export interface PlanSalesRow {
+  planId: number
+  planName: string
+  sold: number
+  active: number
+  expired: number
+  revenue: number
+}
+
+export interface SuperAdminDashboardDetails {
+  activeBranches: DashboardBranchRow[]
+  courts: DashboardCourtRow[]
+  subscriptions: DashboardSubscriptionRow[]
+  planSales: PlanSalesRow[]
+  activeSubscriptionCount: number
+  expiredSubscriptionCount: number
+  generatedAt: string
+}
+
+export async function getSuperAdminDashboardDetails(): Promise<SuperAdminDashboardDetails> {
+  const response = await axiosClient.get<SuperAdminDashboardDetails>(API_ENDPOINTS.superAdminDashboard.details)
+  return response.data
+}

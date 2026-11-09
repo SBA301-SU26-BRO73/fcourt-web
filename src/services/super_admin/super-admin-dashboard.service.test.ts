@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { axiosClient } from '@/services/http/axios-client'
 
-import { getSuperAdminOverview } from './super-admin-dashboard.service'
+import { getSuperAdminDashboardDetails, getSuperAdminOverview } from './super-admin-dashboard.service'
 
 vi.mock('@/services/http/axios-client', () => ({ axiosClient: { get: vi.fn() } }))
 
@@ -27,5 +27,25 @@ describe('getSuperAdminOverview', () => {
 
     await expect(getSuperAdminOverview()).resolves.toEqual(body)
     expect(http.get).toHaveBeenCalledWith('/super-admin/dashboard/overview', { params: { months: 12 } })
+  })
+})
+
+describe('getSuperAdminDashboardDetails', () => {
+  beforeEach(() => vi.resetAllMocks())
+
+  it('reads the details document without params and returns the body as is', async () => {
+    const body = {
+      activeBranches: [],
+      courts: [],
+      subscriptions: [],
+      planSales: [{ planId: 2, planName: 'Pro', sold: 2, active: 1, expired: 1, revenue: 1_000_000 }],
+      activeSubscriptionCount: 1,
+      expiredSubscriptionCount: 1,
+      generatedAt: '2026-11-05T03:00:00Z',
+    }
+    http.get.mockResolvedValue({ data: body })
+
+    await expect(getSuperAdminDashboardDetails()).resolves.toEqual(body)
+    expect(http.get).toHaveBeenCalledWith('/super-admin/dashboard/details')
   })
 })
