@@ -21,7 +21,7 @@ const NAV_ITEMS = [
  */
 export function StaffLayout() {
   const navigate = useNavigate()
-  const { user, isLoggedIn, clearAuth } = useAuth()
+  const { user, isLoggedIn, clearAuth, logout: logoutSession } = useAuth()
   const hasAccessToken = !!tokenStorage.getAccessToken()
   const { branchName } = useStaffSession()
 
@@ -41,8 +41,8 @@ export function StaffLayout() {
     return null
   }
 
-  function logout() {
-    clearAuth()
+  async function logout() {
+    await logoutSession()
     navigate('/auth/login?role=staff', { replace: true })
   }
 

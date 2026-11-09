@@ -51,7 +51,7 @@ const PAGE_TITLES: Record<string, string> = {
 export function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, isLoggedIn, clearAuth } = useAuth()
+  const { user, isLoggedIn, clearAuth, logout: logoutSession } = useAuth()
   const hasRecoverableSession = !!tokenStorage.getAccessToken() || !!tokenStorage.getRefreshToken()
 
   useEffect(() => {
@@ -149,8 +149,8 @@ export function AdminLayout() {
         <div className="mt-auto border-t border-slate-100 p-3">
           <button
             type="button"
-            onClick={() => {
-              clearAuth()
+            onClick={async () => {
+              await logoutSession()
               navigate('/auth/login?role=admin', { replace: true })
             }}
             className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all"
