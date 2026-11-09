@@ -89,21 +89,13 @@ export interface VoucherUsageParams {
   phone?: string
 }
 
-/**
- * Shape the customer booking screen still reads from the old monolith.
- * TODO(F4): replaced by POST /vouchers/apply on an existing booking.
- */
-export interface LegacyVoucher {
-  id: number
-  branchId: number
-  code: string
-  discountType: 'PERCENTAGE' | 'FIXED'
-  discountValue: number
-  minOrderValue: number | null
-  maxDiscountValue: number | null
-  usageLimit: number
-  usageCount: number
-  startDate: string
-  expiryDate: string
-  active: boolean
+/** POST /api/vouchers/apply response (voucher-service). */
+export interface VoucherApplication {
+  applicationId: string
+  voucherId: number
+  bookingId: number
+  originalAmount: number
+  discountAmount: number
+  finalAmount: number
+  expiresAt: string
 }
