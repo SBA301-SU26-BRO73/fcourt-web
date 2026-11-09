@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { QRPaymentCard } from '../../components/QRPaymentCard';
 import { UploadReceipt } from '../../components/UploadReceipt';
@@ -56,6 +57,7 @@ export function PaymentPage() {
 /** /payment without a booking: turn the stored hold into a booking, signed in or as a guest (hold token + phone, no account). */
 function HoldCheckout() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [hold] = useState(() => loadActiveHold());
   const { isExpired } = useCountdown(hold?.expiresAt ?? null);
@@ -85,6 +87,7 @@ function HoldCheckout() {
         // A guest has no JWT: the hold token stays the credential of this booking's checkout.
         if (!user) saveGuestBookingToken(booking.id, keyed.holdToken);
         clearActiveHold();
+        void queryClient.invalidateQueries({ queryKey: ['public-courts', 'slots'] });
         navigate(`/payment?bookingId=${booking.id}`, { replace: true });
       })
       .catch(() => undefined);
@@ -100,6 +103,7 @@ function HoldCheckout() {
   const chooseAgain = () => {
     if (hold) void releaseHold(hold.holdToken).catch(() => undefined);
     clearActiveHold();
+    void queryClient.invalidateQueries({ queryKey: ['public-courts', 'slots'] });
     navigate('/slot-booking');
   };
 

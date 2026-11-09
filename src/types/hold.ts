@@ -43,6 +43,8 @@ export interface ActiveHold {
   /** Empty when a signed-in customer held without a phone. */
   guestPhone: string
   slots: HeldSlot[]
+  /** Epoch ms the hold was created; slot data fetched before it cannot prove the hold is gone. */
+  savedAt?: number
   /** Idempotency-Key of POST /api/bookings, created once per hold so a retry replays the same booking. */
   idempotencyKey?: string
 }

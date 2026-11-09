@@ -1,7 +1,9 @@
 import { createContext, useState, type PropsWithChildren } from 'react'
 
 import { logout as logoutRequest } from '@/services/auth/auth.service'
+import { releaseHold } from '@/services/hold/hold.api'
 import type { AuthUser, TokenResponse } from '@/types/auth'
+import { clearActiveHold, loadActiveHold } from '@/utils/hold-storage'
 import { tokenStorage } from '@/utils/token'
 
 interface AuthContextValue {
@@ -31,6 +33,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   async function logout() {
+    // A hold belongs to the account that made it: give the slots back and forget it before the session ends.
+    const hold = loadActiveHold()
+    clearActiveHold()
+    if (hold) await releaseHold(hold.holdToken).catch(() => undefined)
     const refreshToken = tokenStorage.getRefreshToken()
     try {
       if (refreshToken) await logoutRequest(refreshToken)

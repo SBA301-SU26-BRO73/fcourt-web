@@ -88,6 +88,7 @@ export function useSlotHold({ onExpired }: Options = {}) {
         date: input.date,
         guestPhone: input.guestPhone,
         slots: input.slots,
+        savedAt: Date.now(),
       }
       saveActiveHold(created)
       setNow(Date.now())
@@ -107,12 +108,18 @@ export function useSlotHold({ onExpired }: Options = {}) {
     try {
       await releaseHold(token)
     } finally {
-      // The hold is dropped locally either way; an unreleased one simply expires on the server.
+      // The hold is dropped locally either way; if the server call failed it simply expires on its own.
       dispatch({ type: 'RELEASE_SETTLED' })
     }
   }, [hold])
 
   const dismissExpired = useCallback(() => dispatch({ type: 'RESET' }), [])
+
+  /** Forget a hold the server no longer has (released, expired or sealed elsewhere). */
+  const discard = useCallback(() => {
+    clearActiveHold()
+    dispatch({ type: 'RESET' })
+  }, [])
 
   const remaining = hold ? remainingSeconds(hold.expiresAt, now) : 0
 
@@ -124,6 +131,7 @@ export function useSlotHold({ onExpired }: Options = {}) {
     isBusy: status === 'holding' || status === 'releasing',
     start,
     release,
+    discard,
     dismissExpired,
   }
 }

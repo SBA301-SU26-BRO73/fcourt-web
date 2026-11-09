@@ -4,7 +4,10 @@ import { axiosClient } from '@/services/http/axios-client'
 
 import { holdSlots, InvalidHoldResponseError, parseHoldResponse, releaseHold } from './hold.api'
 
-vi.mock('@/services/http/axios-client', () => ({ axiosClient: { post: vi.fn(), delete: vi.fn() } }))
+vi.mock('@/services/http/axios-client', () => ({
+  axiosClient: { post: vi.fn(), delete: vi.fn() },
+  SKIP_AUTH_HEADER: 'X-Skip-Auth',
+}))
 
 const http = vi.mocked(axiosClient)
 const TOKEN = '3f2504e0-4f89-41d3-9a0c-0305e82c3301'
@@ -27,7 +30,18 @@ describe('hold-slots', () => {
   it('releases by token with DELETE', async () => {
     http.delete.mockResolvedValue({ status: 204 })
     await releaseHold(TOKEN)
-    expect(http.delete).toHaveBeenCalledWith(`/bookings/hold-slots/${TOKEN}`)
+    expect(http.delete).toHaveBeenCalledWith(`/bookings/hold-slots/${TOKEN}`, { headers: { 'X-Skip-Auth': '1' } })
+  })
+
+  it('retries once on a server error and gives up on a client error', async () => {
+    http.delete.mockRejectedValueOnce({ status: 503 }).mockResolvedValueOnce({ status: 204 })
+    await releaseHold(TOKEN)
+    expect(http.delete).toHaveBeenCalledTimes(2)
+
+    http.delete.mockReset()
+    http.delete.mockRejectedValue({ status: 400 })
+    await expect(releaseHold(TOKEN)).rejects.toEqual({ status: 400 })
+    expect(http.delete).toHaveBeenCalledTimes(1)
   })
 })
 
