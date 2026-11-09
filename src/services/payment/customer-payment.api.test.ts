@@ -62,3 +62,12 @@ describe('voucher apply api', () => {
     expect(http.post).toHaveBeenCalledWith('/vouchers/apply', { code: 'SALE10', bookingId: 4, totalAmount: 90000 })
   })
 })
+
+describe('guest lookup api', () => {
+  it('posts the upper-cased code and a cleaned phone', async () => {
+    const { lookupGuestBooking } = await import('@/services/booking/booking.api')
+    http.post.mockResolvedValue({ data: {} })
+    await lookupGuestBooking(' fc12345678 ', '0912 345.678')
+    expect(http.post).toHaveBeenCalledWith('/public/bookings/lookup', { bookingCode: 'FC12345678', phone: '0912345678' })
+  })
+})

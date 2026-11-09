@@ -1,6 +1,6 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
+import type { GuestBooking } from '@/types/booking'
 import type { CreateBookingRequest } from '@/types/checkout'
 import type { MyBooking } from '@/types/my-booking'
 
@@ -37,19 +37,16 @@ export async function getBookingDetail(bookingId: number, holdToken?: string | n
   return data
 }
 
-// TODO(F5-guest): the two calls below still target the old monolith; the guest lookup item replaces them.
-export async function cancelBooking(bookingId: number, payload: CancelBookingRequest) {
-  const { data } = await axiosClient.post<BookingResponse>(
-    API_ENDPOINTS.bookings.cancel(bookingId),
-    payload,
-  )
-  return data
+/** Phone as typed by a guest: spaces and dots dropped, +84 / 84 prefix kept (the server normalises). */
+export function normalizeLookupPhone(phone: string) {
+  return phone.replace(/[\s.-]/g, '')
 }
 
-export async function lookupBooking(bookingCode: string, phone: string) {
-  const { data } = await axiosClient.get<BookingResponse>(
-    API_ENDPOINTS.bookings.lookup,
-    { params: { bookingCode, phone } },
-  )
+/** POST /api/public/bookings/lookup: minimal view of a guest booking; 404 on any miss, 429 with Retry-After. */
+export async function lookupGuestBooking(bookingCode: string, phone: string) {
+  const { data } = await axiosClient.post<GuestBooking>(API_ENDPOINTS.bookings.lookup, {
+    bookingCode: bookingCode.trim().toUpperCase(),
+    phone: normalizeLookupPhone(phone),
+  })
   return data
 }

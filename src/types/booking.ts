@@ -173,3 +173,19 @@ export interface RefundRequestResponse {
   createdAt: string
   updatedAt: string
 }
+
+/** booking-service GuestBookingResponse. checkInCode and qrImageUrl are only set when status is CONFIRMED. */
+export interface GuestBooking {
+  id: number
+  bookingCode: string
+  branchName: string
+  branchAddress: string | null
+  courtName: string
+  date: string
+  slots: Array<{ startTime: string; endTime: string; price: number }>
+  totalPrice: number
+  status: BookingStatus
+  paymentStatus: string | null
+  checkInCode: string | null
+  qrImageUrl: string | null
+}
