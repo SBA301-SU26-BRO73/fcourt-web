@@ -174,5 +174,9 @@ export const API_ENDPOINTS = {
   },
   adminDashboard: {
     stats: joinEndpoint(API_PREFIXES.adminDashboard, 'stats'),
+    revenueChart: joinEndpoint(API_PREFIXES.adminDashboard, 'revenue-chart'),
+    topCourts: joinEndpoint(API_PREFIXES.adminDashboard, 'analytics/top-courts'),
+    peakHours: joinEndpoint(API_PREFIXES.adminDashboard, 'analytics/peak-hours'),
+    exportRevenue: joinEndpoint(API_PREFIXES.adminDashboard, 'export/revenue'),
   },
 } as const

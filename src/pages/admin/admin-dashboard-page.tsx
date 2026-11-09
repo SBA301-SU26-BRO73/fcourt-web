@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { toast } from 'sonner'
 import {
   Activity,
   ArrowUpRight,
@@ -6,13 +8,15 @@ import {
   CalendarDays,
   CircleDollarSign,
   Clock3,
+  Download,
   RefreshCw,
   Trophy,
   WalletCards,
 } from 'lucide-react'
 
-import { useAdminDashboard } from '@/hooks/use-admin-dashboard'
-import { getApiErrorMessage } from '@/common/utils/api-error'
+import { useAdminDashboard, useDashboardBranches, useExportRevenue } from '@/hooks/use-admin-dashboard'
+import { getApiErrorMessage, toastApiError } from '@/common/utils/api-error'
+import { dashboardRanges } from '@/services/admin/admin-dashboard.service'
 import type {
   AdminDashboardStats,
   AdminPeakHourPoint,
@@ -29,7 +33,29 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 const numberFormatter = new Intl.NumberFormat('en-US')
 
 export function AdminDashboardPage() {
-  const { data, isLoading, isError, error, refetch, isFetching } = useAdminDashboard()
+  const [branchId, setBranchId] = useState<number | undefined>(undefined)
+  const { data, isLoading, isError, error, refetch, isFetching } = useAdminDashboard(true, branchId)
+  const branchesQuery = useDashboardBranches()
+  const exportMutation = useExportRevenue()
+
+  function handleExport() {
+    const { last30From, today } = dashboardRanges()
+    exportMutation.mutate(
+      { fromDate: last30From, toDate: today, branchId },
+      {
+        onSuccess: ({ blob, filename }) => {
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = filename
+          link.click()
+          URL.revokeObjectURL(url)
+          toast.success('Đã xuất báo cáo doanh thu.')
+        },
+        onError: (err) => toastApiError(err, 'Không thể xuất báo cáo.'),
+      },
+    )
+  }
 
   if (isLoading) {
     return (
@@ -62,7 +88,15 @@ export function AdminDashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <Header isFetching={isFetching} onRefresh={() => refetch()} />
+      <Header
+        isFetching={isFetching}
+        onRefresh={() => refetch()}
+        branches={branchesQuery.data ?? []}
+        branchId={branchId}
+        onBranchChange={setBranchId}
+        isExporting={exportMutation.isPending}
+        onExport={handleExport}
+      />
       <KpiGrid data={data} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
@@ -78,7 +112,23 @@ export function AdminDashboardPage() {
   )
 }
 
-function Header({ isFetching, onRefresh }: { isFetching: boolean; onRefresh: () => void }) {
+function Header({
+  isFetching,
+  onRefresh,
+  branches,
+  branchId,
+  onBranchChange,
+  isExporting,
+  onExport,
+}: {
+  isFetching: boolean
+  onRefresh: () => void
+  branches: Array<{ id: number; name: string }>
+  branchId: number | undefined
+  onBranchChange: (branchId: number | undefined) => void
+  isExporting: boolean
+  onExport: () => void
+}) {
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -93,6 +143,27 @@ function Header({ isFetching, onRefresh }: { isFetching: boolean; onRefresh: () 
           Doanh thu đặt sân, tỉ lệ lấp đầy, khung giờ cao điểm và top sân doanh thu cao dựa trên dữ liệu thực tế.
         </p>
       </div>
+      <div className="flex flex-wrap items-center gap-3">
+      <select
+        aria-label="Chọn chi nhánh"
+        value={branchId ?? ''}
+        onChange={(event) => onBranchChange(event.target.value ? Number(event.target.value) : undefined)}
+        className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+      >
+        <option value="">Tất cả chi nhánh</option>
+        {branches.map((branch) => (
+          <option key={branch.id} value={branch.id}>{branch.name}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={onExport}
+        disabled={isExporting}
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <Download size={16} />
+        {isExporting ? 'Đang xuất...' : 'Xuất Excel 30 ngày'}
+      </button>
       <button
         type="button"
         onClick={onRefresh}
@@ -103,6 +174,7 @@ function Header({ isFetching, onRefresh }: { isFetching: boolean; onRefresh: () 
         <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
         Làm mới
       </button>
+      </div>
     </div>
   )
 }
@@ -266,7 +338,7 @@ function PeakHoursPanel({ data }: { data: AdminPeakHourPoint[] }) {
       <PanelTitle
         icon={Clock3}
         title="Khung giờ cao điểm"
-        description="Số lượng slot đã được đặt phân theo từng khung giờ."
+        description="Số slot đã đặt theo giờ bắt đầu trong tháng này; giờ cao điểm được tô xanh."
       />
       <div className="mt-6 flex h-64 items-end gap-2">
         {data.map((item) => {
@@ -275,12 +347,12 @@ function PeakHoursPanel({ data }: { data: AdminPeakHourPoint[] }) {
             <div key={item.hour} className="group flex h-full flex-1 flex-col items-center justify-end gap-2">
               <div className="relative flex w-full items-end justify-center">
                 <div
-                  className="w-full max-w-8 rounded-t-md bg-slate-900 transition group-hover:bg-emerald-600"
+                  className={`w-full max-w-8 rounded-t-md transition group-hover:bg-emerald-600 ${item.peak ? 'bg-emerald-700' : 'bg-slate-900'}`}
                   style={{ height: `${height}%` }}
                 />
                 <div className="pointer-events-none absolute bottom-full mb-2 hidden min-w-32 rounded-lg bg-slate-950 px-3 py-2 text-center text-xs font-semibold text-white shadow-xl group-hover:block">
                   {item.bookedSlots} slot
-                  <div className="text-slate-300">{formatCompactCurrency(item.revenue)}</div>
+                  <div className="text-slate-300">{item.bookings} lượt đặt</div>
                 </div>
               </div>
               <div className="text-[10px] font-bold text-slate-400 [writing-mode:vertical-rl] sm:[writing-mode:horizontal-tb]">
@@ -299,8 +371,8 @@ function TopCourtsPanel({ data }: { data: AdminTopCourtRow[] }) {
     <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs">
       <PanelTitle
         icon={Trophy}
-        title="Top Sân doanh thu cao nhất"
-        description="Xếp hạng theo doanh thu đặt sân trong năm hiện tại."
+        title="Top sân được đặt nhiều nhất"
+        description="Xếp hạng theo số lượt đặt (rồi đến doanh thu) trong năm hiện tại."
       />
       <div className="mt-5 overflow-hidden rounded-xl border border-slate-200/80">
         {data.length === 0 ? (
@@ -320,11 +392,11 @@ function TopCourtsPanel({ data }: { data: AdminTopCourtRow[] }) {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {data.map((row, index) => (
-                <tr key={row.courtId} className="hover:bg-slate-50 transition-colors">
+                <tr key={`${row.branchId}-${row.courtId ?? row.courtName}`} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-sm font-bold text-emerald-700">
-                        {index + 1}
+                        {row.rank || index + 1}
                       </div>
                       <div className="min-w-0">
                         <div className="truncate text-sm font-bold text-slate-900">{row.courtName}</div>
