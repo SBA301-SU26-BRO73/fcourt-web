@@ -1,31 +1,26 @@
 import { formatClock } from '@/pages/staff/schedule-utils'
-import type { TimeSlotTemplate } from '@/types/booking'
+import type { CourtSlot } from '@/types/public-branch'
 
 interface WalkInSlotGridProps {
-  templates: TimeSlotTemplate[]
-  bookedTimes: Set<string>
-  selectedTimes: string[]
-  onToggle: (startTime: string) => void
+  slots: CourtSlot[]
+  selectedIds: number[]
+  onToggle: (slotId: number) => void
 }
 
-export function WalkInSlotGrid({
-  templates,
-  bookedTimes,
-  selectedTimes,
-  onToggle,
-}: WalkInSlotGridProps) {
+/** Today's slots of a court; only AVAILABLE ones can be picked, the rest are dimmed. */
+export function WalkInSlotGrid({ slots, selectedIds, onToggle }: WalkInSlotGridProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-        {templates.map((tmpl) => {
-          const isBooked = bookedTimes.has(tmpl.startTime)
-          const isSelected = selectedTimes.includes(tmpl.startTime)
+        {slots.map((slot) => {
+          const isBooked = slot.status !== 'AVAILABLE'
+          const isSelected = selectedIds.includes(slot.slotId)
           return (
             <button
-              key={tmpl.id}
+              key={slot.slotId}
               type="button"
               disabled={isBooked}
-              onClick={() => onToggle(tmpl.startTime)}
+              onClick={() => onToggle(slot.slotId)}
               className={`rounded-lg border px-2 py-2.5 text-center font-mono text-xs font-medium transition-colors ${
                 isBooked
                   ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300 line-through'
@@ -34,7 +29,7 @@ export function WalkInSlotGrid({
                     : 'cursor-pointer border-slate-200 bg-white text-slate-700 hover:border-green-200 hover:bg-green-50'
               }`}
             >
-              {formatClock(tmpl.startTime)}
+              {formatClock(slot.startTime)}
             </button>
           )
         })}

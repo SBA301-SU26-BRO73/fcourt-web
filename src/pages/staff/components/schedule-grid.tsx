@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import type { Court } from '@/types/court'
+import type { StaffCourt } from '@/types/counter'
 import type { StaffScheduleItem } from '@/types/staff'
 import { BookingBlock } from '@/pages/staff/components/booking-block'
 import {
@@ -12,7 +12,7 @@ import {
 } from '@/pages/staff/schedule-utils'
 
 interface ScheduleGridProps {
-  courts: Array<Pick<Court, 'id' | 'name' | 'courtTypeName'>>
+  courts: Array<Pick<StaffCourt, 'id' | 'name' | 'status'>>
   schedule: StaffScheduleItem[]
   openMin: number
   rows: number
@@ -64,7 +64,7 @@ export function ScheduleGrid({
               {court.name}
             </div>
             <div className="truncate text-[11px] text-slate-400">
-              {court.courtTypeName}
+              {court.status === 'ACTIVE' ? '' : court.status}
             </div>
           </div>
         ))}

@@ -86,23 +86,30 @@ export const API_ENDPOINTS = {
   },
   staff: {
     list: joinEndpoint(API_PREFIXES.adminStaff),
-    // TODO(F13): there is no court board endpoint; combine facility courts with public slots.
-    courtBoard: joinEndpoint(API_PREFIXES.staff, 'court-board'),
-    // TODO(F13): POS orders are created and settled in one call; there is no confirm step.
-    posOrderConfirm: (id: Id) => joinEndpoint(API_PREFIXES.staffPos, 'orders', id, 'confirm'),
-    me: joinEndpoint(API_PREFIXES.staff, 'me'),
     create: joinEndpoint(API_PREFIXES.adminStaff),
     update: (id: Id) => joinEndpoint(API_PREFIXES.adminStaff, id),
     /** `DELETE` disables the assignment and the login account. */
     delete: (id: Id) => joinEndpoint(API_PREFIXES.adminStaff, id),
     reactivate: (id: Id) => joinEndpoint(API_PREFIXES.adminStaff, id, 'reactivate'),
-    schedule: joinEndpoint(API_PREFIXES.staff, 'schedule'),
-    checkinManual: joinEndpoint(API_PREFIXES.staff, 'check-in/manual'),
-    walkInBooking: joinEndpoint(API_PREFIXES.staff, 'walk-in'),
-    checkout: (bookingId: Id) => joinEndpoint(API_PREFIXES.staff, 'bookings', bookingId, 'checkout'),
+  },
+  // Front-desk operations (F13): staff-operations-service, facility-service staff routes, pos-retail-service.
+  counter: {
+    me: joinEndpoint(API_PREFIXES.staff, 'me'),
+    branch: (branchId: Id) => joinEndpoint(API_PREFIXES.staff, 'branches', branchId),
     branchCourts: (branchId: Id) => joinEndpoint(API_PREFIXES.staff, 'branches', branchId, 'courts'),
+    schedule: joinEndpoint(API_PREFIXES.staff, 'schedule'),
+    scheduleToday: joinEndpoint(API_PREFIXES.staff, 'schedule/today'),
+    checkInPreview: joinEndpoint(API_PREFIXES.staff, 'check-in/preview'),
+    checkInVerify: joinEndpoint(API_PREFIXES.staff, 'check-in/verify'),
+    checkInManual: joinEndpoint(API_PREFIXES.staff, 'check-in/manual'),
+    checkInOffline: joinEndpoint(API_PREFIXES.staff, 'check-in/offline'),
+    offlineTickets: joinEndpoint(API_PREFIXES.staff, 'offline/tickets'),
+    walkIn: joinEndpoint(API_PREFIXES.staff, 'walk-in'),
+    checkoutPreview: (bookingId: Id) => joinEndpoint(API_PREFIXES.staff, 'bookings', bookingId, 'checkout-preview'),
+    checkout: (bookingId: Id) => joinEndpoint(API_PREFIXES.staff, 'bookings', bookingId, 'checkout'),
     posProducts: joinEndpoint(API_PREFIXES.staffPos, 'products'),
     posOrders: joinEndpoint(API_PREFIXES.staffPos, 'orders'),
+    posOrder: (orderId: Id) => joinEndpoint(API_PREFIXES.staffPos, 'orders', orderId),
   },
   // Customer-facing branch/court discovery.
   branches: {

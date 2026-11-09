@@ -1,43 +1,64 @@
-export type PaymentMethod = 'CASH' | 'TRANSFER'
-export type OrderStatus = 'PENDING' | 'PAID' | 'CANCELLED'
+/** Retail point of sale of pos-retail-service (F13). Money is whole VND. */
 
-/** GET /api/v1/staff/products */
+/** GET /api/staff/pos/products (PosViews.Product) */
 export interface PosProduct {
   id: number
+  branchId: number
   name: string
   unit: string | null
+  category: string
   price: number
+  active: boolean
+  stockQuantity: number
+  imageUrl: string | null
 }
 
-export interface CreateOrderItem {
+export interface PosProductParams {
+  query?: string
+  category?: string
+  limit?: number
+  offset?: number
+}
+
+/** CASH is a standalone paid bill; BOOKING adds the order to a CHECKED_IN booking's bill. */
+export type PosPaymentMethod = 'CASH' | 'BOOKING'
+
+/** PAID and ON_BOOKING are settled, PENDING_CHARGE waits for the booking-service, CANCELLED is final. */
+export type PosOrderStatus = 'PAID' | 'ON_BOOKING' | 'PENDING_CHARGE' | 'CANCELLED' | (string & {})
+
+export interface PosOrderItemRequest {
   productId: number
   quantity: number
 }
 
-/** POST /api/v1/staff/orders request body. */
-export interface CreateOrderRequest {
-  bookingId: number | null
-  paymentMethod: PaymentMethod
-  items: CreateOrderItem[]
+/** POST /api/staff/pos/orders body; `bookingId` is required for BOOKING only. */
+export interface CreatePosOrderRequest {
+  paymentMethod: PosPaymentMethod
+  bookingId?: number
+  items: PosOrderItemRequest[]
 }
 
-export interface OrderItemResponse {
+export interface PosOrderItem {
   productId: number
   productName: string
+  unit: string | null
   quantity: number
   priceAtOrder: number
   lineTotal: number
 }
 
-/** POST/GET /api/v1/staff/orders response payload. */
-export interface OrderResponse {
+/** PosViews.Order, answered by POST (201 or 202), GET /{id} and the history list. */
+export interface PosOrder {
   id: number
+  orderCode: string
   branchId: number
   bookingId: number | null
+  cashierUserId: number
   totalAmount: number
-  paymentMethod: PaymentMethod
-  status: OrderStatus
-  items: OrderItemResponse[]
+  paymentMethod: PosPaymentMethod
+  status: PosOrderStatus
   createdAt: string
   paidAt: string | null
+  version: number
+  items: PosOrderItem[]
 }
