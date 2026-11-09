@@ -39,7 +39,7 @@ export function nextPollDelay(input: {
   return Math.min(POLL_MAX_MS, POLL_BASE_MS * 2 ** input.failures)
 }
 
-export type CheckoutFailure = 'expired' | 'not-awaiting-payment' | 'forbidden' | 'not-found' | 'network' | 'other'
+export type CheckoutFailure = 'expired' | 'not-awaiting-payment' | 'forbidden' | 'not-found' | 'bank-not-configured' | 'network' | 'other'
 
 /** Classifies the error of checkout-info / booking detail the way the Flutter screen does. */
 export function classifyCheckoutError(error: unknown): CheckoutFailure {
@@ -53,6 +53,8 @@ export function classifyCheckoutError(error: unknown): CheckoutFailure {
     case 401:
     case 403:
       return 'forbidden'
+    case 422:
+      return 'bank-not-configured'
     case 404:
       return 'not-found'
     default:
@@ -65,6 +67,7 @@ export const CHECKOUT_FAILURE_MESSAGE: Record<CheckoutFailure, string> = {
   'not-awaiting-payment': 'Đơn này không còn ở trạng thái chờ thanh toán.',
   forbidden: 'Bạn không có quyền xem đơn này. Vui lòng đăng nhập đúng tài khoản đã đặt sân.',
   'not-found': 'Không tìm thấy đơn đặt sân.',
+  'bank-not-configured': 'Chi nhánh chưa cấu hình đủ thông tin tài khoản ngân hàng để thanh toán. Vui lòng liên hệ chi nhánh hoặc chọn chi nhánh khác.',
   network: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại.',
   other: 'Không thể tải thông tin thanh toán. Vui lòng thử lại.',
 }
