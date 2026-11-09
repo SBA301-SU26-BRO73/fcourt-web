@@ -73,20 +73,21 @@ function HoldCheckout() {
     if (!hold) return;
     // The key is stored with the hold, so a retry or a reload replays the same booking.
     const keyed = withIdempotencyKey(hold, newIdempotencyKey);
-    createBooking.mutate(
-      {
+    // mutateAsync, not mutate(..., { onSuccess }): under StrictMode the effect runs during the first
+    // mount and per-call callbacks are dropped on the remount, which left the page stuck on "creating".
+    // Failures surface through createBooking.isError.
+    createBooking
+      .mutateAsync({
         payload: { holdToken: keyed.holdToken, courtId: keyed.courtId, date: keyed.date, slotIds: keyed.slots.map((slot) => slot.slotId) },
         idempotencyKey: keyed.idempotencyKey as string,
-      },
-      {
-        onSuccess: (booking) => {
-          // A guest has no JWT: the hold token stays the credential of this booking's checkout.
-          if (!user) saveGuestBookingToken(booking.id, keyed.holdToken);
-          clearActiveHold();
-          navigate(`/payment?bookingId=${booking.id}`, { replace: true });
-        },
-      },
-    );
+      })
+      .then((booking) => {
+        // A guest has no JWT: the hold token stays the credential of this booking's checkout.
+        if (!user) saveGuestBookingToken(booking.id, keyed.holdToken);
+        clearActiveHold();
+        navigate(`/payment?bookingId=${booking.id}`, { replace: true });
+      })
+      .catch(() => undefined);
   };
 
   useEffect(() => {
