@@ -139,6 +139,14 @@ export const API_ENDPOINTS = {
   },
   bookings: {
     adminList: joinEndpoint(API_PREFIXES.adminBookings),
+    adminCancel: (id: Id) => joinEndpoint(API_PREFIXES.adminBookings, id, 'cancel'),
+    fullCourt: {
+      quote: joinEndpoint(API_PREFIXES.adminBookings, 'full-court', 'quote'),
+      root: joinEndpoint(API_PREFIXES.adminBookings, 'full-court'),
+      detail: (id: Id) => joinEndpoint(API_PREFIXES.adminBookings, 'full-court', id),
+      cancel: (id: Id) => joinEndpoint(API_PREFIXES.adminBookings, 'full-court', id, 'cancel'),
+      relock: (id: Id) => joinEndpoint(API_PREFIXES.adminBookings, 'full-court', id, 'relock'),
+    },
     create: joinEndpoint(API_PREFIXES.bookings),
     /** slot-hold-engine: POST creates a hold, DELETE /{holdToken} releases it. */
     holdSlots: joinEndpoint(API_PREFIXES.bookings, 'hold-slots'),
@@ -151,7 +159,8 @@ export const API_ENDPOINTS = {
     cancellationPolicy: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id, 'cancellation-policy'),
   },
   payments: {
-    adminTransactions: joinEndpoint(API_PREFIXES.adminPayments, 'transactions'),
+    adminPending: joinEndpoint(API_PREFIXES.adminPayments, 'pending'),
+    adminTransactions:joinEndpoint(API_PREFIXES.adminPayments, 'transactions'),
     confirm: (id: Id) => joinEndpoint(API_PREFIXES.adminPayments, id, 'confirm'),
     reject: (id: Id) => joinEndpoint(API_PREFIXES.adminPayments, id, 'reject'),
     status: (bookingId: Id) => joinEndpoint('/payments', bookingId, 'status'),
@@ -169,6 +178,8 @@ export const API_ENDPOINTS = {
     request: joinEndpoint('/refunds/request'),
     byBooking: (bookingId: Id) => joinEndpoint('/refunds/booking', bookingId),
     pending: joinEndpoint(API_PREFIXES.adminRefunds, 'pending'),
+    approve: (id: Id) => joinEndpoint(API_PREFIXES.adminRefunds, id, 'approve'),
+    reject: (id: Id) => joinEndpoint(API_PREFIXES.adminRefunds, id, 'reject'),
     complete: (id: Id) => joinEndpoint(API_PREFIXES.adminRefunds, id, 'complete'),
   },
   subscriptions: {

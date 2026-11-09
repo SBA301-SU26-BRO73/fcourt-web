@@ -5,31 +5,41 @@ import {
   Clock,
   User,
   Phone,
-  Mail,
   CheckCircle2,
   XCircle,
-  HandCoins,
+  Building2,
 } from 'lucide-react';
-import type { Booking, BookingStatus } from '@/services/admin/booking.service';
+import type { AdminBooking } from '@/types/admin-booking';
 import { StatusBadge } from './StatusBadge';
 
 interface BookingDetailModalProps {
-  booking: Booking;
+  booking: AdminBooking;
+  /** True when the booking has a submitted receipt waiting in the branch's pending payments. */
+  hasPendingPayment: boolean;
   onClose: () => void;
   onApprove: () => void;
   onReject: (actionType: 'reject_payment' | 'cancel_booking') => void;
 }
 
+const PAYMENT_LABELS: Record<string, string> = {
+  PENDING: 'Chờ duyệt bill',
+  CONFIRMED: 'Đã xác nhận',
+  PAID: 'Đã thanh toán',
+  REJECTED: 'Bill bị từ chối',
+  CANCELLED: 'Đã hủy',
+};
+
 export function BookingDetailModal({
   booking,
+  hasPendingPayment,
   onClose,
   onApprove,
   onReject,
 }: BookingDetailModalProps) {
-  const status = getBookingStatus(booking);
-  const canReview = isReviewableStatus(status);
-  const canEditDecision = canReview || status === 'CONFIRMED' || status === 'CANCELLED';
-  const bookingCode = `BK-${booking.id}`;
+  const status = booking.status;
+  // The owner cannot cancel a booking that already started or finished.
+  const canCancel = status === 'PENDING_PAYMENT' || status === 'AWAITING_CONFIRMATION' || status === 'CONFIRMED';
+  const canReviewPayment = status === 'AWAITING_CONFIRMATION' && hasPendingPayment;
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
@@ -48,7 +58,7 @@ export function BookingDetailModal({
               <h2 className="text-foreground">Chi tiết đặt sân</h2>
               <div className="flex items-center gap-2 mt-0.5">
                 <code className="text-xs font-mono text-muted-foreground">
-                  {bookingCode}
+                  {booking.bookingCode}
                 </code>
                 <span className="text-muted-foreground/40">·</span>
                 <StatusBadge status={status} />
@@ -57,6 +67,7 @@ export function BookingDetailModal({
           </div>
           <button
             onClick={onClose}
+            aria-label="Đóng"
             className="p-2 hover:bg-muted rounded-xl transition-colors"
           >
             <X className="w-5 h-5 text-muted-foreground" />
@@ -73,9 +84,8 @@ export function BookingDetailModal({
                   Khách hàng
                 </h4>
                 <div className="space-y-2.5">
-                  <InfoRow icon={<User className="w-4 h-4" />} label="Mã khách hàng" value={`#${booking.customerId}`} />
-                  <InfoRow icon={<Phone className="w-4 h-4" />} label="Điện thoại" value={booking.guestPhone || 'Chưa có'} />
-                  <InfoRow icon={<Mail className="w-4 h-4" />} label="Email" value={booking.customerEmail} />
+                  <InfoRow icon={<User className="w-4 h-4" />} label="Họ tên" value={booking.customerName || 'Chưa có'} />
+                  <InfoRow icon={<Phone className="w-4 h-4" />} label="Điện thoại" value={booking.customerPhone || 'Chưa có'} />
                 </div>
               </section>
 
@@ -88,14 +98,14 @@ export function BookingDetailModal({
                 </h4>
                 <div className="space-y-2.5">
                   <InfoRow
-                    icon={<MapPin className="w-4 h-4" />}
-                    label="Sân"
-                    value={booking.courtName}
+                    icon={<Building2 className="w-4 h-4" />}
+                    label="Chi nhánh"
+                    value={booking.branchName}
                   />
                   <InfoRow
                     icon={<MapPin className="w-4 h-4" />}
-                    label="Mã sân"
-                    value={`#${booking.courtId}`}
+                    label="Sân"
+                    value={booking.courtName}
                   />
                   <InfoRow
                     icon={<Calendar className="w-4 h-4" />}
@@ -107,35 +117,6 @@ export function BookingDetailModal({
                     label="Ngày tạo"
                     value={formatDateTime(booking.createdAt)}
                   />
-                  {booking.slots && booking.slots.length > 0 && (
-                    <div className="flex items-start gap-3">
-                      <div className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0">
-                        <Clock className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs text-muted-foreground">Khung giờ đặt</div>
-                        <div className="mt-1.5 overflow-hidden rounded-xl border border-border">
-                          {booking.slots.map((slot) => {
-                            const start = slot.slotStart.slice(0, 5);
-                            const end = slot.slotEnd.slice(0, 5);
-                            return (
-                              <div
-                                key={`${slot.courtId}-${slot.bookingDate}-${slot.slotStart}`}
-                                className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 last:border-b-0"
-                              >
-                                <span className="font-mono text-xs font-medium text-foreground">
-                                  {start} - {end}
-                                </span>
-                                <span className="text-xs font-semibold text-foreground">
-                                  {formatAmount(slot.priceAtBooking)}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </section>
 
@@ -155,52 +136,10 @@ export function BookingDetailModal({
                   </span>
                 </div>
                 <div className="mt-2 text-xs text-muted-foreground px-1">
-                  Cập nhật lần cuối {formatDateTime(booking.updatedAt)}
+                  Trạng thái thanh toán:{' '}
+                  {booking.paymentStatus ? (PAYMENT_LABELS[booking.paymentStatus] ?? booking.paymentStatus) : 'Chưa có'}
                 </div>
               </section>
-
-              {booking.refundStatus && (
-                <>
-                  <div className="border-t border-border" />
-
-                  <section>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                      Yêu cầu hủy & hoàn tiền
-                    </h4>
-                    <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="inline-flex items-center gap-2 font-bold">
-                          <HandCoins className="h-4 w-4" />
-                          {booking.refundStatus === 'PENDING'
-                            ? 'Đang chờ admin hoàn tiền'
-                            : 'Đã xác nhận hoàn tiền'}
-                        </span>
-                        {booking.refundAmount != null && (
-                          <span className="font-bold">{formatAmount(booking.refundAmount)}</span>
-                        )}
-                      </div>
-                      <InfoRow icon={<XCircle className="w-4 h-4" />} label="Lý do khách gửi" value={booking.refundReason || 'Chưa có'} />
-                      <InfoRow icon={<HandCoins className="w-4 h-4" />} label="Ngân hàng nhận hoàn" value={booking.refundBankName || 'Chưa có'} />
-                      <InfoRow icon={<HandCoins className="w-4 h-4" />} label="Số tài khoản" value={booking.refundBankAccountNumber || 'Chưa có'} />
-                      <InfoRow icon={<User className="w-4 h-4" />} label="Tên chủ tài khoản" value={booking.refundBankAccountName || 'Chưa có'} />
-                      {booking.refundProofImageUrl && (
-                        <a
-                          href={booking.refundProofImageUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block overflow-hidden rounded-xl border border-amber-200 bg-white"
-                        >
-                          <img
-                            src={booking.refundProofImageUrl}
-                            alt="Chứng từ hoàn tiền"
-                            className="max-h-72 w-full object-contain"
-                          />
-                        </a>
-                      )}
-                    </div>
-                  </section>
-                </>
-              )}
             </div>
 
             <div className="p-8 flex flex-col">
@@ -210,15 +149,15 @@ export function BookingDetailModal({
                 </h4>
               </div>
 
-              {booking.billImageUrl ? (
+              {booking.receiptImageUrl ? (
                 <div className="flex-1 rounded-2xl overflow-hidden border border-border bg-muted/30 flex items-center justify-center relative group min-h-[200px]">
                   <img
-                    src={booking.billImageUrl}
+                    src={booking.receiptImageUrl}
                     alt="Biên lai thanh toán"
                     className="w-full h-full object-contain max-h-[350px] p-2"
                   />
                   <a
-                    href={booking.billImageUrl}
+                    href={booking.receiptImageUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-medium transition-opacity text-sm duration-200"
@@ -241,15 +180,15 @@ export function BookingDetailModal({
         {/* Footer — actions */}
         <div className="px-8 py-5 border-t border-border bg-card flex items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            {canReview
-              ? 'Kiểm tra thông tin đặt sân trước khi xác nhận hoặc hủy.'
-              : canEditDecision
-                ? 'Có thể điều chỉnh kết quả xác nhận nếu cần.'
+            {canReviewPayment
+              ? 'Kiểm tra biên lai trước khi xác nhận hoặc từ chối.'
+              : canCancel
+                ? 'Có thể hủy đơn nếu cần. Trạng thái còn lại đi theo luồng thanh toán, check-in và trả sân.'
                 : 'Đơn đã qua bước sử dụng, chỉ có thể xem thông tin tại đây.'}
           </p>
-          {canEditDecision && (
+          {(canCancel || canReviewPayment) && (
             <div className="flex gap-3 flex-shrink-0">
-              {status === 'AWAITING_CONFIRMATION' && (
+              {canReviewPayment && (
                 <button
                   onClick={() => onReject('reject_payment')}
                   className="flex items-center gap-2 bg-amber-50 text-amber-600 border border-amber-200 px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-amber-100 transition-colors"
@@ -258,7 +197,7 @@ export function BookingDetailModal({
                   Từ chối bill
                 </button>
               )}
-              {status !== 'CANCELLED' && (
+              {canCancel && (
                 <button
                   onClick={() => onReject('cancel_booking')}
                   className="flex items-center gap-2 bg-red-50 text-red-600 border border-red-200 px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-red-100 transition-colors"
@@ -267,7 +206,7 @@ export function BookingDetailModal({
                   Hủy đơn
                 </button>
               )}
-              {status === 'AWAITING_CONFIRMATION' && (
+              {canReviewPayment && (
                 <button
                   onClick={onApprove}
                   style={{ backgroundColor: '#006d38' }}
@@ -283,14 +222,6 @@ export function BookingDetailModal({
       </div>
     </div>
   );
-}
-
-function getBookingStatus(booking: Booking): BookingStatus {
-  return booking.bookingStatus ?? booking.bookingstatus ?? booking.status ?? 'PENDING_PAYMENT';
-}
-
-function isReviewableStatus(status: BookingStatus) {
-  return status === 'PENDING_PAYMENT' || status === 'AWAITING_CONFIRMATION';
 }
 
 function InfoRow({
