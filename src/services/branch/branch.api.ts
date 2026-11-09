@@ -1,9 +1,13 @@
 import { axiosClient } from "../http/axios-client";
 import { API_ENDPOINTS } from "@/common/constants/api-endpoints";
-import type {  Branch as AdminBranch,
+import { pageOf, sortedBy } from "@/common/utils/paging";
+import type {
+  Branch as AdminBranch,
+  BranchImage,
   BranchListParams,
+  BranchRequest,
+  BranchStatus,
   CreateBranchRequest,
-  SpringPage,
   UpdateBranchRequest,
 } from "@/types/branch";
 
@@ -123,21 +127,17 @@ export const branchApi = {
   },
 };
 
-// Admin Side Helper
-// Admin Side API Functions
-export async function getBranches(params: BranchListParams) {
-  const response = await axiosClient.get<SpringPage<AdminBranch>>(
-    API_ENDPOINTS.adminBranches.list,
-    {
-      // TODO(F7): GET /admin/branches returns the owner's branches without paging parameters.
-      params: {
-        page: params.page,
-        size: params.size,
-        sort: `${params.sortField},${params.sortDirection}`,
-      },
-    },
-  )
+// Admin Side API Functions (facility-service, role ADMIN)
+
+/** The backend returns every branch of the owner as one array, with no paging. */
+export async function listBranches() {
+  const response = await axiosClient.get<AdminBranch[]>(API_ENDPOINTS.adminBranches.list)
   return response.data
+}
+
+export async function getBranches(params: BranchListParams) {
+  const all = await listBranches()
+  return pageOf(sortedBy(all, params.sortField, params.sortDirection), params.page, params.size)
 }
 
 export async function getBranchDetail(branchId: number) {
@@ -147,7 +147,6 @@ export async function getBranchDetail(branchId: number) {
   return response.data
 }
 
-// TODO(F7): the create/update body now requires bankName, bankBin, bankAccountNumber, bankAccountName.
 export async function createBranch(payload: CreateBranchRequest) {
   const response = await axiosClient.post<AdminBranch>(
     API_ENDPOINTS.adminBranches.list,
@@ -169,4 +168,52 @@ export async function updateBranch(
 
 export async function deleteBranch(branchId: number) {
   await axiosClient.delete(API_ENDPOINTS.adminBranches.detail(branchId))
+}
+
+/** Rebuilds the full-replacement body from a stored branch, optionally with another status. */
+export function branchToRequest(branch: AdminBranch, status: BranchStatus = branch.status): BranchRequest {
+  return {
+    name: branch.name,
+    address: branch.address,
+    ward: branch.ward,
+    district: branch.district,
+    city: branch.city,
+    latitude: branch.latitude,
+    longitude: branch.longitude,
+    phone: branch.phone,
+    openTime: branch.openTime.slice(0, 5),
+    closeTime: branch.closeTime.slice(0, 5),
+    slotDurationMinutes: branch.slotDurationMinutes,
+    bankName: branch.bankName,
+    bankBin: branch.bankBin,
+    bankAccountNumber: branch.bankAccountNumber,
+    bankAccountName: branch.bankAccountName,
+    status,
+  }
+}
+
+/** There is no status endpoint for branches: activate/deactivate is a PUT with the new status. */
+export async function setBranchStatus(branch: AdminBranch, status: BranchStatus) {
+  return updateBranch(branch.id, branchToRequest(branch, status))
+}
+
+export async function getBranchImages(branchId: number) {
+  const response = await axiosClient.get<BranchImage[]>(API_ENDPOINTS.adminBranches.images(branchId))
+  return [...response.data].sort((a, b) => a.sortOrder - b.sortOrder)
+}
+
+/** Multipart field name is `files` (repeatable); JPEG, PNG or WebP, up to 5 MB each, 10 per branch. */
+export async function uploadBranchImages(branchId: number, files: File[]) {
+  const formData = new FormData()
+  for (const file of files) formData.append('files', file)
+  const response = await axiosClient.post<BranchImage[]>(
+    API_ENDPOINTS.adminBranches.images(branchId),
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60_000 },
+  )
+  return response.data
+}
+
+export async function deleteBranchImage(imageId: number) {
+  await axiosClient.delete(API_ENDPOINTS.adminBranches.image(imageId))
 }
