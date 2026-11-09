@@ -1,5 +1,10 @@
 import { useState } from 'react';
 
+import { validators } from '@/utils/validators';
+
+export const PHONE_REQUIRED_MESSAGE = 'Vui lòng nhập số điện thoại (10 số, bắt đầu 03, 05, 07, 08 hoặc 09).';
+export const PHONE_INVALID_MESSAGE = 'Số điện thoại không hợp lệ. Vui lòng nhập 10 số, bắt đầu 03, 05, 07, 08 hoặc 09.';
+
 export interface SelectedSlot {
   slotId: number;
   courtId: number;
@@ -23,19 +28,30 @@ interface BookingPanelProps {
   selectedSlots: SelectedSlot[];
   venueName: string;
   onBook: (phone: string) => void | Promise<void>;
-  /** Prefills the contact phone (profile of a signed-in customer). */
-  defaultPhone?: string;
-  /** Signed-in customers may leave the phone empty; guests must give one to hold and book. */
-  phoneOptional?: boolean;
+  /** Guests must give a contact phone; a signed-in customer is known by the account, so no field is shown. */
+  requiresPhone?: boolean;
   isSubmitting?: boolean;
   error?: string | null;
   /** Set once the slots are held: the panel shows the countdown instead of the phone form. */
   hold?: HoldInfo | null;
 }
 
-export default function BookingPanel({ selectedSlots, venueName, onBook, defaultPhone = '', phoneOptional = false, isSubmitting = false, error, hold }: BookingPanelProps) {
-  const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
-  const guestPhone = phoneDraft ?? defaultPhone;
+export default function BookingPanel({ selectedSlots, venueName, onBook, requiresPhone = true, isSubmitting = false, error, hold }: BookingPanelProps) {
+  const [guestPhone, setGuestPhone] = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const submit = () => {
+    if (isSubmitting) return;
+    if (requiresPhone) {
+      const value = guestPhone.trim();
+      if (!value) return setPhoneError(PHONE_REQUIRED_MESSAGE);
+      if (!validators.vnMobile(value)) return setPhoneError(PHONE_INVALID_MESSAGE);
+      setPhoneError(null);
+      void onBook(value);
+      return;
+    }
+    void onBook('');
+  };
   // calculate total amount
   const totalAmount = selectedSlots.reduce((sum, slot) => sum + slot.price, 0);
 
@@ -121,21 +137,38 @@ export default function BookingPanel({ selectedSlots, venueName, onBook, default
             </>
           ) : (
             <>
-              <input
-                value={guestPhone}
-                onChange={(event) => setPhoneDraft(event.target.value)}
-                placeholder={phoneOptional ? 'Số điện thoại (tùy chọn)' : 'Số điện thoại (bắt buộc)'}
-                required={!phoneOptional}
-                inputMode="numeric"
-                aria-label="Số điện thoại liên hệ"
-                className="h-11 w-full min-w-0 rounded-xl border border-outline-variant/60 bg-white px-3 text-sm font-medium text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 sm:w-44"
-              />
+              {requiresPhone ? (
+                <div className="w-full sm:w-72">
+                  <input
+                    type="tel"
+                    value={guestPhone}
+                    onChange={(event) => {
+                      setGuestPhone(event.target.value);
+                      if (phoneError) setPhoneError(null);
+                    }}
+                    placeholder="Số điện thoại liên hệ"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    maxLength={15}
+                    aria-label="Số điện thoại liên hệ"
+                    aria-invalid={phoneError ? true : undefined}
+                    aria-describedby={phoneError ? 'booking-phone-error' : undefined}
+                    className={`h-12 w-full min-w-0 rounded-xl border bg-white px-4 text-base font-medium text-on-surface outline-none focus:ring-2 ${
+                      phoneError
+                        ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
+                        : 'border-outline-variant/60 focus:border-primary focus:ring-primary/15'
+                    }`}
+                  />
+                  {phoneError ? (
+                    <p id="booking-phone-error" role="alert" className="mt-1 text-xs font-medium text-destructive">
+                      {phoneError}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <button
                 disabled={isSubmitting}
-                onClick={() => {
-                  if (isSubmitting) return;
-                  onBook(guestPhone);
-                }}
+                onClick={submit}
                 className="primary-gradient w-full shrink-0 cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all duration-200 hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6 sm:text-body-sm"
               >
                 {isSubmitting ? 'Đang giữ khung giờ...' : 'Giữ chỗ khung giờ đã chọn'}

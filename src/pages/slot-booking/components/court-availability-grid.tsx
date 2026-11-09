@@ -80,7 +80,7 @@ export default function CourtAvailabilityGrid({
   return (
     <div className="space-y-6">
       {/* Date Selector */}
-      <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
+      <div className="flex gap-3 overflow-x-auto pb-2 thin-scrollbar scroll-smooth">
         {dates.map((d) => {
           const active = d.dateStr === selectedDate;
           return (
@@ -140,7 +140,7 @@ export default function CourtAvailabilityGrid({
 
       {/* Grid Container */}
       <div className="bg-white border border-outline-variant/30 rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto no-scrollbar relative">
+        <div className="overflow-x-scroll thin-scrollbar relative">
           <div className="min-w-max">
             {/* Grid Header */}
             <div className="flex border-b border-outline-variant/30">
