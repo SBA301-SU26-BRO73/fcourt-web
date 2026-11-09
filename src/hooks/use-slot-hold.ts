@@ -76,7 +76,7 @@ export function useSlotHold({ onExpired }: Options = {}) {
         courtId: input.courtId,
         date: input.date,
         slotIds: input.slots.map((slot) => slot.slotId),
-        guestPhone: input.guestPhone,
+        guestPhone: input.guestPhone || undefined,
       })
       const created: ActiveHold = {
         holdToken,

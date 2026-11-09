@@ -168,7 +168,9 @@ export default function SlotBookingPage() {
 
     setBookingError(null);
     const guestPhone = phone.trim();
-    if (!validators.vnMobile(guestPhone)) {
+    // A signed-in customer may hold without a phone (booking-service knows the account); a guest must give one.
+    const phoneOptional = isAuthenticatedCustomer && guestPhone === '';
+    if (!phoneOptional && !validators.vnMobile(guestPhone)) {
       setBookingError('Vui lòng nhập số điện thoại di động hợp lệ (10 chữ số, bắt đầu 03, 05, 07, 08 hoặc 09).');
       return;
     }
@@ -288,6 +290,7 @@ export default function SlotBookingPage() {
         venueName={venueName}
         onBook={handleHold}
         defaultPhone={defaultPhone}
+        phoneOptional={isAuthenticatedCustomer}
         isSubmitting={holdStatus === 'holding'}
         error={bookingError}
         hold={hold ? {

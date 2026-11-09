@@ -51,7 +51,7 @@ describe('payment utils', () => {
     const base = { hasHold: true, expired: false, role: 'CUSTOMER', createFailed: false }
     expect(resolveHoldCheckoutStage({ ...base, hasHold: false })).toBe('empty')
     expect(resolveHoldCheckoutStage({ ...base, expired: true })).toBe('expired')
-    expect(resolveHoldCheckoutStage({ ...base, role: null })).toBe('login')
+    expect(resolveHoldCheckoutStage({ ...base, role: null })).toBe('creating') // guest: no login needed
     expect(resolveHoldCheckoutStage({ ...base, role: 'STAFF' })).toBe('wrong-role')
     expect(resolveHoldCheckoutStage(base)).toBe('creating')
     expect(resolveHoldCheckoutStage({ ...base, createFailed: true })).toBe('error')

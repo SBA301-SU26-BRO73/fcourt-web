@@ -28,6 +28,15 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe('useSlotHold', () => {
+  it('omits the phone when a signed-in customer holds without one', async () => {
+    vi.mocked(holdSlots).mockResolvedValue({ holdToken: 'tok', expiresAt: Date.now() + 300_000, response: {} as never })
+    const { result } = renderHook(() => useSlotHold())
+    await act(async () => {
+      await result.current.start({ ...input, guestPhone: '' })
+    })
+    expect(holdSlots).toHaveBeenCalledWith({ courtId: 1, date: '2030-01-01', slotIds: [9], guestPhone: undefined })
+  })
+
   it('holds, counts down from the server expiry and expires exactly once', async () => {
     const expiresAt = Date.now() + 300_000
     vi.mocked(holdSlots).mockResolvedValue({ holdToken: 'tok', expiresAt, response: {} as never })

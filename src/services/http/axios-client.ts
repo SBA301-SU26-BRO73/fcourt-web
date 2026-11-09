@@ -100,6 +100,10 @@ function isRefreshRejected(error: unknown) {
   return status >= 400 && status < 500 && status !== 429
 }
 
+function isGuestRequest(config: InternalAxiosRequestConfig) {
+  return Boolean(config.headers?.['X-Hold-Token']) || (config.method === 'post' && config.url === API_ENDPOINTS.bookings.create)
+}
+
 axiosClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -112,7 +116,8 @@ axiosClient.interceptors.response.use(
 
     const refreshToken = tokenStorage.getRefreshToken()
     if (!refreshToken || originalRequest._retry) {
-      redirectToLogin()
+      // A guest (no session) is never sent to the login page: their credential is the hold token.
+      if (refreshToken || !isGuestRequest(originalRequest)) redirectToLogin()
       return Promise.reject(toApiError(error))
     }
 

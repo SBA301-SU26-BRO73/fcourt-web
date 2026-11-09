@@ -25,13 +25,15 @@ interface BookingPanelProps {
   onBook: (phone: string) => void | Promise<void>;
   /** Prefills the contact phone (profile of a signed-in customer). */
   defaultPhone?: string;
+  /** Signed-in customers may leave the phone empty; guests must give one to hold and book. */
+  phoneOptional?: boolean;
   isSubmitting?: boolean;
   error?: string | null;
   /** Set once the slots are held: the panel shows the countdown instead of the phone form. */
   hold?: HoldInfo | null;
 }
 
-export default function BookingPanel({ selectedSlots, venueName, onBook, defaultPhone = '', isSubmitting = false, error, hold }: BookingPanelProps) {
+export default function BookingPanel({ selectedSlots, venueName, onBook, defaultPhone = '', phoneOptional = false, isSubmitting = false, error, hold }: BookingPanelProps) {
   const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
   const guestPhone = phoneDraft ?? defaultPhone;
   // calculate total amount
@@ -122,7 +124,8 @@ export default function BookingPanel({ selectedSlots, venueName, onBook, default
               <input
                 value={guestPhone}
                 onChange={(event) => setPhoneDraft(event.target.value)}
-                placeholder="Số điện thoại"
+                placeholder={phoneOptional ? 'Số điện thoại (tùy chọn)' : 'Số điện thoại (bắt buộc)'}
+                required={!phoneOptional}
                 inputMode="numeric"
                 aria-label="Số điện thoại liên hệ"
                 className="h-11 w-full min-w-0 rounded-xl border border-outline-variant/60 bg-white px-3 text-sm font-medium text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 sm:w-44"

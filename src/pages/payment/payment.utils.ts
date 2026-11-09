@@ -69,11 +69,12 @@ export const CHECKOUT_FAILURE_MESSAGE: Record<CheckoutFailure, string> = {
   other: 'Không thể tải thông tin thanh toán. Vui lòng thử lại.',
 }
 
-export type HoldCheckoutStage = 'empty' | 'expired' | 'login' | 'wrong-role' | 'creating' | 'error'
+export type HoldCheckoutStage = 'empty' | 'expired' | 'wrong-role' | 'creating' | 'error'
 
 /**
- * What /payment (without ?bookingId) shows for a stored hold. POST /api/bookings needs a CUSTOMER
- * JWT (booking-service BookingQueries.actor), so a guest keeps the hold alive while signing in.
+ * What /payment (without ?bookingId) shows for a stored hold. POST /api/bookings accepts a guest
+ * (no login: the hold token and the phone sealed in the hold are the credential) or a CUSTOMER;
+ * any other signed-in role cannot book online.
  */
 export function resolveHoldCheckoutStage(input: {
   hasHold: boolean
@@ -83,8 +84,7 @@ export function resolveHoldCheckoutStage(input: {
 }): HoldCheckoutStage {
   if (!input.hasHold) return 'empty'
   if (input.expired) return 'expired'
-  if (input.role === null) return 'login'
-  if (input.role !== 'CUSTOMER') return 'wrong-role'
+  if (input.role !== null && input.role !== 'CUSTOMER') return 'wrong-role'
   return input.createFailed ? 'error' : 'creating'
 }
 

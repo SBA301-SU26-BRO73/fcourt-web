@@ -24,6 +24,8 @@ import {
   type ConfirmationView,
 } from './payment.utils';
 import { useBookingDetail, usePaymentStatus } from '@/hooks/use-customer-checkout';
+import { useAuth } from '@/hooks/use-auth-context';
+import { loadGuestBookingToken } from '@/utils/guest-booking-storage';
 import { clearActiveHold } from '@/utils/hold-storage';
 
 interface LocationState {
@@ -53,9 +55,15 @@ function ConfirmationView({ bookingId }: { bookingId: number }) {
   const location = useLocation();
   const state = (location.state as LocationState | null) ?? {};
   const [startedAt] = useState(() => Date.now());
+  const { user } = useAuth();
+  // Guest booking: the hold token that created it is the credential (no account, no JWT).
+  const [holdToken] = useState(() => loadGuestBookingToken(bookingId));
+  const isGuest = !user && holdToken !== null;
+  const myBookingsPath = isGuest ? '/lookup' : '/my-bookings';
 
-  const payment = usePaymentStatus(bookingId, { startedAt });
+  const payment = usePaymentStatus(bookingId, { startedAt, holdToken });
   const bookingQuery = useBookingDetail(bookingId, {
+    holdToken,
     // The booking is updated from the payment event: keep reading until the ticket code exists.
     refetchWhile: (booking) =>
       payment.data?.paymentStatus === 'SUCCESS' && !booking.checkInCode && booking.status !== 'CANCELLED',
@@ -103,11 +111,11 @@ function ConfirmationView({ bookingId }: { bookingId: number }) {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <button
-              onClick={() => navigate('/my-bookings')}
+              onClick={() => navigate(myBookingsPath)}
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Đơn của tôi</span>
+              <span>{isGuest ? 'Tra cứu đơn' : 'Đơn của tôi'}</span>
             </button>
 
             <div className="absolute left-1/2 -translate-x-1/2">
@@ -188,7 +196,8 @@ function ConfirmationView({ bookingId }: { bookingId: number }) {
               isChecking={payment.isFetching}
               onCheckAgain={() => void payment.refetch()}
               onNewBooking={goNewBooking}
-              onMyBookings={() => navigate('/my-bookings')}
+              onMyBookings={() => navigate(myBookingsPath)}
+              guest={isGuest}
             />
 
             {view.kind === 'approved' && (
@@ -237,9 +246,11 @@ interface StatusCardProps {
   onCheckAgain: () => void;
   onNewBooking: () => void;
   onMyBookings: () => void;
+  /** Guest (no account): the orders list is the code + phone lookup. */
+  guest?: boolean;
 }
 
-export function StatusCard({ view, isChecking, onCheckAgain, onNewBooking, onMyBookings }: StatusCardProps) {
+export function StatusCard({ view, isChecking, onCheckAgain, onNewBooking, onMyBookings, guest = false }: StatusCardProps) {
   const configs: Record<
     ConfirmationView['kind'],
     {
@@ -260,7 +271,7 @@ export function StatusCard({ view, isChecking, onCheckAgain, onNewBooking, onMyB
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
             Biên lai của bạn đang được đội ngũ xem xét. Thường mất từ 5–15 phút trong giờ
-            cao điểm. Bạn có thể đóng trang này, đơn vẫn được giữ trong mục Đơn của tôi.
+            cao điểm. Bạn có thể đóng trang này, {guest ? 'hãy lưu mã đặt sân và số điện thoại để tra cứu lại tại mục Tra cứu đơn.' : 'đơn vẫn được giữ trong mục Đơn của tôi.'}
           </p>
           {view.kind === 'pending' && view.stalled ? (
             <button
@@ -303,7 +314,7 @@ export function StatusCard({ view, isChecking, onCheckAgain, onNewBooking, onMyB
             onClick={onMyBookings}
             className="flex-1 bg-muted text-foreground py-3 px-6 rounded-xl font-semibold text-sm hover:bg-muted/80 transition-colors"
           >
-            Xem đơn của tôi
+            {guest ? 'Tra cứu đơn' : 'Xem đơn của tôi'}
           </button>
         </div>
       ),
@@ -342,7 +353,7 @@ export function StatusCard({ view, isChecking, onCheckAgain, onNewBooking, onMyB
             onClick={onMyBookings}
             className="flex-1 bg-muted text-foreground py-3 px-6 rounded-xl font-semibold text-sm hover:bg-muted/80 transition-colors"
           >
-            Xem đơn của tôi
+            {guest ? 'Tra cứu đơn' : 'Xem đơn của tôi'}
           </button>
         </div>
       ),
