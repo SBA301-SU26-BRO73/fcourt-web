@@ -4,6 +4,7 @@ import type { CourtTypeData } from '@/types/admin'
 import type { BranchStatus } from '@/types/branch'
 import type { CourtStatus } from '@/types/court'
 import type { CourtFormErrors, CourtFormValues } from './court-form.utils'
+import { CourtImageField } from './court-image-field'
 
 type CourtFormProps = {
   values: CourtFormValues
@@ -14,6 +15,12 @@ type CourtFormProps = {
   isEdit: boolean
   isSubmitting: boolean
   submitLabel: string
+  imageFile: File | null
+  imageRemoved: boolean
+  onImageSelect: (file: File) => void
+  onImageClear: () => void
+  onImageRemove: () => void
+  onImageUndoRemove: () => void
   onChange: (field: keyof CourtFormValues, value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
@@ -38,6 +45,12 @@ export function CourtForm({
   isEdit,
   isSubmitting,
   submitLabel,
+  imageFile,
+  imageRemoved,
+  onImageSelect,
+  onImageClear,
+  onImageRemove,
+  onImageUndoRemove,
   onChange,
   onSubmit,
 }: CourtFormProps) {
@@ -153,21 +166,17 @@ export function CourtForm({
             />
           </label>
 
-          <label className="block space-y-2 md:col-span-2">
-            <span className="text-sm font-semibold text-slate-700">Ảnh sân (đường dẫn)</span>
-            <input
-              name="imageUrl"
-              type="url"
-              maxLength={2048}
-              placeholder="https://..."
-              value={values.imageUrl}
-              aria-invalid={Boolean(errors.imageUrl)}
-              onChange={(event) => onChange('imageUrl', event.target.value)}
-              className={inputClass(Boolean(errors.imageUrl))}
-            />
-            <ErrorText id="imageUrl-error" message={errors.imageUrl} />
-            <span className="block text-xs text-slate-500">Hệ thống mới chưa có API tải ảnh sân lên, hãy dán đường dẫn ảnh.</span>
-          </label>
+          <CourtImageField
+            currentUrl={values.imageUrl}
+            file={imageFile}
+            removed={imageRemoved}
+            error={errors.imageUrl}
+            disabled={isSubmitting}
+            onSelect={onImageSelect}
+            onClearSelection={onImageClear}
+            onRemoveCurrent={onImageRemove}
+            onUndoRemove={onImageUndoRemove}
+          />
         </div>
       </section>
 
