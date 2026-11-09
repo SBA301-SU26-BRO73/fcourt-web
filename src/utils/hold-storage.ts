@@ -33,6 +33,14 @@ export function clearActiveHold() {
   }
 }
 
+/** Returns the hold with a stable Idempotency-Key, persisting the key before the first request. */
+export function withIdempotencyKey(hold: ActiveHold, generate: () => string): ActiveHold {
+  if (hold.idempotencyKey) return hold
+  const next = { ...hold, idempotencyKey: generate() }
+  saveActiveHold(next)
+  return next
+}
+
 /** Returns the stored hold, or null when none is stored or it has already expired (and is dropped). */
 export function loadActiveHold(now = Date.now()): ActiveHold | null {
   try {

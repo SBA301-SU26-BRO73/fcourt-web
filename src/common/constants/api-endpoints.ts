@@ -158,8 +158,8 @@ export const API_ENDPOINTS = {
     confirm: (id: Id) => joinEndpoint(API_PREFIXES.adminPayments, id, 'confirm'),
     reject: (id: Id) => joinEndpoint(API_PREFIXES.adminPayments, id, 'reject'),
     status: (bookingId: Id) => joinEndpoint('/payments', bookingId, 'status'),
-    // TODO(F3): old POST /payments (multi-booking upload) and GET /payments/{id} are gone.
-    legacy: joinEndpoint('/payments'),
+    checkoutInfo: (bookingId: Id) => joinEndpoint('/payments', 'checkout-info', bookingId),
+    confirmFree: (bookingId: Id) => joinEndpoint('/payments', bookingId, 'confirm-free'),
     uploadReceipt: (bookingId: Id) => joinEndpoint('/payments', bookingId, 'upload-receipt'),
     ticket: (bookingId: Id) => joinEndpoint('/payments', bookingId, 'ticket'),
     myTransactions: joinEndpoint('/payments/my-transactions'),

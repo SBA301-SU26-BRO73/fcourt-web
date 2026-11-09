@@ -42,6 +42,8 @@ export interface ActiveHold {
   date: string
   guestPhone: string
   slots: HeldSlot[]
+  /** Idempotency-Key of POST /api/bookings, created once per hold so a retry replays the same booking. */
+  idempotencyKey?: string
 }
 
 export type CourtSlotChangeType =
