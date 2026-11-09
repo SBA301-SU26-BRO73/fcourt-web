@@ -17,6 +17,7 @@ import { ForgotPage } from '@/pages/auth/forgot-page'
 import { LoginPage } from '@/pages/auth/login-page'
 import { RegisterAdminPage } from '@/pages/auth/register-admin-page'
 import { RegisterCustomerPage } from '@/pages/auth/register-customer-page'
+import { ResetPasswordPage } from '@/pages/auth/reset-password-page'
 import { RolePickPage } from '@/pages/auth/role-pick-page'
 import { DocsPage } from '@/pages/docs/docs-page'
 import { ForbiddenPage } from '@/pages/errors/forbidden-page'
@@ -52,6 +53,8 @@ import SubscriptionPlansPage from '@/pages/admin/subscriptions/SubscriptionPlans
 import SubscriptionPaymentPage from '@/pages/admin/subscriptions/SubscriptionPaymentPage'
 
 export const router = createBrowserRouter([
+  // Target of the link in the reset-password email (NOTIFICATION_RESET_PASSWORD_URL).
+  { path: 'reset-password', element: <ResetPasswordPage /> },
   {
     path: '/',
     element: <MainLayout />,
@@ -84,6 +87,7 @@ export const router = createBrowserRouter([
       { path: 'register/customer', element: <RegisterCustomerPage /> },
       { path: 'register/court-owner', element: <RegisterAdminPage /> },
       { path: 'forgot-password', element: <ForgotPage /> },
+      { path: 'reset-password', element: <ResetPasswordPage /> },
       {
         path: 'branches',
         element: <BranchListPage />,

@@ -2,7 +2,14 @@ import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/hooks/use-auth-context'
-import { login, registerCourtOwner, registerCustomer } from '@/services/auth/auth.service'
+import {
+  forgotPassword,
+  googleLogin,
+  login,
+  registerCourtOwner,
+  registerCustomer,
+  resetPassword,
+} from '@/services/auth/auth.service'
 import type { LoginRequest, RegisterCustomerRequest, TokenResponse, UserRole } from '@/types/auth'
 import { decodeJwt } from '@/utils/token'
 
@@ -42,5 +49,28 @@ export function useRegisterCourtOwner(onSuccess: () => void) {
   return useMutation({
     mutationFn: (data: FormData) => registerCourtOwner(data),
     onSuccess,
+  })
+}
+
+export function useGoogleLogin() {
+  const navigate = useNavigate()
+  const { setAuth } = useAuth()
+
+  return useMutation({
+    mutationFn: (idToken: string) => googleLogin(idToken),
+    onSuccess: (tokens: TokenResponse) => {
+      setAuth(tokens)
+      navigate(ROLE_HOME_PATH[decodeJwt(tokens.accessToken).role])
+    },
+  })
+}
+
+export function useForgotPassword() {
+  return useMutation({ mutationFn: (email: string) => forgotPassword(email) })
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: ({ token, newPassword }: { token: string; newPassword: string }) => resetPassword(token, newPassword),
   })
 }

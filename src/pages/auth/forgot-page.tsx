@@ -4,12 +4,14 @@ import { Link } from 'react-router-dom'
 
 import { Button, Field, Logo, TextInput } from '@/components/auth/auth-ui'
 import { HeroPanel } from '@/components/auth/hero-panel'
+import { getApiErrorMessage } from '@/common/utils/api-error'
+import { useForgotPassword } from '@/hooks/use-auth'
 import { validators } from '@/utils/validators'
 
 export function ForgotPage() {
   const [email, setEmail] = useState('')
   const [err, setErr] = useState('')
-  const [loading, setLoading] = useState(false)
+  const forgot = useForgotPassword()
   const [sent, setSent] = useState(false)
 
   async function submit(ev: React.FormEvent) {
@@ -17,10 +19,12 @@ export function ForgotPage() {
     if (!email.trim()) { setErr('Vui lòng nhập email'); return }
     if (!validators.email(email)) { setErr('Email không đúng định dạng'); return }
     setErr('')
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 1300))
-    setLoading(false)
-    setSent(true)
+    try {
+      await forgot.mutateAsync(email.trim())
+      setSent(true)
+    } catch (error) {
+      setErr(getApiErrorMessage(error, 'Không thể gửi yêu cầu. Vui lòng thử lại.'))
+    }
   }
 
   return (
@@ -91,7 +95,7 @@ export function ForgotPage() {
                     autoComplete="email"
                   />
                 </Field>
-                <Button type="submit" block lg loading={loading}>
+                <Button type="submit" block lg loading={forgot.isPending}>
                   Gửi link đặt lại
                 </Button>
               </form>

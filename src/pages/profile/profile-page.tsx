@@ -9,6 +9,7 @@ import { useAdminDashboard } from '@/hooks/use-admin-dashboard'
 import { useAuth } from '@/hooks/use-auth-context'
 import type { UserRole } from '@/types/auth'
 import { changePassword, getProfile, updateProfile } from '@/services/auth/auth.service'
+import { AvatarEditor } from './avatar-editor'
 import { getCourts } from '@/services/court/court.api'
 import type { Court, CourtStatus } from '@/types/court'
 import { tokenStorage } from '@/utils/token'
@@ -70,6 +71,7 @@ export function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [showCourts, setShowCourts] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
   const [changingPassword, setChangingPassword] = useState(false)
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' })
@@ -112,6 +114,7 @@ export function ProfilePage() {
       .then((response) => {
         if (!active) return
         tokenStorage.setUser({ id: response.id, email: response.email, role: response.role, fullName: response.fullName })
+        setAvatarUrl(response.avatarUrl ?? null)
         setF({
           name: response.fullName ?? '',
           phone: response.phone ?? '',
@@ -249,9 +252,11 @@ export function ProfilePage() {
           </div>
           <div className="relative bg-white px-7 pb-6">
             <div className="flex items-end justify-between -mt-7 mb-4">
-              <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-green-600 text-xl font-extrabold text-white shadow-md">
-                {initials}
-              </div>
+              <AvatarEditor
+                avatarUrl={avatarUrl}
+                initials={initials}
+                onChanged={(profile, message) => { setAvatarUrl(profile.avatarUrl ?? null); showToast(message) }}
+              />
               {!editing && (
                 <div className="relative z-10">
                   <Button variant="ghost" onClick={() => { setEditing(true); setErrs({}) }}>

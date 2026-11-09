@@ -55,3 +55,35 @@ export async function updateProfile(data: UpdateProfileRequest): Promise<UserPro
 export async function changePassword(data: ChangePasswordRequest): Promise<void> {
   await axiosClient.patch(API_ENDPOINTS.auth.changePassword, data)
 }
+
+/** Always 202 with a generic message: the API never reveals whether the email is registered. */
+export async function forgotPassword(email: string): Promise<string> {
+  const response = await axiosClient.post<{ message: string }>(API_ENDPOINTS.auth.forgotPassword, { email })
+  return response.data.message
+}
+
+/** `token` comes from the `?token=` of the emailed link; it works once. */
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await axiosClient.post(API_ENDPOINTS.auth.resetPassword, { token, newPassword })
+}
+
+/** Exchanges a Google Identity Services ID token (the `credential`) for an FCOURT session. Customers only. */
+export async function googleLogin(idToken: string): Promise<TokenResponse> {
+  const response = await axiosClient.post<TokenResponse>(API_ENDPOINTS.auth.google, { idToken })
+  return response.data
+}
+
+/** Multipart part `file`, at most 2 MB. Returns the updated profile. */
+export async function uploadAvatar(file: File): Promise<UserProfile> {
+  const form = new FormData()
+  form.append('file', file)
+  const response = await axiosClient.put<UserProfile>(API_ENDPOINTS.auth.avatar, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}
+
+export async function removeAvatar(): Promise<UserProfile> {
+  const response = await axiosClient.delete<UserProfile>(API_ENDPOINTS.auth.avatar)
+  return response.data
+}
