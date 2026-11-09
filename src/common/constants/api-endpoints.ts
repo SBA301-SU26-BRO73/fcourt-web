@@ -148,6 +148,7 @@ export const API_ENDPOINTS = {
     lookup: joinEndpoint(API_PREFIXES.bookings, 'lookup'),
     detail: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id),
     cancel: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id, 'cancel'),
+    cancellationPolicy: (id: Id) => joinEndpoint(API_PREFIXES.bookings, id, 'cancellation-policy'),
   },
   payments: {
     adminTransactions: joinEndpoint(API_PREFIXES.adminPayments, 'transactions'),
@@ -157,8 +158,16 @@ export const API_ENDPOINTS = {
     // TODO(F3): old POST /payments (multi-booking upload) and GET /payments/{id} are gone.
     legacy: joinEndpoint('/payments'),
     uploadReceipt: (bookingId: Id) => joinEndpoint('/payments', bookingId, 'upload-receipt'),
+    ticket: (bookingId: Id) => joinEndpoint('/payments', bookingId, 'ticket'),
+    myTransactions: joinEndpoint('/payments/my-transactions'),
+  },
+  reviews: {
+    create: joinEndpoint('/reviews'),
+    images: joinEndpoint('/reviews/images'),
   },
   refunds: {
+    request: joinEndpoint('/refunds/request'),
+    byBooking: (bookingId: Id) => joinEndpoint('/refunds/booking', bookingId),
     pending: joinEndpoint(API_PREFIXES.adminRefunds, 'pending'),
     complete: (id: Id) => joinEndpoint(API_PREFIXES.adminRefunds, id, 'complete'),
   },

@@ -1,6 +1,5 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type { SpringPage } from '@/types/court'
 import type {
   BookingResponse,
   CancelBookingRequest,
@@ -69,16 +68,6 @@ export async function cancelBooking(bookingId: number, payload: CancelBookingReq
   return data
 }
 
-/** Booking history for the logged-in member. */
-export async function getMyBookings(page = 0, size = 20) {
-  const { data } = await axiosClient.get<SpringPage<BookingResponse>>(
-    API_ENDPOINTS.bookings.my,
-    { params: { page, size, sort: 'createdAt,desc' } },
-  )
-  return data
-}
-
-/** Public guest lookup by booking code + the phone on the booking. */
 export async function lookupBooking(bookingCode: string, phone: string) {
   const { data } = await axiosClient.get<BookingResponse>(
     API_ENDPOINTS.bookings.lookup,
