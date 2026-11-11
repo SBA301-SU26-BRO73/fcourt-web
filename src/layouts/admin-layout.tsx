@@ -6,7 +6,6 @@ import {
   Layout,
   Users,
   Building2,
-  Bell,
   Ticket,
   Zap,
   Settings,
@@ -17,6 +16,7 @@ import {
   Receipt,
   CalendarRange,
 } from 'lucide-react'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth-context'
 import { tokenStorage } from '@/utils/token'
@@ -176,10 +176,7 @@ export function AdminLayout() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="relative rounded-xl border border-slate-200/70 bg-slate-50 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all">
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
-            </button>
+            <NotificationBell />
 
             <Link
               to="/profile"

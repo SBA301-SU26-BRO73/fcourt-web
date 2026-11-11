@@ -61,7 +61,7 @@ const API_ROUTES: Array<[pattern: string, service: ServiceName]> = [
   // pos-retail-service owns the POS paths nested under /api/staff and /api/admin.
   ['^/api/(staff|admin)/pos', 'posRetail'],
   ['^/api/(staff|admin/staff)', 'staffOperations'],
-  ['^/devices', 'notification'],
+  ['^/(devices|api/notifications)', 'notification'],
 ]
 
 function buildProxy(host: string) {

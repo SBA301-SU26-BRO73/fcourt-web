@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-
 import { useState } from "react";
 import type { BranchFilterRequest } from "@/services/branch/branch.api";
 import { useAuth } from "@/hooks/use-auth-context";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function MainLayout() {
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ export function MainLayout() {
             <button type="button" onClick={() => navigate('/my-bookings')} className={`pb-1 text-base font-semibold transition-colors ${location.pathname === '/my-bookings' ? 'border-b-2 border-[#2e7d32] text-[#2e7d32]' : 'text-[#41493e] hover:text-[#2e7d32]'}`}>Lịch sử đặt sân</button>
           </nav>
           <div className="flex items-center gap-3 md:gap-4">
+            <NotificationBell className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#c0c9bb] bg-[#f3f4f5] text-[#2e7d32] transition-colors hover:bg-[#c8e6c9]" />
             <button type="button" onClick={handleAccountClick} className="flex items-center gap-2 rounded-full border border-[#c0c9bb] bg-[#f3f4f5] px-4 py-2 text-sm font-semibold text-[#2e7d32] transition-colors hover:bg-[#c8e6c9]">
               <span className="material-symbols-outlined">account_circle</span>
               <span>{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
