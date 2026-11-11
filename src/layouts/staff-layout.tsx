@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { CalendarDays, Grid3x3, LogOut, PlusCircle, ScanLine, ShoppingCart } from 'lucide-react'
 
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth-context'
 import { useStaffSession } from '@/context/staff-session'
@@ -68,6 +69,8 @@ export function StaffLayout() {
             <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
             {branchName ?? 'Loading branch…'}
           </div>
+
+          <NotificationBell />
 
           <Link
             to="/profile"

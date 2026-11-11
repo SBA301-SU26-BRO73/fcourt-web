@@ -55,6 +55,17 @@ src
 
 Quy ước: endpoint khai báo trong `src/common/constants/api-endpoints.ts` hoặc trong từng file `services/*`, không hard-code ở page.
 
+## Thông báo trong ứng dụng
+
+Chuông thông báo (`src/components/notifications/NotificationBell.tsx`) nằm trên header của mọi vai trò đã đăng nhập: khách (`MainLayout`), chủ sân (`AdminLayout`), nhân viên (`StaffLayout`) và super admin (`DashboardLayout`). Dữ liệu lấy từ notification-service qua gateway (`/api/notifications/**`, kèm JWT):
+
+- Số chưa đọc: `GET /notifications/me/unread-count`, poll mỗi 30 giây và khi cửa sổ được focus lại.
+- Dropdown: 10 thông báo mới nhất (`GET /notifications/me?page=0&size=10`), thời gian tương đối ("5 phút trước"), trạng thái trống và lỗi.
+- Bấm một thông báo: `PATCH /notifications/{id}/read` rồi chuyển tới `link` (chỉ nhận route nội bộ bắt đầu bằng `/`).
+- "Đánh dấu đã đọc tất cả": `PATCH /notifications/me/read-all`.
+
+Người dùng chỉ thấy thông báo của chính mình. Ai nhận thông báo nào do notification-service quyết định (xem README của service đó).
+
 ## Git
 
 Nhánh `main` (ổn định) và `dev` (tích hợp). Commit theo dạng `type(scope): message`.

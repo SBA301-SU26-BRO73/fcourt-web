@@ -2,6 +2,7 @@ import { Grid2X2, Inbox, Layers, LogOut, Package, ShieldCheck, Tag, Users } from
 import { useEffect } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { useAuth } from '@/hooks/use-auth-context'
 import { useUsers } from '@/hooks/use-users'
 
@@ -122,6 +123,9 @@ export function DashboardLayout() {
       </aside>
 
       <div className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 shrink-0 items-center justify-end border-b border-slate-200/80 bg-white px-6 shadow-2xs">
+          <NotificationBell />
+        </header>
         <div className="flex-1 overflow-y-auto bg-[#F8FAFC] p-6 sm:p-8">
           <Outlet />
         </div>

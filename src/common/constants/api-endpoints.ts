@@ -204,6 +204,12 @@ export const API_ENDPOINTS = {
     create: joinEndpoint('/reviews'),
     images: joinEndpoint('/reviews/images'),
   },
+  notifications: {
+    mine: joinEndpoint('/notifications/me'),
+    unreadCount: joinEndpoint('/notifications/me/unread-count'),
+    read: (id: Id) => joinEndpoint('/notifications', id, 'read'),
+    readAll: joinEndpoint('/notifications/me/read-all'),
+  },
   refunds: {
     request: joinEndpoint('/refunds/request'),
     byBooking: (bookingId: Id) => joinEndpoint('/refunds/booking', bookingId),
