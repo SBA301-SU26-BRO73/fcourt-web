@@ -38,6 +38,8 @@ export function ConfirmationPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const bookingId = parsePositiveInt(searchParams.get('bookingId'));
+  const { user } = useAuth();
+  const holdToken = bookingId === null ? null : loadGuestBookingToken(bookingId);
 
   if (bookingId === null) {
     return (
@@ -48,17 +50,25 @@ export function ConfirmationPage() {
       />
     );
   }
-  return <ConfirmationView key={bookingId} bookingId={bookingId} />;
+  if (!user && !holdToken) {
+    return (
+      <PaymentMessage
+        title="Bạn đặt sân không cần đăng nhập?"
+        message="Tra cứu đơn bằng mã đặt sân và số điện thoại."
+        actions={[{ label: 'Tra cứu đơn', onClick: () => navigate('/lookup') }]}
+      />
+    );
+  }
+  return <ConfirmationView key={bookingId} bookingId={bookingId} holdToken={holdToken} />;
 }
 
-function ConfirmationView({ bookingId }: { bookingId: number }) {
+function ConfirmationView({ bookingId, holdToken }: { bookingId: number; holdToken: string | null }) {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state as LocationState | null) ?? {};
   const [startedAt] = useState(() => Date.now());
   const { user } = useAuth();
   // Guest booking: the hold token that created it is the credential (no account, no JWT).
-  const [holdToken] = useState(() => loadGuestBookingToken(bookingId));
   const isGuest = !user && holdToken !== null;
   const myBookingsPath = isGuest ? '/lookup' : '/my-bookings';
 
@@ -120,7 +130,7 @@ function ConfirmationView({ bookingId }: { bookingId: number }) {
             </button>
 
             <div className="absolute left-1/2 -translate-x-1/2">
-              <h1 className="text-xl font-bold text-primary">SportCourt</h1>
+              <h1 className="text-xl font-bold text-primary">FCourt</h1>
             </div>
 
             <div className="flex items-center gap-2 bg-accent/50 px-3 py-1.5 rounded-lg">

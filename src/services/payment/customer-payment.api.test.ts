@@ -20,12 +20,21 @@ describe('customer booking and payment api', () => {
   })
 
   it('reads checkout info, optionally with the guest hold token', async () => {
-    http.get.mockResolvedValue({ data: {} })
+    http.get.mockResolvedValue({ data: { transferContent: 'FC11065538' } })
     await getCheckoutInfo(7)
     expect(http.get).toHaveBeenCalledWith('/payments/checkout-info/7', { headers: undefined })
     await getCheckoutInfo(7, 'tok')
     expect(http.get).toHaveBeenLastCalledWith('/payments/checkout-info/7', { headers: { 'X-Hold-Token': 'tok' } })
     expect(holdTokenHeaders(null)).toBeUndefined()
+  })
+
+  it.each([
+    ['FC FC11065538', 'FC11065538'],
+    ['FC11065538', 'FC11065538'],
+    ['FC BK00000042', 'FC BK00000042'],
+  ])('normalizes transfer content %s for display, copying and QR generation', async (transferContent, expected) => {
+    http.get.mockResolvedValue({ data: { bookingId: 7, transferContent } })
+    expect(await getCheckoutInfo(7)).toEqual({ bookingId: 7, transferContent: expected })
   })
 
   it('uploads the receipt as multipart part "file"', async () => {

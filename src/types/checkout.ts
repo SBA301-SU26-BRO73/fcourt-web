@@ -25,7 +25,7 @@ export interface CheckoutInfo {
   bankBin: string
   bankAccountNumber: string
   bankAccountName: string
-  /** `FC {bookingCode}` */
+  /** Booking code prefixed with FC only when it does not already start with FC. */
   transferContent: string
   /** Absolute checkout deadline (the hold expiry). */
   expiresAt: string

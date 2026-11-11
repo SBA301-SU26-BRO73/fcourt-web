@@ -24,9 +24,12 @@ describe('booking state helpers', () => {
     expect(canTryCancel(booking('CANCELLED'))).toBe(false)
   })
 
-  it('shows the ticket only for confirmed or checked-in bookings', () => {
+  it('shows the ticket only for confirmed, checked-in or completed bookings', () => {
     expect(hasTicket(booking('CONFIRMED'))).toBe(true)
     expect(hasTicket(booking('CHECKED_IN'))).toBe(true)
+    expect(hasTicket(booking('COMPLETED'))).toBe(true)
+    expect(hasTicket(booking('CANCELLED'))).toBe(false)
+    expect(hasTicket(booking('PENDING_PAYMENT'))).toBe(false)
     expect(hasTicket(booking('AWAITING_CONFIRMATION'))).toBe(false)
   })
 
