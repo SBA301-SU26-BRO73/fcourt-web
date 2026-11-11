@@ -105,7 +105,7 @@ export const branchApi = {
 
 // Admin Side API Functions (facility-service, role ADMIN)
 
-/** The backend returns every branch of the owner as one array, with no paging. */
+/** Unpaged array of the owner's branches; SUPER_ADMIN receives all branches. */
 export async function listBranches() {
   const response = await axiosClient.get<AdminBranch[]>(API_ENDPOINTS.adminBranches.list)
   return response.data

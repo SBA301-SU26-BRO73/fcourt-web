@@ -25,7 +25,9 @@ interface MyBookingDetailProps {
 
 /** Expanded body of a booking card: fresh detail, ticket QR, refund state and the next actions. */
 export function MyBookingDetail({ booking: listed, onPay, onCancel, onRefund, onReview }: MyBookingDetailProps) {
-  const { data: booking } = useMyBooking(listed, true)
+  const { data: detail } = useMyBooking(listed, true)
+  // Cancellation is terminal; an older cached detail must not re-enable the ticket request.
+  const booking = listed.status === 'CANCELLED' && detail.status !== 'CANCELLED' ? listed : detail
   const ticketQuery = useTicket(booking.id, hasTicket(booking))
   const refundQuery = useRefundState(booking.id, mayHaveRefund(booking))
   const refundState = refundQuery.data

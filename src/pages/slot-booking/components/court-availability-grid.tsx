@@ -272,7 +272,7 @@ export default function CourtAvailabilityGrid({
             <div className="w-4 h-4 rounded border border-[#008096]/30 bg-[#008096]/10 flex items-center justify-center">
               <span className="text-[9px] font-bold text-[#008096]">Cao điểm</span>
             </div>
-            <span>Giờ cao điểm (+20%)</span>
+            <span>Cao điểm</span>
           </div>
         </div>
       </div>

@@ -265,7 +265,7 @@ function CheckoutView({ bookingId }: { bookingId: number }) {
             <a href="#" className="text-primary hover:underline">
               Chính sách bảo mật
             </a>{' '}
-            của SportCourt
+            của FCourt
           </p>
         </div>
       </main>

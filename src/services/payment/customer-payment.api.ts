@@ -19,7 +19,8 @@ export async function getCheckoutInfo(bookingId: number, holdToken?: string | nu
   const { data } = await axiosClient.get<CheckoutInfo>(API_ENDPOINTS.payments.checkoutInfo(bookingId), {
     headers: holdTokenHeaders(holdToken),
   })
-  return data
+  // Older servers prepend FC even when the booking code already carries that prefix.
+  return { ...data, transferContent: data.transferContent.replace(/^FC\s+(?=FC)/i, '') }
 }
 
 /**

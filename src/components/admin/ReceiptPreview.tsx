@@ -49,7 +49,7 @@ export function ReceiptPreview({ booking, size = 'thumb' }: ReceiptPreviewProps)
             {[
               { label: 'Mã giao dịch', value: `MB${booking.bookingCode}` },
               { label: 'Tài khoản nhận', value: '0123456789012' },
-              { label: 'Chủ tài khoản', value: 'SPORTCOURT VIETNAM' },
+              { label: 'Chủ tài khoản', value: 'FCOURT VIETNAM' },
               { label: 'Nội dung', value: booking.bookingCode },
               {
                 label: 'Thời gian',

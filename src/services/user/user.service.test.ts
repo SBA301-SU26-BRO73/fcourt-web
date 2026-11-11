@@ -23,7 +23,19 @@ const item = {
 describe('user.service (super admin)', () => {
   beforeEach(() => vi.resetAllMocks())
 
-  it('lists users on /super-admin/users and maps the UserPage body', async () => {
+  it('lists users with the backend filter names and maps the Spring UserPage body', async () => {
+    const body = { content: [item], number: 1, size: 10, totalElements: 25, totalPages: 3 }
+    http.get.mockResolvedValue({ data: body })
+
+    const page = await getUsers({ role: 'ADMIN', status: 'REJECTED', query: '  an  ', page: 1, size: 10 })
+
+    expect(http.get).toHaveBeenCalledWith('/super-admin/users', {
+      params: { role: 'ADMIN', status: 'REJECTED', query: 'an', page: 1, size: 10 },
+    })
+    expect(page).toEqual(body)
+  })
+
+  it('also maps the legacy items/page/total body', async () => {
     http.get.mockResolvedValue({ data: { items: [item], page: 1, size: 10, total: 25 } })
 
     const page = await getUsers({ role: 'CUSTOMER', status: '', query: '  an  ', page: 1, size: 10 })
@@ -35,6 +47,9 @@ describe('user.service (super admin)', () => {
   })
 
   it('reports zero pages for an empty result', () => {
+    expect(toUserManagementPage({ content: [], number: 0, size: 10, totalElements: 0, totalPages: 0 })).toEqual({
+      content: [], number: 0, size: 10, totalElements: 0, totalPages: 0,
+    })
     expect(toUserManagementPage({ items: [], page: 0, size: 10, total: 0 }).totalPages).toBe(0)
   })
 

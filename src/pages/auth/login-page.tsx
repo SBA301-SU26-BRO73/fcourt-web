@@ -9,6 +9,7 @@ import { HeroPanel } from '@/components/auth/hero-panel'
 import type { HeroVariant } from '@/components/auth/hero-panel'
 import { useGoogleLogin, useLogin } from '@/hooks/use-auth'
 import { validators } from '@/utils/validators'
+import { getLoginErrorMessage } from './login-error.utils'
 
 interface LoginRoleConfig {
   label: string
@@ -59,10 +60,6 @@ function getLoginRoleConfig(role: string | null) {
   return LOGIN_ROLE_CONFIG.customer
 }
 
-function getServerErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : null
-}
-
 export function LoginPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -101,7 +98,7 @@ export function LoginPage() {
     login.mutate({ email: f.email, password: f.password })
   }
 
-  const serverError = getServerErrorMessage(login.error) ?? getServerErrorMessage(googleLogin.error)
+  const serverError = getLoginErrorMessage(login.error) ?? getLoginErrorMessage(googleLogin.error)
 
   return (
     <div className="grid md:grid-cols-[46fr_54fr] h-screen overflow-hidden bg-white">
