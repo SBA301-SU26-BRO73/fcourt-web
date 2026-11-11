@@ -26,10 +26,15 @@ export default function SubscriptionPaymentPage() {
 
   const formattedAmount = useMemo(() => new Intl.NumberFormat('vi-VN', {
     style: 'currency', currency: 'VND', maximumFractionDigits: 0,
-  }).format(payment?.amount ?? 10000), [payment?.amount])
+  }).format(payment?.amount ?? 0), [payment?.amount])
 
   if (!Number.isSafeInteger(orderCode) || orderCode <= 0 || isError) {
     return <ResultState icon={<XCircle className="h-12 w-12 text-red-500" />} title="Không tìm thấy giao dịch" message="Vui lòng quay lại trang gói dịch vụ và thử lại." onBack={() => navigate('/admin/subscriptions')} />
+  }
+
+  if (!isLoading && payment && payment.status !== 'PENDING' && payment.status !== 'PAID') {
+    const reason = { EXPIRED: 'Giao dịch đã hết hạn.', CANCELLED: 'Giao dịch đã bị hủy.', FAILED: 'Giao dịch thất bại.' }[payment.status]
+    return <ResultState icon={<XCircle className="h-12 w-12 text-red-500" />} title="Thanh toán chưa hoàn tất" message={`${reason} Vui lòng chọn lại gói dịch vụ.`} onBack={() => navigate('/admin/subscriptions')} />
   }
 
   if (isLoading || !payment) {
@@ -47,7 +52,7 @@ export default function SubscriptionPaymentPage() {
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">Thanh toán PayOS</p>
             <h1 className="mt-2 text-2xl font-extrabold text-foreground">Hoàn tất mua gói dịch vụ</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Quét mã QR hoặc mở trang PayOS để thanh toán phí thử nghiệm.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Quét mã QR hoặc mở trang PayOS để thanh toán.</p>
           </div>
           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">Đang chờ</span>
         </div>
@@ -61,9 +66,9 @@ export default function SubscriptionPaymentPage() {
             <Info label="Gói dịch vụ" value={payment.planName} />
             <Info label="Chu kỳ" value={payment.billingCycle === 'YEARLY' ? 'Hàng năm' : 'Hàng tháng'} />
             <Info label="Mã giao dịch" value={String(payment.orderCode)} />
-            <a href={payment.checkoutUrl} target="_blank" rel="noreferrer" className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700">
+            {payment.checkoutUrl && <a href={payment.checkoutUrl} target="_blank" rel="noreferrer" className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700">
               Mở trang thanh toán PayOS <ExternalLink className="h-4 w-4" />
-            </a>
+            </a>}
           </div>
         </div>
 
@@ -74,7 +79,7 @@ export default function SubscriptionPaymentPage() {
       </section>
       <aside className="h-fit rounded-3xl border border-border bg-card p-6 shadow-sm">
         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Lưu ý</p>
-        <p className="mt-3 text-sm leading-6 text-foreground">Số tiền thanh toán thử nghiệm hiện được cố định ở <strong>10.000đ</strong>, không phụ thuộc giá niêm yết của gói.</p>
+        <p className="mt-3 text-sm leading-6 text-foreground">Số tiền thanh toán là giá của gói theo chu kỳ bạn đã chọn. Gói được kích hoạt tự động sau khi PayOS xác nhận.</p>
         <button onClick={() => navigate('/admin/subscriptions')} className="mt-6 w-full rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted">Quay lại danh sách gói</button>
       </aside>
     </div>

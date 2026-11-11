@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   Package,
   HandCoins,
+  Receipt,
+  CalendarRange,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth-context'
@@ -22,6 +24,8 @@ import { tokenStorage } from '@/utils/token'
 const NAV_ITEMS = [
   { id: 'dashboard', to: '/admin/dashboard', icon: Home, label: 'Tổng quan' },
   { id: 'bookings', to: '/admin/bookings', icon: Calendar, label: 'Đặt sân' },
+  { id: 'full-court', to: '/admin/full-court', icon: CalendarRange, label: 'Đặt cả sân' },
+  { id: 'transactions', to: '/admin/transactions', icon: Receipt, label: 'Sổ giao dịch' },
   { id: 'refund-requests', to: '/admin/refund-requests', icon: HandCoins, label: 'Hoàn tiền' },
   { id: 'courts', to: '/admin/courts', icon: Layout, label: 'Danh sách sân' },
   { id: 'products', to: '/admin/products', icon: Package, label: 'Sản phẩm' },
@@ -39,6 +43,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/dashboard': 'Tổng quan hệ thống',
   '/admin/bookings': 'Duyệt thanh toán & Đặt sân',
   '/admin/refund-requests': 'Yêu cầu hoàn tiền',
+  '/admin/transactions': 'Sổ giao dịch',
+  '/admin/full-court': 'Đặt cả sân',
   '/admin/courts': 'Quản lý sân thể thao',
   '/admin/products': 'Quản lý sản phẩm POS',
   '/admin/staff': 'Quản lý tài khoản nhân viên',
@@ -51,7 +57,7 @@ const PAGE_TITLES: Record<string, string> = {
 export function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, isLoggedIn, clearAuth } = useAuth()
+  const { user, isLoggedIn, clearAuth, logout: logoutSession } = useAuth()
   const hasRecoverableSession = !!tokenStorage.getAccessToken() || !!tokenStorage.getRefreshToken()
 
   useEffect(() => {
@@ -149,8 +155,8 @@ export function AdminLayout() {
         <div className="mt-auto border-t border-slate-100 p-3">
           <button
             type="button"
-            onClick={() => {
-              clearAuth()
+            onClick={async () => {
+              await logoutSession()
               navigate('/auth/login?role=admin', { replace: true })
             }}
             className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all"

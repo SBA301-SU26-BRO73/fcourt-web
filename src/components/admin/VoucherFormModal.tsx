@@ -1,16 +1,22 @@
 import { useEffect, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X, Percent, Tag, ShieldCheck } from 'lucide-react'
 
-import { createVoucher, updateVoucher } from '@/services/voucher/voucher.api'
-import type { Voucher, CreateVoucherRequest, UpdateVoucherRequest } from '@/types/voucher'
-import type { Branch } from '@/types/branch'
-import { formatLocalDateTime } from '@/common/utils/local-date'
+import { getApiErrorMessage } from '@/common/utils/api-error'
+import { useSaveVoucher } from '@/hooks/use-admin-vouchers'
+import type { OwnerBranchOption } from '@/services/voucher/voucher.api'
+import type { Voucher } from '@/types/voucher'
+import {
+  emptyVoucherFormValues,
+  toVoucherRequest,
+  validateVoucherForm,
+  voucherToFormValues,
+  type VoucherFormValues,
+} from '@/pages/admin/vouchers/voucher-form.utils'
 
 interface VoucherFormModalProps {
   isOpen: boolean
   voucher: Voucher | null
-  branches: Branch[]
+  branches: OwnerBranchOption[]
   onClose: () => void
   onSuccess: (message: string) => void
 }
@@ -22,148 +28,43 @@ export default function VoucherFormModal({
   onClose,
   onSuccess,
 }: VoucherFormModalProps) {
-  const queryClient = useQueryClient()
   const isEdit = !!voucher
-
-  // Form states
-  const [branchId, setBranchId] = useState<number>(0)
-  const [code, setCode] = useState('')
-  const [discountType, setDiscountType] = useState<'PERCENTAGE' | 'FIXED'>('PERCENTAGE')
-  const [discountValue, setDiscountValue] = useState<number>(0)
-  const [minOrderValue, setMinOrderValue] = useState<string>('')
-  const [maxDiscountValue, setMaxDiscountValue] = useState<string>('')
-  const [usageLimit, setUsageLimit] = useState<number>(10)
-  const [startDate, setStartDate] = useState('')
-  const [expiryDate, setExpiryDate] = useState('')
-  const [active, setActive] = useState(true)
+  const [values, setValues] = useState<VoucherFormValues>(() => emptyVoucherFormValues(0))
   const [errorMsg, setErrorMsg] = useState('')
+  const saveMutation = useSaveVoucher()
 
   useEffect(() => {
-    if (isOpen) {
-      setErrorMsg('')
-      if (voucher) {
-        setBranchId(voucher.branchId)
-        setCode(voucher.code)
-        setDiscountType(voucher.discountType)
-        setDiscountValue(voucher.discountValue)
-        setMinOrderValue(voucher.minOrderValue ? String(voucher.minOrderValue) : '')
-        setMaxDiscountValue(voucher.maxDiscountValue ? String(voucher.maxDiscountValue) : '')
-        setUsageLimit(voucher.usageLimit)
-        
-        // Format ISO dates to datetime-local (yyyy-MM-ddThh:mm)
-        setStartDate(voucher.startDate ? formatLocalDateTime(new Date(voucher.startDate)) : '')
-        setExpiryDate(voucher.expiryDate ? formatLocalDateTime(new Date(voucher.expiryDate)) : '')
-        setActive(voucher.active)
-      } else {
-        setBranchId(branches[0]?.id || 0)
-        setCode('')
-        setDiscountType('PERCENTAGE')
-        setDiscountValue(0)
-        setMinOrderValue('')
-        setMaxDiscountValue('')
-        setUsageLimit(10)
-        
-        // Default start date = now, expiry = 30 days from now
-        const now = new Date()
-        const future = new Date()
-        future.setDate(now.getDate() + 30)
-        setStartDate(formatLocalDateTime(now))
-        setExpiryDate(formatLocalDateTime(future))
-        setActive(true)
-      }
-    }
+    if (!isOpen) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the form each time the modal opens
+    setErrorMsg('')
+    setValues(voucher ? voucherToFormValues(voucher) : emptyVoucherFormValues(branches[0]?.id ?? 0))
   }, [isOpen, voucher, branches])
-
-  const createMutation = useMutation({
-    mutationFn: createVoucher,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['vouchers'] })
-      onSuccess('Tạo mã giảm giá thành công.')
-      onClose()
-    },
-    onError: (err: any) => {
-      setErrorMsg(err.response?.data?.message || err.message || 'Lỗi khi tạo mã giảm giá.')
-    },
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: UpdateVoucherRequest }) =>
-      updateVoucher(id, payload),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['vouchers'] })
-      onSuccess('Cập nhật mã giảm giá thành công.')
-      onClose()
-    },
-    onError: (err: any) => {
-      setErrorMsg(err.response?.data?.message || err.message || 'Lỗi khi cập nhật mã giảm giá.')
-    },
-  })
 
   if (!isOpen) return null
 
-  const isPending = createMutation.isPending || updateMutation.isPending
+  const isPending = saveMutation.isPending
+  const set = <K extends keyof VoucherFormValues>(field: K, value: VoucherFormValues[K]) =>
+    setValues((current) => ({ ...current, [field]: value }))
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg('')
-
-    if (!code.trim()) {
-      setErrorMsg('Vui lòng nhập mã giảm giá.')
+    const problem = validateVoucherForm(values, voucher?.usedCount ?? 0)
+    if (problem) {
+      setErrorMsg(problem)
       return
     }
-
-    if (discountValue <= 0) {
-      setErrorMsg('Giá trị giảm phải lớn hơn 0.')
-      return
-    }
-
-    if (discountType === 'PERCENTAGE' && discountValue > 100) {
-      setErrorMsg('Phần trăm giảm giá không được vượt quá 100%.')
-      return
-    }
-
-    const start = new Date(startDate)
-    const end = new Date(expiryDate)
-    if (end <= start) {
-      setErrorMsg('Ngày hết hạn phải sau ngày bắt đầu.')
-      return
-    }
-
-    if (!isEdit && branchId === 0) {
-      setErrorMsg('Vui lòng chọn cơ sở áp dụng.')
-      return
-    }
-
-    // Format dates to ISO String (OffsetDateTime)
-    const formattedStart = start.toISOString()
-    const formattedEnd = end.toISOString()
-
-    if (isEdit && voucher) {
-      const payload: UpdateVoucherRequest = {
-        discountType,
-        discountValue,
-        minOrderValue: minOrderValue ? Number(minOrderValue) : undefined,
-        maxDiscountValue: maxDiscountValue ? Number(maxDiscountValue) : undefined,
-        usageLimit,
-        startDate: formattedStart,
-        expiryDate: formattedEnd,
-        active,
-      }
-      updateMutation.mutate({ id: voucher.id, payload })
-    } else {
-      const payload: CreateVoucherRequest = {
-        branchId,
-        code: code.trim().toUpperCase(),
-        discountType,
-        discountValue,
-        minOrderValue: minOrderValue ? Number(minOrderValue) : undefined,
-        maxDiscountValue: maxDiscountValue ? Number(maxDiscountValue) : undefined,
-        usageLimit,
-        startDate: formattedStart,
-        expiryDate: formattedEnd,
-      }
-      createMutation.mutate(payload)
-    }
+    saveMutation.mutate(
+      { id: voucher?.id, payload: toVoucherRequest(values) },
+      {
+        onSuccess: () => {
+          onSuccess(isEdit ? 'Cập nhật mã giảm giá thành công.' : 'Tạo mã giảm giá thành công.')
+          onClose()
+        },
+        onError: (error) =>
+          setErrorMsg(getApiErrorMessage(error, isEdit ? 'Lỗi khi cập nhật mã giảm giá.' : 'Lỗi khi tạo mã giảm giá.')),
+      },
+    )
   }
 
   return (
@@ -204,8 +105,8 @@ export default function VoucherFormModal({
             <label className="text-sm font-bold text-slate-700">Cơ sở áp dụng *</label>
             <select
               disabled={isEdit || isPending}
-              value={branchId}
-              onChange={(e) => setBranchId(Number(e.target.value))}
+              value={values.branchId}
+              onChange={(e) => set('branchId', Number(e.target.value))}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-50 disabled:bg-slate-100 disabled:text-slate-500"
             >
               <option value="0" disabled>-- Chọn cơ sở --</option>
@@ -223,8 +124,8 @@ export default function VoucherFormModal({
               <input
                 type="text"
                 disabled={isEdit || isPending}
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                value={values.code}
+                onChange={(e) => set('code', e.target.value.toUpperCase())}
                 placeholder="Ví dụ: SUMMER20, KM50K"
                 className="h-11 w-full rounded-xl border border-slate-200 pl-10 pr-4 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-50 uppercase disabled:bg-slate-100 disabled:text-slate-500"
               />
@@ -237,15 +138,15 @@ export default function VoucherFormModal({
               <label className="text-sm font-bold text-slate-700">Loại giảm giá *</label>
               <select
                 disabled={isPending}
-                value={discountType}
+                value={values.discountType}
                 onChange={(e) => {
-                  setDiscountType(e.target.value as 'PERCENTAGE' | 'FIXED')
-                  setDiscountValue(0)
+                  set('discountType', e.target.value as VoucherFormValues['discountType'])
+                  set('discountValue', '')
                 }}
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-50"
               >
                 <option value="PERCENTAGE">Phần trăm (%)</option>
-                <option value="FIXED">Số tiền cố định (đ)</option>
+                <option value="FIXED_AMOUNT">Số tiền cố định (đ)</option>
               </select>
             </div>
             <div className="space-y-1">
@@ -254,14 +155,14 @@ export default function VoucherFormModal({
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
-                  {discountType === 'PERCENTAGE' ? <Percent className="size-4" /> : 'đ'}
+                  {values.discountType === 'PERCENTAGE' ? <Percent className="size-4" /> : 'đ'}
                 </span>
                 <input
                   type="number"
                   disabled={isPending}
-                  value={discountValue || ''}
-                  onChange={(e) => setDiscountValue(Number(e.target.value))}
-                  placeholder={discountType === 'PERCENTAGE' ? 'Ví dụ: 15' : 'Ví dụ: 30000'}
+                  value={values.discountValue}
+                  onChange={(e) => set('discountValue', e.target.value)}
+                  placeholder={values.discountType === 'PERCENTAGE' ? 'Ví dụ: 15' : 'Ví dụ: 30000'}
                   className="h-11 w-full rounded-xl border border-slate-200 pl-8 pr-4 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-50"
                 />
               </div>
@@ -275,8 +176,8 @@ export default function VoucherFormModal({
               <input
                 type="number"
                 disabled={isPending}
-                value={minOrderValue}
-                onChange={(e) => setMinOrderValue(e.target.value)}
+                value={values.minOrderAmount}
+                onChange={(e) => set('minOrderAmount', e.target.value)}
                 placeholder="Ví dụ: 100000"
                 className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-50"
               />
@@ -285,10 +186,10 @@ export default function VoucherFormModal({
               <label className="text-sm font-bold text-slate-700">Giảm tối đa (đ)</label>
               <input
                 type="number"
-                disabled={isPending || discountType === 'FIXED'}
-                value={discountType === 'FIXED' ? '' : maxDiscountValue}
-                onChange={(e) => setMaxDiscountValue(e.target.value)}
-                placeholder={discountType === 'FIXED' ? 'Không khả dụng' : 'Ví dụ: 50000'}
+                disabled={isPending || values.discountType === 'FIXED_AMOUNT'}
+                value={values.discountType === 'FIXED_AMOUNT' ? '' : values.maxDiscountAmount}
+                onChange={(e) => set('maxDiscountAmount', e.target.value)}
+                placeholder={values.discountType === 'FIXED_AMOUNT' ? 'Không khả dụng' : 'Ví dụ: 50000'}
                 className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-50 disabled:bg-slate-50 disabled:text-slate-400"
               />
             </div>
@@ -300,8 +201,8 @@ export default function VoucherFormModal({
             <input
               type="number"
               disabled={isPending}
-              value={usageLimit}
-              onChange={(e) => setUsageLimit(Number(e.target.value))}
+              value={values.usageLimit}
+              onChange={(e) => set('usageLimit', e.target.value)}
               placeholder="Ví dụ: 100"
               className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-50"
             />
@@ -315,8 +216,8 @@ export default function VoucherFormModal({
                 <input
                   type="datetime-local"
                   disabled={isPending}
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  value={values.startDate}
+                  onChange={(e) => set('startDate', e.target.value)}
                   className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-50"
                 />
               </div>
@@ -327,8 +228,8 @@ export default function VoucherFormModal({
                 <input
                   type="datetime-local"
                   disabled={isPending}
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
+                  value={values.endDate}
+                  onChange={(e) => set('endDate', e.target.value)}
                   className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-50"
                 />
               </div>
@@ -342,8 +243,8 @@ export default function VoucherFormModal({
                 type="checkbox"
                 id="voucher-active-toggle"
                 disabled={isPending}
-                checked={active}
-                onChange={(e) => setActive(e.target.checked)}
+                checked={values.active}
+                onChange={(e) => set('active', e.target.checked)}
                 className="size-4 rounded border-slate-300 text-green-600 focus:ring-green-500"
               />
               <label htmlFor="voucher-active-toggle" className="text-sm font-bold text-slate-700 flex items-center gap-1 cursor-pointer">

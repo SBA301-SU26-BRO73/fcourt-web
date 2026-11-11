@@ -1,7 +1,8 @@
 import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { ApiResponse, TokenResponse } from '@/types/auth'
+import { ApiError } from '@/common/utils/api-error'
+import type { TokenResponse } from '@/types/auth'
 import { tokenStorage } from '@/utils/token'
 
 import { axiosClient } from './axios-client'
@@ -106,14 +107,10 @@ describe('axiosClient interceptors', () => {
     const tokens: TokenResponse = {
       accessToken: 'new-access',
       refreshToken: 'new-refresh',
-      expiresIn: Date.now() + 60_000,
+      expiresIn: 900,
     }
     mockedStorage.getRefreshToken.mockReturnValue('refresh-token')
-    const refreshPost = vi.spyOn(axios, 'post').mockResolvedValue({
-      data: {
-        data: tokens,
-      } satisfies ApiResponse<TokenResponse>,
-    })
+    const refreshPost = vi.spyOn(axios, 'post').mockResolvedValue({ data: tokens })
     const adapter = vi.fn(async (config: InternalAxiosRequestConfig) => {
       if (!('_retry' in config)) {
         return Promise.reject(unauthorized(config))
@@ -146,9 +143,9 @@ describe('axiosClient interceptors', () => {
     const tokens: TokenResponse = {
       accessToken: 'shared-access',
       refreshToken: 'shared-refresh',
-      expiresIn: Date.now() + 60_000,
+      expiresIn: 900,
     }
-    const refresh = deferred<AxiosResponse<ApiResponse<TokenResponse>>>()
+    const refresh = deferred<AxiosResponse<TokenResponse>>()
     mockedStorage.getRefreshToken.mockReturnValue('refresh-token')
     const refreshPost = vi.spyOn(axios, 'post').mockReturnValue(refresh.promise)
     const adapter = vi.fn(async (config: InternalAxiosRequestConfig) => {
@@ -168,7 +165,7 @@ describe('axiosClient interceptors', () => {
 
     expect(refreshPost).toHaveBeenCalledTimes(1)
 
-    refresh.resolve(response({} as InternalAxiosRequestConfig, { data: tokens }))
+    refresh.resolve(response({} as InternalAxiosRequestConfig, tokens))
 
     const results = await Promise.all(requests)
 
@@ -177,7 +174,7 @@ describe('axiosClient interceptors', () => {
       { url: '/protected/b' },
       { url: '/protected/c' },
     ])
-    expect(mockedStorage.setTokens).toHaveBeenCalledTimes(3)
+    expect(mockedStorage.setTokens).toHaveBeenCalledTimes(1)
     expect(adapter).toHaveBeenCalledTimes(6)
   })
 
@@ -199,9 +196,7 @@ describe('axiosClient interceptors', () => {
       Promise.reject(unauthorized(config)),
     )
 
-    await expect(axiosClient.get('/protected')).rejects.toMatchObject({
-      response: { status: 401 },
-    })
+    await expect(axiosClient.get('/protected')).rejects.toBeInstanceOf(ApiError)
 
     expect(mockedStorage.clear).toHaveBeenCalledTimes(1)
     expect(window.location.href).toBe('/auth/login')

@@ -2,9 +2,30 @@ import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/hooks/use-auth-context'
-import { login, registerCourtOwner, registerCustomer } from '@/services/auth/auth.service'
-import type { LoginRequest, RegisterCustomerRequest } from '@/types/auth'
+import {
+  forgotPassword,
+  googleLogin,
+  login,
+  registerCourtOwner,
+  registerCustomer,
+  resetPassword,
+} from '@/services/auth/auth.service'
+import type { LoginRequest, RegisterCustomerRequest, TokenResponse, UserRole } from '@/types/auth'
+import { readLoginRedirect } from '@/utils/redirect'
 import { decodeJwt } from '@/utils/token'
+
+/** Where each backend role lands after signing in. */
+export const ROLE_HOME_PATH: Record<UserRole, string> = {
+  SUPER_ADMIN: '/super-admin',
+  ADMIN: '/admin/branches',
+  STAFF: '/staff',
+  CUSTOMER: '/',
+}
+
+function landingPath(tokens: TokenResponse) {
+  const role = decodeJwt(tokens.accessToken).role
+  return readLoginRedirect(role, ROLE_HOME_PATH[role])
+}
 
 export function useLogin() {
   const navigate = useNavigate()
@@ -12,20 +33,9 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: (data: LoginRequest) => login(data),
-    onSuccess: (res) => {
-      if (res.data) {
-        setAuth(res.data)
-        const decoded = decodeJwt(res.data.accessToken)
-        if (decoded.role === 'SUPER_ADMIN') {
-          navigate('/super-admin')
-        } else if (decoded.role === 'ADMIN') {
-          navigate('/admin/branches')
-        } else if (decoded.role === 'STAFF') {
-          navigate('/staff')
-        } else {
-          navigate('/')
-        }
-      }
+    onSuccess: (tokens: TokenResponse) => {
+      setAuth(tokens)
+      navigate(landingPath(tokens))
     },
   })
 }
@@ -45,5 +55,28 @@ export function useRegisterCourtOwner(onSuccess: () => void) {
   return useMutation({
     mutationFn: (data: FormData) => registerCourtOwner(data),
     onSuccess,
+  })
+}
+
+export function useGoogleLogin() {
+  const navigate = useNavigate()
+  const { setAuth } = useAuth()
+
+  return useMutation({
+    mutationFn: (idToken: string) => googleLogin(idToken),
+    onSuccess: (tokens: TokenResponse) => {
+      setAuth(tokens)
+      navigate(landingPath(tokens))
+    },
+  })
+}
+
+export function useForgotPassword() {
+  return useMutation({ mutationFn: (email: string) => forgotPassword(email) })
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: ({ token, newPassword }: { token: string; newPassword: string }) => resetPassword(token, newPassword),
   })
 }

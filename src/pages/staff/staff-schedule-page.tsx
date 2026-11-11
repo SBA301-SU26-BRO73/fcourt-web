@@ -1,10 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Calendar, Activity, LayoutGrid, ScanLine, PlusCircle, Grid3x3, ShoppingCart } from 'lucide-react'
 
 import { useTodaySchedule } from '@/hooks/staff/use-today-schedule'
 import { useBranchGrid } from '@/hooks/staff/use-branch-grid'
 import { KpiCard } from '@/pages/staff/components/kpi-card'
+import { WeekSchedule } from '@/pages/staff/components/week-schedule'
+import { scheduleWindow } from '@/pages/staff/counter-utils'
 import { ScheduleGrid } from '@/pages/staff/components/schedule-grid'
 import {
   STATUS_STYLES,
@@ -26,6 +28,7 @@ export function StaffSchedulePage() {
   const navigate = useNavigate()
   const scheduleQuery = useTodaySchedule()
   const { courts, branch, isLoading: gridLoading } = useBranchGrid()
+  const [view, setView] = useState<'today' | 'week'>('today')
 
   const schedule = useMemo(() => scheduleQuery.data ?? [], [scheduleQuery.data])
 
@@ -36,7 +39,9 @@ export function StaffSchedulePage() {
   const totalCourts = courts?.length ?? 0
   const freeCourts = Math.max(0, totalCourts - courtsInUse)
 
-  const { openMin, rows } = buildTimeWindow(branch?.openTime, branch?.closeTime)
+  // Staff cannot read the branch hours, so the rows cover the default hours plus every booking.
+  const hours = scheduleWindow(schedule)
+  const { openMin, rows } = buildTimeWindow(hours.openTime, hours.closeTime)
 
   return (
     <div className="flex flex-col gap-4">
@@ -119,6 +124,34 @@ export function StaffSchedulePage() {
         </Link>
       </div>
 
+      {/* View switch */}
+      <div className="flex items-center gap-2">
+        {(['today', 'week'] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={view === key}
+            onClick={() => setView(key)}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
+              view === key
+                ? 'border-green-500 bg-green-50 text-green-700'
+                : 'border-slate-200 text-slate-600'
+            }`}
+          >
+            {key === 'today' ? 'Hôm nay' : 'Tuần'}
+          </button>
+        ))}
+        {branch && branch.status !== 'ACTIVE' && (
+          <span className="ml-auto rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+            Chi nhánh đang ở trạng thái {branch.status}
+          </span>
+        )}
+      </div>
+
+      {view === 'week' ? (
+        <WeekSchedule />
+      ) : (
+        <>
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-slate-500">
         <span className="font-medium text-slate-600">Today</span>
@@ -163,6 +196,8 @@ export function StaffSchedulePage() {
             }
           }}
         />
+      )}
+        </>
       )}
     </div>
   )

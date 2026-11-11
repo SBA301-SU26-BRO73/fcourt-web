@@ -1,11 +1,18 @@
-import type { OrderResponse } from '@/types/pos'
+import type { PosOrder } from '@/types/pos'
 
 function formatMoney(amount: number): string {
   return amount.toLocaleString('vi-VN') + 'đ'
 }
 
+const ORDER_STATUS_TEXT: Record<string, string> = {
+  PAID: 'Đã thanh toán',
+  ON_BOOKING: 'Đã gộp vào booking',
+  PENDING_CHARGE: 'Đang gộp vào booking',
+  CANCELLED: 'Đã huỷ',
+}
+
 interface ReceiptPrintProps {
-  order: OrderResponse
+  order: PosOrder
   branchName?: string
 }
 
@@ -15,7 +22,7 @@ export function ReceiptPrint({ order, branchName }: ReceiptPrintProps) {
     <div className="rounded-xl border border-slate-200 bg-white p-6 print:border-none print:p-0">
       <div className="mb-4 text-center">
         <div className="text-base font-bold text-slate-900">{branchName ?? 'FCourt'}</div>
-        <div className="text-xs text-slate-400">Hoá đơn bán lẻ #{order.id}</div>
+        <div className="text-xs text-slate-400">Hoá đơn bán lẻ {order.orderCode}</div>
         <div className="text-xs text-slate-400">
           {new Date(order.createdAt).toLocaleString('vi-VN')}
         </div>
@@ -49,8 +56,8 @@ export function ReceiptPrint({ order, branchName }: ReceiptPrintProps) {
 
       <div className="mt-2 text-center text-xs text-slate-500">
         {order.bookingId ? `Gộp vào booking #${order.bookingId}` : 'Bill riêng'} ·{' '}
-        {order.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản'} ·{' '}
-        {order.status === 'PAID' ? 'Đã thanh toán' : 'Chờ thanh toán'}
+        {order.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Tính vào booking'} ·{' '}
+        {ORDER_STATUS_TEXT[order.status] ?? order.status}
       </div>
     </div>
   )

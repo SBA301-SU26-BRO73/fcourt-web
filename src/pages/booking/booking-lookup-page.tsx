@@ -1,83 +1,94 @@
 import { useState, type FormEvent } from 'react'
-import { Ban, Search, Calendar, MapPin } from 'lucide-react'
-import { toast } from 'sonner'
+import { Search, Calendar, MapPin, Ban } from 'lucide-react'
 
-import { cancelBooking, lookupBooking } from '@/services/booking/booking.api'
-import { getApiErrorMessage } from '@/common/utils/api-error'
+import { cancelGuestBooking, lookupGuestBooking } from '@/services/booking/booking.api'
+import { isApiError } from '@/common/utils/api-error'
 import { StatusBadge } from '@/components/admin/StatusBadge'
 import { CheckinQrCard } from '@/components/booking/CheckinQrCard'
-import {
-  CancelBookingDialog,
-  canCustomerCancelBooking,
-} from '@/components/booking/CancelBookingDialog'
-import type { BookingResponse, CancelBookingRequest } from '@/types/booking'
-import {
-  getCancelSuccessDescription,
-  hasConfirmedRefund,
-  hasPendingRefund,
-  isPaidCancellation,
-} from '@/pages/booking/cancel-booking.helpers'
+import { GuestCancelDialog } from '@/components/booking/GuestCancelDialog'
+import type { GuestBooking } from '@/types/booking'
+
+/** Message for a failed lookup: 404 never says whether the code or the phone was wrong; 429 says when to retry. */
+export function lookupErrorMessage(error: unknown) {
+  if (isApiError(error)) {
+    if (error.status === 404) return 'Không tìm thấy đơn đặt sân. Kiểm tra lại mã đơn và số điện thoại.'
+    if (error.status === 429) {
+      const wait = error.retryAfterSeconds
+      return wait
+        ? `Bạn tra cứu quá nhiều lần. Vui lòng thử lại sau ${wait} giây.`
+        : 'Bạn tra cứu quá nhiều lần. Vui lòng thử lại sau ít phút.'
+    }
+    if (error.status === 400) return 'Mã đơn (dạng FC12345678) hoặc số điện thoại (9-15 chữ số) chưa đúng định dạng.'
+    return error.message
+  }
+  return 'Không thể tra cứu lúc này. Vui lòng thử lại.'
+}
+
+/** Message for a failed cancel: 400 means the status or the cancellation cut-off no longer allows it. */
+export function cancelErrorMessage(error: unknown) {
+  if (isApiError(error)) {
+    if (error.status === 400) return error.message || 'Đơn này không thể hủy nữa (đã quá hạn hủy hoặc trạng thái không cho phép).'
+    if (error.status === 404) return 'Không tìm thấy đơn đặt sân để hủy.'
+    if (error.status === 429) return 'Bạn thao tác quá nhiều lần. Vui lòng thử lại sau ít phút.'
+    return error.message
+  }
+  return 'Không thể hủy đơn lúc này. Vui lòng thử lại.'
+}
+
+const CANCELLABLE = ['PENDING_PAYMENT', 'AWAITING_CONFIRMATION', 'CONFIRMED']
 
 /** Public guest lookup — no login required, just the booking code + phone. */
 export function BookingLookupPage() {
   const [bookingCode, setBookingCode] = useState('')
   const [phone, setPhone] = useState('')
-  const [booking, setBooking] = useState<BookingResponse | null>(null)
+  const [booking, setBooking] = useState<GuestBooking | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [lookedUp, setLookedUp] = useState({ code: '', phone: '' })
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
-  const [refundAmount, setRefundAmount] = useState<number | null>(null)
-  const [refundPreviewLoading, setRefundPreviewLoading] = useState(false)
-  const [refundPreviewError, setRefundPreviewError] = useState<string | null>(null)
+  const [cancelError, setCancelError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setBooking(null)
-    setLoading(true)
-    try {
-      const result = await lookupBooking(bookingCode.trim().toUpperCase(), phone.trim())
-      setBooking(result)
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'Không tìm thấy đơn đặt sân. Kiểm tra lại mã đơn và số điện thoại.'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleCancel(payload: CancelBookingRequest) {
-    if (!booking) return
+  async function handleCancel(reason: string) {
+    if (cancelling) return
+    setCancelError(null)
     setCancelling(true)
     try {
-      const updated = await cancelBooking(booking.id, {
-        ...payload,
-        guestPhone: phone.trim(),
-      })
-      setBooking(updated)
+      const result = await cancelGuestBooking(lookedUp.code, lookedUp.phone, reason)
+      setBooking((current) => (current ? { ...current, status: 'CANCELLED', checkInCode: null, qrImageUrl: null } : current))
       setCancelOpen(false)
-      toast.success('Đã hủy đặt sân', {
-        description: getCancelSuccessDescription(booking),
-      })
+      setNotice(
+        result.refundAmount && result.refundAmount > 0
+          ? `Đã hủy đơn. Số tiền hoàn dự kiến: ${formatCurrency(result.refundAmount)}.`
+          : 'Đã hủy đơn đặt sân.',
+      )
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Không thể hủy booking'))
+      setCancelError(cancelErrorMessage(err))
     } finally {
       setCancelling(false)
     }
   }
 
-  function openCancelDialog() {
-    if (!booking) return
-    setCancelOpen(true)
-    setRefundAmount(booking.refundAmount ?? null)
-    setRefundPreviewLoading(false)
-
-    setRefundPreviewError(
-      isPaidCancellation(booking) && booking.refundAmount == null
-        ? 'Không tìm thấy dữ liệu thanh toán để tính số tiền hoàn.'
-        : null,
-    )
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (loading) return
+    setError(null)
+    setNotice(null)
+    setBooking(null)
+    setLoading(true)
+    try {
+      setBooking(await lookupGuestBooking(bookingCode, phone))
+      setLookedUp({ code: bookingCode, phone })
+    } catch (err) {
+      setError(lookupErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
   }
+
+  const first = booking?.slots[0]
+  const last = booking?.slots[booking.slots.length - 1]
 
   return (
     <div className="mx-auto max-w-lg px-6 py-10 pb-24">
@@ -92,7 +103,7 @@ export function BookingLookupPage() {
           <input
             value={bookingCode}
             onChange={(e) => setBookingCode(e.target.value)}
-            placeholder="VD: FC1A2B3C"
+            placeholder="VD: FC12345678"
             required
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-sm uppercase outline-none focus:border-green-500"
           />
@@ -118,7 +129,7 @@ export function BookingLookupPage() {
       </form>
 
       {error && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       )}
@@ -131,74 +142,52 @@ export function BookingLookupPage() {
               <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
                 <span className="flex items-center gap-1">
                   <Calendar size={13} /> {booking.date}
+                  {first && last ? ` • ${first.startTime.slice(0, 5)} - ${last.endTime.slice(0, 5)}` : ''}
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin size={13} /> {booking.branchName}
                 </span>
               </div>
+              <div className="mt-1 text-xs text-slate-500">Tổng tiền: {formatCurrency(booking.totalPrice)}</div>
             </div>
             <StatusBadge status={booking.status} />
           </div>
-          {hasConfirmedRefund(booking) ? (
-            <RefundCompletedNotice booking={booking} />
-          ) : hasPendingRefund(booking) ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Booking đã được hủy và đang chờ admin chuyển khoản hoàn tiền
-              {booking.refundAmount != null ? ` ${formatCurrency(booking.refundAmount)}` : ''}, sau đó xác nhận hoàn tất.
-            </div>
+          {booking.status === 'CONFIRMED' && booking.checkInCode ? (
+            <CheckinQrCard checkinCode={booking.checkInCode} bookingCode={booking.bookingCode} />
           ) : (
-            <CheckinQrCard checkinCode={booking.checkinCode} bookingCode={booking.bookingCode} />
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+              Mã QR check-in chỉ hiển thị khi đơn đã được xác nhận.
+            </div>
           )}
-          {canCustomerCancelBooking(booking) && (
+          {notice && (
+            <div role="status" className="mt-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {notice}
+            </div>
+          )}
+          {CANCELLABLE.includes(booking.status) && (
             <button
               type="button"
-              onClick={openCancelDialog}
-              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100"
+              onClick={() => {
+                setCancelError(null)
+                setCancelOpen(true)
+              }}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50"
             >
-              <Ban size={16} />
+              <Ban size={15} />
               Hủy đặt sân
             </button>
           )}
-        </div>
-      )}
-
-      <CancelBookingDialog
-        booking={booking}
-        open={cancelOpen}
-        guestPhone={phone.trim()}
-        refundAmount={refundAmount}
-        refundPreviewLoading={refundPreviewLoading}
-        refundPreviewError={refundPreviewError}
-        submitting={cancelling}
-        onClose={() => setCancelOpen(false)}
-        onConfirm={handleCancel}
-      />
-    </div>
-  )
-}
-
-function RefundCompletedNotice({ booking }: { booking: BookingResponse }) {
-  return (
-    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-      <div className="font-semibold">
-        Admin đã hoàn tiền chuyển khoản
-        {booking.refundAmount != null ? ` ${formatCurrency(booking.refundAmount)}` : ''}.
-      </div>
-      {booking.refundProofImageUrl ? (
-        <a
-          href={booking.refundProofImageUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 block overflow-hidden rounded-lg border border-emerald-200 bg-white"
-        >
-          <img
-            src={booking.refundProofImageUrl}
-            alt="Chứng từ hoàn tiền"
-            className="max-h-72 w-full object-contain"
+          <GuestCancelDialog
+            open={cancelOpen}
+            bookingCode={booking.bookingCode}
+            courtName={booking.courtName}
+            paid={booking.status === 'CONFIRMED' || booking.status === 'AWAITING_CONFIRMATION'}
+            submitting={cancelling}
+            error={cancelError}
+            onClose={() => setCancelOpen(false)}
+            onConfirm={handleCancel}
           />
-        </a>
-      ) : (
-        <div className="mt-2 text-xs text-emerald-700">Chưa có ảnh chứng từ hoàn tiền.</div>
+        </div>
       )}
     </div>
   )

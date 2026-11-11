@@ -55,28 +55,25 @@ beforeEach(() => {
 })
 
 describe('decodeJwt', () => {
-  it('decodes a valid JWT payload with auth claims', () => {
-    const token = jwt({
-      u_id: 42,
-      email: 'admin@example.com',
-      u_role: 'ADMIN',
-    })
+  it('reads the numeric sub and the first role from roles[]', () => {
+    const token = jwt({ sub: '42', roles: ['ADMIN'] })
 
-    expect(decodeJwt(token)).toEqual({
-      id: 42,
-      email: 'admin@example.com',
-      role: 'ADMIN',
-    })
+    expect(decodeJwt(token)).toEqual({ id: 42, email: '', role: 'ADMIN' })
   })
 
-  it('falls back to subject and customer role when optional claims are missing', () => {
-    const token = jwt({
-      sub: 77,
-    })
+  it('accepts Spring-style ROLE_ prefixes', () => {
+    expect(decodeJwt(jwt({ sub: '1', roles: ['ROLE_SUPER_ADMIN'] })).role).toBe('SUPER_ADMIN')
+  })
 
-    expect(decodeJwt(token)).toEqual({
-      id: 77,
-      email: 77,
+  it('falls back to CUSTOMER when roles are missing or unknown', () => {
+    expect(decodeJwt(jwt({ sub: 77 }))).toEqual({ id: 77, email: '', role: 'CUSTOMER' })
+    expect(decodeJwt(jwt({ sub: 78, roles: ['OWNER'] })).role).toBe('CUSTOMER')
+  })
+
+  it('ignores the old u_id / u_role claims', () => {
+    expect(decodeJwt(jwt({ sub: '5', u_id: 99, u_role: 'ADMIN' }))).toEqual({
+      id: 5,
+      email: '',
       role: 'CUSTOMER',
     })
   })
@@ -88,16 +85,20 @@ describe('decodeJwt', () => {
 
 describe('tokenStorage', () => {
   it('sets and reads access and refresh tokens through cookies', () => {
-    const accessToken = jwt({
-      u_id: 5,
-      email: 'staff@example.com',
-      u_role: 'STAFF',
-    })
+    const accessToken = jwt({ sub: '5', roles: ['STAFF'] })
 
     tokenStorage.setTokens({
       accessToken,
       refreshToken: 'refresh-token',
-      expiresIn: Date.now() + 2 * 86400000,
+      expiresIn: 900,
+      user: {
+        id: 5,
+        email: 'staff@example.com',
+        fullName: 'Staff',
+        phone: null,
+        role: 'STAFF',
+        status: 'ACTIVE',
+      },
     })
 
     expect(tokenStorage.getAccessToken()).toBe(accessToken)
@@ -106,39 +107,57 @@ describe('tokenStorage', () => {
       id: 5,
       email: 'staff@example.com',
       role: 'STAFF',
+      fullName: 'Staff',
     })
     expect(tokenStorage.getLastRole()).toBe('STAFF')
   })
 
-  it('uses a one-day access cookie when the token expiry is already past', () => {
+  it('treats expiresIn as seconds: the access cookie lives that long from now', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-07-21T00:00:00.000Z'))
     const cookieSetter = vi.spyOn(document, 'cookie', 'set')
-    const accessToken = jwt({ u_id: 1, email: 'customer@example.com' })
+    const accessToken = jwt({ sub: '1', roles: ['CUSTOMER'] })
 
-    tokenStorage.setTokens({
-      accessToken,
-      refreshToken: 'refresh-token',
-      expiresIn: Date.now() - 1000,
-    })
+    tokenStorage.setTokens({ accessToken, refreshToken: 'refresh-token', expiresIn: 900 })
+
+    expect(cookieSetter).toHaveBeenCalledWith(
+      `fcourt_access=${accessToken}; expires=Tue, 21 Jul 2026 00:15:00 GMT; path=/; SameSite=Strict`,
+    )
+    expect(cookieSetter).toHaveBeenCalledWith(
+      'fcourt_refresh=refresh-token; expires=Thu, 20 Aug 2026 00:00:00 GMT; path=/; SameSite=Strict',
+    )
+  })
+
+  it('uses a one-day access cookie when expiresIn is missing or not positive', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-21T00:00:00.000Z'))
+    const cookieSetter = vi.spyOn(document, 'cookie', 'set')
+    const accessToken = jwt({ sub: '1', roles: ['CUSTOMER'] })
+
+    tokenStorage.setTokens({ accessToken, refreshToken: 'refresh-token', expiresIn: 0 })
 
     expect(cookieSetter).toHaveBeenCalledWith(
       `fcourt_access=${accessToken}; expires=Wed, 22 Jul 2026 00:00:00 GMT; path=/; SameSite=Strict`,
     )
-    vi.useRealTimers()
+  })
+
+  it('keeps the known email across a refresh that has no user object', () => {
+    const accessToken = jwt({ sub: '3', roles: ['ADMIN'] })
+    tokenStorage.setUser({ id: 3, email: 'owner@example.com', role: 'ADMIN', fullName: 'Owner' })
+
+    tokenStorage.setTokens({ accessToken, refreshToken: 'rotated', expiresIn: 900 })
+
+    expect(tokenStorage.getUser()?.email).toBe('owner@example.com')
+    expect(tokenStorage.getRefreshToken()).toBe('rotated')
   })
 
   it('removes saved user when storing a malformed access token', () => {
-    tokenStorage.setUser({
-      id: 9,
-      email: 'old@example.com',
-      role: 'ADMIN',
-    })
+    tokenStorage.setUser({ id: 9, email: 'old@example.com', role: 'ADMIN' })
 
     tokenStorage.setTokens({
       accessToken: 'malformed-token',
       refreshToken: 'refresh-token',
-      expiresIn: Date.now() + 86400000,
+      expiresIn: 900,
     })
 
     expect(tokenStorage.getAccessToken()).toBe('malformed-token')
@@ -161,12 +180,8 @@ describe('tokenStorage', () => {
   })
 
   it('clears token cookies and the saved user', () => {
-    const accessToken = jwt({ u_id: 3, email: 'admin@example.com', u_role: 'ADMIN' })
-    tokenStorage.setTokens({
-      accessToken,
-      refreshToken: 'refresh-token',
-      expiresIn: Date.now() + 86400000,
-    })
+    const accessToken = jwt({ sub: '3', roles: ['ADMIN'] })
+    tokenStorage.setTokens({ accessToken, refreshToken: 'refresh-token', expiresIn: 900 })
 
     tokenStorage.clear()
 

@@ -1,3 +1,4 @@
+import { ZoomableImage } from '@/components/ui/image-viewer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   keepPreviousData,
@@ -12,14 +13,18 @@ import {
   MapPin,
   Pencil,
   Plus,
+  Power,
   Search,
   SlidersHorizontal,
   Trash2,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
-import { deleteBranch, getBranches } from '@/services/branch/branch.api'
-import { deleteCourt, getCourts } from '@/services/court/court.api'
+import { toast } from 'sonner'
+
+import { toastApiError } from '@/common/utils/api-error'
+import { deleteBranch, getBranches, setBranchStatus } from '@/services/branch/branch.api'
+import { changeCourtStatus, deleteCourt, getCourtsByBranch } from '@/services/court/court.api'
 import type { Branch, BranchSortField, SortDirection } from '@/types/branch'
 import type { Court } from '@/types/court'
 import { getBranchErrorMessage } from './branch-error.utils'
@@ -69,16 +74,6 @@ export function BranchListPage() {
     placeholderData: keepPreviousData,
   })
 
-  const courtQuery = useQuery({
-    queryKey: ['courts', 'branch-management-list'],
-    queryFn: () =>
-      getCourts({
-        page: 0,
-        size: 1000,
-        sortField: 'name',
-        sortDirection: 'asc',
-      }),
-  })
 
   const deleteMutation = useMutation({
     mutationFn: deleteBranch,
@@ -103,6 +98,26 @@ export function BranchListPage() {
         },
       })
     },
+  })
+
+  const branchStatusMutation = useMutation({
+    mutationFn: (branch: Branch) =>
+      setBranchStatus(branch, branch.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'),
+    onSuccess: async (saved) => {
+      await queryClient.invalidateQueries({ queryKey: ['branches'] })
+      toast.success(saved.status === 'ACTIVE' ? 'Đã kích hoạt chi nhánh.' : 'Đã tạm đóng chi nhánh.')
+    },
+    onError: (error) => toastApiError(error),
+  })
+
+  const courtStatusMutation = useMutation({
+    mutationFn: (court: Court) =>
+      changeCourtStatus(court.id, court.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'),
+    onSuccess: async (saved) => {
+      await queryClient.invalidateQueries({ queryKey: ['courts'] })
+      toast.success(saved.status === 'ACTIVE' ? 'Đã kích hoạt sân.' : 'Đã ngừng hoạt động sân.')
+    },
+    onError: (error) => toastApiError(error),
   })
 
   function handleDelete(branch: Branch) {
@@ -148,10 +163,12 @@ export function BranchListPage() {
   const selectedBranch =
     data?.content.find((branch) => branch.id === selectedBranchId) ?? data?.content[0]
   const effectiveSelectedBranchId = selectedBranch?.id ?? null
-  const allCourts = courtQuery.data?.content ?? []
-  const courts = selectedBranch
-    ? allCourts.filter((court) => court.branchId === selectedBranch.id)
-    : []
+  const courtQuery = useQuery({
+    queryKey: ['courts', 'branch', selectedBranch?.id],
+    queryFn: () => getCourtsByBranch(selectedBranch!.id),
+    enabled: Boolean(selectedBranch),
+  })
+  const courts = courtQuery.data ?? []
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -316,7 +333,7 @@ export function BranchListPage() {
                     <div className="px-4 py-3 pr-12">
                       <p className="truncate text-lg font-bold">{branch.name}</p>
                       <p className="mt-1 text-sm text-[#6B7280]">
-                        {allCourts.filter((court) => court.branchId === branch.id).length} sân
+                        {branch.courtCount} sân
                       </p>
                     </div>
                   </button>
@@ -342,7 +359,12 @@ export function BranchListPage() {
 
       {selectedBranch && (
         <>
-          <BranchDetailCard branch={selectedBranch} courtCount={courts.length} />
+          <BranchDetailCard
+            branch={selectedBranch}
+            courtCount={selectedBranch.courtCount}
+            isTogglingStatus={branchStatusMutation.isPending}
+            onToggleStatus={() => branchStatusMutation.mutate(selectedBranch)}
+          />
           <CourtList
             key={selectedBranch.id}
             branchId={selectedBranch.id}
@@ -353,6 +375,8 @@ export function BranchListPage() {
             onRetry={() => void courtQuery.refetch()}
             isDeleting={courtDeleteMutation.isPending}
             onDelete={handleCourtDelete}
+            isTogglingStatus={courtStatusMutation.isPending}
+            onToggleStatus={(court) => courtStatusMutation.mutate(court)}
           />
         </>
       )}
@@ -397,9 +421,11 @@ export function BranchListPage() {
 type BranchDetailCardProps = {
   branch: Branch
   courtCount: number
+  isTogglingStatus: boolean
+  onToggleStatus: () => void
 }
 
-function BranchDetailCard({ branch, courtCount }: BranchDetailCardProps) {
+function BranchDetailCard({ branch, courtCount, isTogglingStatus, onToggleStatus }: BranchDetailCardProps) {
   return (
     <section className="relative mt-7 rounded-[20px] border border-[#E5E7EB] bg-white p-5 shadow-sm sm:p-6">
       <Link
@@ -428,6 +454,15 @@ function BranchDetailCard({ branch, courtCount }: BranchDetailCardProps) {
           {branch.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm đóng'}
         </span>
         <span className="text-[#6B7280]">{courtCount} sân</span>
+        <button
+          type="button"
+          disabled={isTogglingStatus}
+          onClick={onToggleStatus}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 font-semibold text-[#374151] hover:border-emerald-500 hover:text-[#059669] disabled:opacity-50"
+        >
+          <Power aria-hidden="true" className="size-4" />
+          {branch.status === 'ACTIVE' ? 'Tạm đóng chi nhánh' : 'Kích hoạt chi nhánh'}
+        </button>
       </div>
     </section>
   )
@@ -442,6 +477,8 @@ type CourtListProps = {
   isDeleting: boolean
   onRetry: () => void
   onDelete: (court: Court) => void
+  isTogglingStatus: boolean
+  onToggleStatus: (court: Court) => void
 }
 
 const courtStatusLabels = {
@@ -465,6 +502,8 @@ function CourtList({
   isDeleting,
   onRetry,
   onDelete,
+  isTogglingStatus,
+  onToggleStatus,
 }: CourtListProps) {
   const focusedCourtIndex = focusCourtId
     ? courts.findIndex((court) => court.id === focusCourtId)
@@ -554,10 +593,11 @@ function CourtList({
               className="flex scroll-mt-6 items-center gap-4 py-6"
             >
               {court.imageUrl ? (
-                <img
+                <ZoomableImage
                   src={court.imageUrl}
                   alt={court.name}
-                  className="size-16 shrink-0 rounded-xl bg-slate-100 object-cover"
+                  buttonClassName="shrink-0 cursor-zoom-in"
+                  className="size-16 rounded-xl bg-slate-100 object-cover"
                   onError={(event) => {
                     event.currentTarget.style.display = 'none'
                   }}
@@ -588,6 +628,18 @@ function CourtList({
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
+                {court.status !== 'MAINTENANCE' && (
+                  <button
+                    type="button"
+                    aria-label={`${court.status === 'ACTIVE' ? 'Ngừng hoạt động' : 'Kích hoạt'} ${court.name}`}
+                    title={court.status === 'ACTIVE' ? 'Ngừng hoạt động' : 'Kích hoạt'}
+                    disabled={isTogglingStatus}
+                    onClick={() => onToggleStatus(court)}
+                    className="grid size-10 place-items-center rounded-full text-[#6B7280] hover:bg-emerald-50 hover:text-[#059669] disabled:opacity-40"
+                  >
+                    <Power aria-hidden="true" className="size-5" />
+                  </button>
+                )}
                 <Link
                   to="/admin/time-slots"
                   state={{

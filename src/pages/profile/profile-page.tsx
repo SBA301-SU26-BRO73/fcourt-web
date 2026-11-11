@@ -9,6 +9,7 @@ import { useAdminDashboard } from '@/hooks/use-admin-dashboard'
 import { useAuth } from '@/hooks/use-auth-context'
 import type { UserRole } from '@/types/auth'
 import { changePassword, getProfile, updateProfile } from '@/services/auth/auth.service'
+import { AvatarEditor } from './avatar-editor'
 import { getCourts } from '@/services/court/court.api'
 import type { Court, CourtStatus } from '@/types/court'
 import { tokenStorage } from '@/utils/token'
@@ -48,7 +49,7 @@ function Toast({ msg }: { msg: string }) {
 
 export function ProfilePage() {
   const navigate = useNavigate()
-  const { user, isLoggedIn, clearAuth } = useAuth()
+  const { user, isLoggedIn, clearAuth, logout: logoutSession } = useAuth()
   const hasRecoverableSession = !!tokenStorage.getAccessToken() || !!tokenStorage.getRefreshToken()
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [showCourts, setShowCourts] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
   const [changingPassword, setChangingPassword] = useState(false)
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' })
@@ -110,11 +112,13 @@ export function ProfilePage() {
     setLoadingProfile(true)
     getProfile()
       .then((response) => {
-        if (!active || !response.data) return
+        if (!active) return
+        tokenStorage.setUser({ id: response.id, email: response.email, role: response.role, fullName: response.fullName })
+        setAvatarUrl(response.avatarUrl ?? null)
         setF({
-          name: response.data.fullName ?? '',
-          phone: response.data.phone ?? '',
-          email: response.data.email,
+          name: response.fullName ?? '',
+          phone: response.phone ?? '',
+          email: response.email,
         })
       })
       .catch((error) => {
@@ -137,9 +141,7 @@ export function ProfilePage() {
     setSaving(true)
     try {
       const response = await updateProfile({ fullName: f.name.trim(), phone: f.phone })
-      if (response.data) {
-        setF({ name: response.data.fullName ?? '', phone: response.data.phone ?? '', email: response.data.email })
-      }
+      setF({ name: response.fullName ?? '', phone: response.phone ?? '', email: response.email })
       setEditing(false)
       showToast('Cập nhật thông tin thành công!')
     } catch (error) {
@@ -170,8 +172,8 @@ export function ProfilePage() {
     }
   }
 
-  function logout() {
-    clearAuth()
+  async function logout() {
+    await logoutSession()
     navigate('/auth/role-pick')
   }
 
@@ -250,9 +252,11 @@ export function ProfilePage() {
           </div>
           <div className="relative bg-white px-7 pb-6">
             <div className="flex items-end justify-between -mt-7 mb-4">
-              <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-green-600 text-xl font-extrabold text-white shadow-md">
-                {initials}
-              </div>
+              <AvatarEditor
+                avatarUrl={avatarUrl}
+                initials={initials}
+                onChanged={(profile, message) => { setAvatarUrl(profile.avatarUrl ?? null); showToast(message) }}
+              />
               {!editing && (
                 <div className="relative z-10">
                   <Button variant="ghost" onClick={() => { setEditing(true); setErrs({}) }}>
@@ -382,7 +386,7 @@ function FeaturedCourtCard({
   isError,
   onOpen,
 }: {
-  topCourt: { courtId: number; courtName: string; branchName: string; bookingCount: number; bookedSlots: number; revenue: number } | null
+  topCourt: { courtId: number | null; courtName: string; branchName: string; bookingCount: number; bookedSlots: number; revenue: number } | null
   isLoading: boolean
   isError: boolean
   onOpen: () => void

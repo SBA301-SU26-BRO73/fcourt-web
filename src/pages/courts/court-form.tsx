@@ -1,10 +1,10 @@
 import type { FormEvent } from 'react'
 
-import { ImageUploadField } from '@/components/ui/image-upload-field'
 import type { CourtTypeData } from '@/types/admin'
 import type { BranchStatus } from '@/types/branch'
 import type { CourtStatus } from '@/types/court'
 import type { CourtFormErrors, CourtFormValues } from './court-form.utils'
+import { CourtImageField } from './court-image-field'
 
 type CourtFormProps = {
   values: CourtFormValues
@@ -15,10 +15,13 @@ type CourtFormProps = {
   isEdit: boolean
   isSubmitting: boolean
   submitLabel: string
-  onChange: (field: keyof CourtFormValues, value: string) => void
   imageFile: File | null
-  onImageFileChange: (file: File | null) => void
-  onClearImage: () => void
+  imageRemoved: boolean
+  onImageSelect: (file: File) => void
+  onImageClear: () => void
+  onImageRemove: () => void
+  onImageUndoRemove: () => void
+  onChange: (field: keyof CourtFormValues, value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
 
@@ -42,10 +45,13 @@ export function CourtForm({
   isEdit,
   isSubmitting,
   submitLabel,
-  onChange,
   imageFile,
-  onImageFileChange,
-  onClearImage,
+  imageRemoved,
+  onImageSelect,
+  onImageClear,
+  onImageRemove,
+  onImageUndoRemove,
+  onChange,
   onSubmit,
 }: CourtFormProps) {
   const inputClass = (hasError: boolean) =>
@@ -133,6 +139,22 @@ export function CourtForm({
             </select>
           </label>
 
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-slate-700">Giá mỗi giờ (VND) *</span>
+            <input
+              name="defaultPricePerHour"
+              type="number"
+              min={0}
+              step="1000"
+              value={values.defaultPricePerHour}
+              aria-invalid={Boolean(errors.defaultPricePerHour)}
+              aria-describedby={errors.defaultPricePerHour ? 'defaultPricePerHour-error' : undefined}
+              onChange={(event) => onChange('defaultPricePerHour', event.target.value)}
+              className={inputClass(Boolean(errors.defaultPricePerHour))}
+            />
+            <ErrorText id="defaultPricePerHour-error" message={errors.defaultPricePerHour} />
+          </label>
+
           <label className="block space-y-2 md:col-span-2">
             <span className="text-sm font-semibold text-slate-700">Mô tả</span>
             <textarea
@@ -144,16 +166,17 @@ export function CourtForm({
             />
           </label>
 
-          <div className="md:col-span-2">
-            <ImageUploadField
-              label="Ảnh sân"
-              value={values.imageUrl}
-              file={imageFile}
-              error={errors.imageUrl}
-              onFileChange={onImageFileChange}
-              onClear={onClearImage}
-            />
-          </div>
+          <CourtImageField
+            currentUrl={values.imageUrl}
+            file={imageFile}
+            removed={imageRemoved}
+            error={errors.imageUrl}
+            disabled={isSubmitting}
+            onSelect={onImageSelect}
+            onClearSelection={onImageClear}
+            onRemoveCurrent={onImageRemove}
+            onUndoRemove={onImageUndoRemove}
+          />
         </div>
       </section>
 

@@ -2,10 +2,12 @@ import { Building2, Mail, ShieldCheck, User, UserCog } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
+import { env } from '@/common/config/env'
 import { Button, Check, Field, Logo, PasswordInput, TextInput } from '@/components/auth/auth-ui'
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
 import { HeroPanel } from '@/components/auth/hero-panel'
 import type { HeroVariant } from '@/components/auth/hero-panel'
-import { useLogin } from '@/hooks/use-auth'
+import { useGoogleLogin, useLogin } from '@/hooks/use-auth'
 import { validators } from '@/utils/validators'
 
 interface LoginRoleConfig {
@@ -58,14 +60,7 @@ function getLoginRoleConfig(role: string | null) {
 }
 
 function getServerErrorMessage(error: unknown) {
-  if (!(error instanceof Error)) return null
-
-  const apiError = error as Error & {
-    response?: { data?: { message?: unknown } }
-  }
-  const message = apiError.response?.data?.message
-
-  return typeof message === 'string' ? message : error.message
+  return error instanceof Error ? error.message : null
 }
 
 export function LoginPage() {
@@ -83,6 +78,8 @@ export function LoginPage() {
     return message
   })
   const login = useLogin()
+  const googleLogin = useGoogleLogin()
+  const isCustomerLogin = roleConfig === LOGIN_ROLE_CONFIG.customer
 
   const set = (k: string, v: string | boolean) => {
     setF((x) => ({ ...x, [k]: v }))
@@ -104,7 +101,7 @@ export function LoginPage() {
     login.mutate({ email: f.email, password: f.password })
   }
 
-  const serverError = getServerErrorMessage(login.error)
+  const serverError = getServerErrorMessage(login.error) ?? getServerErrorMessage(googleLogin.error)
 
   return (
     <div className="grid md:grid-cols-[46fr_54fr] h-screen overflow-hidden bg-white">
@@ -184,6 +181,14 @@ export function LoginPage() {
               Đăng nhập
             </Button>
           </form>
+          {isCustomerLogin && env.googleClientId && (
+            <div className="mt-5">
+              <div className="flex items-center gap-3 mb-4 text-xs text-slate-400">
+                <span className="h-px flex-1 bg-slate-200" />hoặc<span className="h-px flex-1 bg-slate-200" />
+              </div>
+              <GoogleSignInButton disabled={googleLogin.isPending} onCredential={(idToken) => googleLogin.mutate(idToken)} />
+            </div>
+          )}
           {roleConfig.registerPath && roleConfig.registerLabel && (
             <p className="mt-5 text-center text-sm text-slate-500">
               Chưa có tài khoản?{' '}

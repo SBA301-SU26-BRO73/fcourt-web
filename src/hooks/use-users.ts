@@ -36,7 +36,7 @@ export function useApproveUser() {
 export function useRejectUser() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => rejectUser(id),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) => rejectUser(id, reason),
     onSuccess: () => { qc.invalidateQueries({ queryKey: QUERY_KEY }) },
   })
 }

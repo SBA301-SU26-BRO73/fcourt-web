@@ -4,12 +4,12 @@ import { CheckCircle, ChevronLeft, Flag, LogOut } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useCheckout } from '@/hooks/staff/use-checkout'
+import { useCheckout, useCheckoutPreview } from '@/hooks/staff/use-checkout'
 import { useTodaySchedule } from '@/hooks/staff/use-today-schedule'
 import { formatClock } from '@/pages/staff/schedule-utils'
 import { getApiErrorMessage } from '@/common/utils/api-error'
 import type { StaffScheduleItem } from '@/types/staff'
-import type { StaffCheckoutResponse } from '@/types/booking'
+import type { CheckoutPreview } from '@/types/counter'
 
 export function StaffCheckoutPage() {
   const navigate = useNavigate()
@@ -18,43 +18,27 @@ export function StaffCheckoutPage() {
   const location = useLocation()
   const checkoutMutation = useCheckout()
   const scheduleQuery = useTodaySchedule()
+  const previewQuery = useCheckoutPreview(bookingId)
 
   const stateItem = location.state as StaffScheduleItem | null
   const item =
     stateItem ?? scheduleQuery.data?.find((b) => b.bookingId === bookingId) ?? null
 
-  const [result, setResult] = useState<StaffCheckoutResponse | null>(null)
+  const [result, setResult] = useState<(CheckoutPreview & { courtName: string }) | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   function handleCheckout() {
+    const due = previewQuery.data
+    if (!due) return
     setError(null)
-    checkoutMutation.mutate(bookingId, {
-      onSuccess: (data) => setResult(data),
-      onError: (err) => setError(getApiErrorMessage(err)),
+    checkoutMutation.mutate(due, {
+      onSuccess: () => setResult({ ...due, courtName: item?.courtName ?? '' }),
+      onError: (err) => {
+        setError(getApiErrorMessage(err))
+        // A changed surcharge or POS order makes the amounts stale: show the new ones.
+        void previewQuery.refetch()
+      },
     })
-  }
-
-  if (!item && scheduleQuery.isLoading) {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">
-        Loading booking…
-      </div>
-    )
-  }
-
-  if (!item) {
-    return (
-      <div className="flex flex-col items-center gap-4 rounded-xl border border-slate-200 bg-white p-10 text-center">
-        <p className="text-sm text-slate-500">Booking not found.</p>
-        <Button
-          variant="ghost"
-          icon={<ChevronLeft size={16} />}
-          onClick={() => navigate('/staff')}
-        >
-          Back to schedule
-        </Button>
-      </div>
-    )
   }
 
   /* ── Success state ── */
@@ -98,7 +82,7 @@ export function StaffCheckoutPage() {
                 Total
               </div>
               <div className="mt-0.5 font-mono text-sm font-medium text-slate-800">
-                {result.totalPrice.toLocaleString('vi-VN')}đ
+                {result.totalAmount.toLocaleString('vi-VN')}đ
               </div>
             </div>
             <div>
@@ -119,6 +103,29 @@ export function StaffCheckoutPage() {
             Back to today's schedule
           </Button>
         </div>
+      </div>
+    )
+  }
+
+  if (!item && scheduleQuery.isLoading) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">
+        Loading booking…
+      </div>
+    )
+  }
+
+  if (!item) {
+    return (
+      <div className="flex flex-col items-center gap-4 rounded-xl border border-slate-200 bg-white p-10 text-center">
+        <p className="text-sm text-slate-500">Booking not found.</p>
+        <Button
+          variant="ghost"
+          icon={<ChevronLeft size={16} />}
+          onClick={() => navigate('/staff')}
+        >
+          Back to schedule
+        </Button>
       </div>
     )
   }
@@ -184,6 +191,31 @@ export function StaffCheckoutPage() {
           </div>
         </div>
 
+        <div className="mb-7 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
+          {previewQuery.isLoading ? (
+            <p className="text-sm text-slate-400">Đang tính tiền…</p>
+          ) : previewQuery.data ? (
+            <div className="flex flex-col gap-1.5 text-sm text-slate-600">
+              <div className="flex justify-between">
+                <span>Phụ thu quá giờ</span>
+                <span className="font-mono">{previewQuery.data.surchargeAmount.toLocaleString('vi-VN')}đ</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Bán lẻ gộp vào booking</span>
+                <span className="font-mono">{previewQuery.data.posAmount.toLocaleString('vi-VN')}đ</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200 pt-2 font-semibold text-slate-900">
+                <span>Tổng thu tại quầy</span>
+                <span className="font-mono">{previewQuery.data.totalAmount.toLocaleString('vi-VN')}đ</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-red-600">
+              {getApiErrorMessage(previewQuery.error, 'Không tính được số tiền checkout')}
+            </p>
+          )}
+        </div>
+
         {error && (
           <p className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">{error}</p>
         )}
@@ -192,7 +224,7 @@ export function StaffCheckoutPage() {
           variant="primary"
           className="h-[72px] w-full justify-center text-lg font-bold"
           icon={<CheckCircle size={20} />}
-          disabled={checkoutMutation.isPending}
+          disabled={checkoutMutation.isPending || !previewQuery.data}
           onClick={handleCheckout}
         >
           {checkoutMutation.isPending ? 'Checking out…' : 'Confirm customer has left'}

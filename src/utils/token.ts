@@ -1,10 +1,13 @@
-import type { AuthUser, TokenResponse } from '@/types/auth'
+import { USER_ROLES, type AuthUser, type TokenResponse, type UserRole } from '@/types/auth'
 
 const ACCESS_KEY = 'fcourt_access'
 const REFRESH_KEY = 'fcourt_refresh'
 const USER_KEY = 'fcourt_user'
 const LAST_ROLE_KEY = 'fcourt_last_role'
-const USER_ROLES = ['CUSTOMER', 'ADMIN', 'SUPER_ADMIN', 'STAFF'] as const
+
+const DAY_MS = 864e5
+/** auth-service refresh token TTL is 30 days (auth-service application.yml). */
+const REFRESH_COOKIE_MS = 30 * DAY_MS
 
 function setCookie(name: string, value: string, expiresAtMs: number) {
   const expires = new Date(expiresAtMs).toUTCString()
@@ -20,22 +23,48 @@ function deleteCookie(name: string) {
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict`
 }
 
+/** Accept `ADMIN` and Spring-style `ROLE_ADMIN`; anything unknown falls back to CUSTOMER. */
+export function normalizeRole(value: unknown): UserRole {
+  const raw = typeof value === 'string' ? value.replace(/^ROLE_/, '') : ''
+  return USER_ROLES.includes(raw as UserRole) ? (raw as UserRole) : 'CUSTOMER'
+}
+
+/**
+ * Read the identity from the access token. The JWT only carries `sub` (numeric user
+ * id) and `roles[]`; email and full name come from the auth response / profile.
+ */
 export function decodeJwt(token: string): AuthUser {
   const payload = token.split('.')[1]
   const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
+  const roles: unknown[] = Array.isArray(decoded.roles) ? decoded.roles : [decoded.roles]
   return {
-    id: decoded.u_id ?? decoded.sub,
-    email: decoded.email ?? decoded.sub ?? '',
-    role: decoded.u_role ?? 'CUSTOMER',
+    id: Number(decoded.sub),
+    email: '',
+    role: normalizeRole(roles[0]),
   }
 }
 
+/** Absolute expiry (epoch ms) of the access cookie; `expiresIn` is in seconds. */
+function accessExpiryMs(expiresInSeconds: number): number {
+  return Number.isFinite(expiresInSeconds) && expiresInSeconds > 0
+    ? Date.now() + expiresInSeconds * 1000
+    : Date.now() + DAY_MS
+}
+
 export const tokenStorage = {
+  /** Store both tokens. The refresh token rotates, so call this after every refresh too. */
   setTokens(tokens: TokenResponse): void {
-    setCookie(ACCESS_KEY, tokens.accessToken, tokens.expiresIn)
-    setCookie(REFRESH_KEY, tokens.refreshToken, Date.now() + 7 * 864e5)
+    setCookie(ACCESS_KEY, tokens.accessToken, accessExpiryMs(tokens.expiresIn))
+    setCookie(REFRESH_KEY, tokens.refreshToken, Date.now() + REFRESH_COOKIE_MS)
     try {
-      this.setUser(decodeJwt(tokens.accessToken))
+      const fromJwt = decodeJwt(tokens.accessToken)
+      const previous = this.getUser()
+      const known = tokens.user ?? (previous?.id === fromJwt.id ? previous : undefined)
+      this.setUser({
+        ...fromJwt,
+        email: known?.email ?? '',
+        fullName: known?.fullName ?? null,
+      })
     } catch {
       localStorage.removeItem(USER_KEY)
     }
@@ -66,7 +95,7 @@ export const tokenStorage = {
 
   getLastRole(): AuthUser['role'] | null {
     const role = localStorage.getItem(LAST_ROLE_KEY)
-    return USER_ROLES.includes(role as AuthUser['role']) ? (role as AuthUser['role']) : null
+    return USER_ROLES.includes(role as UserRole) ? (role as UserRole) : null
   },
 
   clear(): void {

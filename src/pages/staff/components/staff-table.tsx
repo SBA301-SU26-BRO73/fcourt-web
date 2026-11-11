@@ -1,23 +1,7 @@
-import { Edit, Trash2 } from 'lucide-react'
+import { Edit, RotateCcw, Trash2 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import type { StaffResponse, UserStatus } from '@/types/staff'
-
-function statusTone(status: UserStatus) {
-  if (status === 'ACTIVE') return 'green' as const
-  if (status === 'LOCKED') return 'red' as const
-  return 'gray' as const
-}
-
-function statusLabel(status: UserStatus) {
-  const map: Record<UserStatus, string> = {
-    ACTIVE: 'Active',
-    INACTIVE: 'Inactive',
-    LOCKED: 'Locked',
-    PENDING_APPROVAL: 'Pending',
-  }
-  return map[status]
-}
+import type { StaffResponse } from '@/types/staff'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('vi-VN', {
@@ -31,7 +15,9 @@ interface StaffTableProps {
   staff: StaffResponse[]
   isLoading: boolean
   onEdit: (s: StaffResponse) => void
-  onDelete: (id: number) => void
+  onDisable: (staff: StaffResponse) => void
+  onReactivate: (staff: StaffResponse) => void
+  branchNames: Record<number, string>
   onAdd: () => void
 }
 
@@ -39,7 +25,9 @@ export function StaffTable({
   staff,
   isLoading,
   onEdit,
-  onDelete,
+  onDisable,
+  onReactivate,
+  branchNames,
   onAdd,
 }: StaffTableProps) {
   if (isLoading) {
@@ -102,7 +90,7 @@ export function StaffTable({
               <div className="flex items-center gap-3">
                 <Avatar email={s.email} size={36} />
                 <div>
-                  <div className="font-medium text-slate-800">{s.email.split('@')[0]}</div>
+                  <div className="font-medium text-slate-800">{s.fullName || s.email.split('@')[0]}</div>
                   <div className="font-mono text-xs text-slate-400">#{s.id}</div>
                 </div>
               </div>
@@ -115,31 +103,41 @@ export function StaffTable({
                 </span>
               </div>
             </td>
-            <td className="px-4 py-3 text-slate-600">{s.branchName}</td>
+            <td className="px-4 py-3 text-slate-600">{branchNames[s.branchId] ?? `#${s.branchId}`}</td>
             <td className="px-4 py-3">
-              <Badge tone={statusTone(s.userStatus)}>
-                {statusLabel(s.userStatus)}
-              </Badge>
+              <Badge tone={s.active ? 'green' : 'gray'}>{s.active ? 'Active' : 'Inactive'}</Badge>
             </td>
             <td className="px-4 py-3 font-mono text-xs text-slate-400">
               {formatDate(s.createdAt)}
             </td>
             <td className="px-4 py-3">
               <div className="flex items-center gap-1">
-                <button
-                  title="Chỉnh sửa"
-                  onClick={() => onEdit(s)}
-                  className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                >
-                  <Edit size={15} />
-                </button>
-                <button
-                  title="Xoá"
-                  onClick={() => onDelete(s.id)}
-                  className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                >
-                  <Trash2 size={15} />
-                </button>
+                {s.active ? (
+                  <>
+                    <button
+                      title="Chỉnh sửa"
+                      onClick={() => onEdit(s)}
+                      className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      <Edit size={15} />
+                    </button>
+                    <button
+                      title="Vô hiệu hoá"
+                      onClick={() => onDisable(s)}
+                      className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    title="Kích hoạt lại"
+                    onClick={() => onReactivate(s)}
+                    className="rounded-md p-1.5 text-slate-400 hover:bg-green-50 hover:text-green-700"
+                  >
+                    <RotateCcw size={15} />
+                  </button>
+                )}
               </div>
             </td>
           </tr>

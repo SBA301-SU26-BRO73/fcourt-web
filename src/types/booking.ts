@@ -1,39 +1,5 @@
 ﻿import type { BookingStatus } from '@/types/staff'
 
-export interface WalkInBookingRequest {
-  courtId: number
-  guestPhone: string
-  slotStarts: string[]
-}
-
-export interface WalkInBookingResponse {
-  bookingId: number
-  courtId: number
-  courtName: string
-  guestPhone: string
-  date: string
-  startTime: string
-  endTime: string
-  slotCount: number
-  totalPrice: number
-  status: BookingStatus
-  checkinCode: string
-  checkedInAt: string
-  paymentId: number
-}
-
-export interface StaffCheckoutRequest {
-  bookingId: number
-}
-
-export interface StaffCheckoutResponse {
-  bookingId: number
-  courtName: string
-  status: BookingStatus
-  totalPrice: number
-  completedAt: string
-}
-
 export interface TimeSlotTemplate {
   id: number
   courtId: number
@@ -172,4 +138,20 @@ export interface RefundRequestResponse {
   confirmedById: number | null
   createdAt: string
   updatedAt: string
+}
+
+/** booking-service GuestBookingResponse. checkInCode and qrImageUrl are only set when status is CONFIRMED. */
+export interface GuestBooking {
+  id: number
+  bookingCode: string
+  branchName: string
+  branchAddress: string | null
+  courtName: string
+  date: string
+  slots: Array<{ startTime: string; endTime: string; price: number }>
+  totalPrice: number
+  status: BookingStatus
+  paymentStatus: string | null
+  checkInCode: string | null
+  qrImageUrl: string | null
 }

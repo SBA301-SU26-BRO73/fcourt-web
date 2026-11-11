@@ -1,20 +1,37 @@
+import { useState } from 'react'
 import { Package } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query'
 
-import { getAdminProducts } from '@/services/product/product.api'
+import { getPublicBranch } from '@/services/branch/public-branch.api'
+import { getSuperAdminProductPage } from '@/services/product/product.api'
 import { getProductErrorMessage } from '@/pages/products/product-error.utils'
 
 function formatPrice(value: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
 }
 
+const PAGE_SIZE = 20
+
 export function SuperAdminProductsPage() {
+  const [page, setPage] = useState(0)
   const productsQuery = useQuery({
-    queryKey: ['products', 'super-admin-list'],
-    queryFn: getAdminProducts,
+    queryKey: ['products', 'super-admin-list', page],
+    queryFn: () => getSuperAdminProductPage({ page, size: PAGE_SIZE }),
+    placeholderData: keepPreviousData,
   })
 
-  const products = productsQuery.data ?? []
+  const products = productsQuery.data?.content ?? []
+  const totalPages = productsQuery.data?.totalPages ?? 0
+  const branchIds = [...new Set(products.map((product) => product.branchId))]
+  const branchQueries = useQueries({
+    queries: branchIds.map((id) => ({
+      queryKey: ['public-branch-name', id],
+      queryFn: () => getPublicBranch(id),
+      staleTime: 5 * 60_000,
+      retry: false,
+    })),
+  })
+  const branchNames = new Map(branchIds.map((id, index) => [id, branchQueries[index]?.data?.name]))
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -57,7 +74,9 @@ export function SuperAdminProductsPage() {
                       {product.name}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-slate-600">{product.branchName}</td>
+                  <td className="px-5 py-3 text-slate-600">
+                    {branchNames.get(product.branchId) ?? `#${product.branchId}`}
+                  </td>
                   <td className="px-5 py-3 text-slate-600">{product.unit || '—'}</td>
                   <td className="px-5 py-3 font-semibold text-slate-800">{formatPrice(product.price)}</td>
                   <td className="px-5 py-3">
@@ -73,6 +92,31 @@ export function SuperAdminProductsPage() {
               ))}
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-sm text-slate-600">
+              <span>
+                Trang {page + 1} / {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={page === 0}
+                  onClick={() => setPage((current) => Math.max(0, current - 1))}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold hover:bg-slate-50 disabled:opacity-40"
+                >
+                  Trước
+                </button>
+                <button
+                  type="button"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage((current) => current + 1)}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold hover:bg-slate-50 disabled:opacity-40"
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

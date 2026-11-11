@@ -60,7 +60,7 @@ export function RegisterCustomerPage() {
 
   const serverError =
     register.error instanceof Error
-      ? (register.error as any).response?.data?.message ?? register.error.message
+      ? register.error.message
       : null
 
   return (

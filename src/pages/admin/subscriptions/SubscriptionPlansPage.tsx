@@ -3,8 +3,10 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { Zap, AlertCircle, Building2, Layout, Calendar } from 'lucide-react'
 import { getSubscriptionPlans, getMyActiveSubscription, createSubscriptionCheckout } from '@/services/subscription/subscription.api'
 import { SubscriptionPlanCard } from '@/components/admin/SubscriptionPlanCard'
+import { UsageMeter } from '@/components/admin/UsageMeter'
 import type { SubscriptionPlan, Subscription } from '@/types/subscription'
 import { useNavigate } from 'react-router-dom'
+import { getApiErrorMessage, isApiError } from '@/common/utils/api-error'
 
 export default function SubscriptionPlansPage() {
   const navigate = useNavigate()
@@ -23,8 +25,10 @@ export default function SubscriptionPlansPage() {
     queryFn: async () => {
       try {
         return await getMyActiveSubscription()
-      } catch {
-        return null
+      } catch (error) {
+        // 404: the owner has no subscription yet.
+        if (isApiError(error) && error.status === 404) return null
+        throw error
       }
     },
   })
@@ -37,9 +41,7 @@ export default function SubscriptionPlansPage() {
       setErrorMessage(null)
     },
     onError: (err: unknown) => {
-      const errorResponse = err as { response?: { data?: { message?: string } }; message?: string }
-      const msg = errorResponse?.response?.data?.message || errorResponse?.message || 'Không thể đăng ký gói dịch vụ.'
-      setErrorMessage(msg)
+      setErrorMessage(getApiErrorMessage(err, 'Không thể đăng ký gói dịch vụ.'))
       setTimeout(() => setErrorMessage(null), 6000)
     },
   })
@@ -111,40 +113,37 @@ export default function SubscriptionPlansPage() {
                 <span className="rounded-md bg-emerald-600 text-white text-[11px] font-bold px-2 py-0.5">
                   {currentSub.plan.name}
                 </span>
+                {currentSub.starter && (
+                  <span className="rounded-md bg-muted text-muted-foreground text-[11px] font-bold px-2 py-0.5">
+                    Gói khởi đầu miễn phí
+                  </span>
+                )}
               </div>
               <p className="text-xs text-muted-foreground flex items-center gap-2">
                 <Calendar className="h-3.5 w-3.5" />
                 Thời hạn: {currentSub.startDate} đến {currentSub.endDate}
               </p>
+              {currentSub.upcoming.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Đã mua tiếp: {currentSub.upcoming.map((item) => `${item.plan.name} (${item.startDate} đến ${item.endDate})`).join(', ')}
+                </p>
+              )}
             </div>
 
             {/* Usage Stats */}
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2.5">
-                <div className="rounded-lg bg-card p-2 border border-border shadow-xs">
-                  <Building2 className="h-4 w-4 text-emerald-600" />
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Chi nhánh</div>
-                  <div className="text-sm font-extrabold text-foreground">
-                    {currentSub.currentBranchCount ?? 0} /{' '}
-                    {currentSub.maxBranches >= 99 ? '∞' : currentSub.maxBranches}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <div className="rounded-lg bg-card p-2 border border-border shadow-xs">
-                  <Layout className="h-4 w-4 text-emerald-600" />
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Sân đấu</div>
-                  <div className="text-sm font-extrabold text-foreground">
-                    {currentSub.currentCourtCount ?? 0} /{' '}
-                    {currentSub.maxCourts >= 99 ? '∞' : currentSub.maxCourts}
-                  </div>
-                </div>
-              </div>
+              <UsageMeter
+                icon={<Building2 className="h-4 w-4 text-emerald-600" />}
+                label="Chi nhánh"
+                used={currentSub.usage?.branchesUsed}
+                max={currentSub.maxBranches}
+              />
+              <UsageMeter
+                icon={<Layout className="h-4 w-4 text-emerald-600" />}
+                label="Sân đấu"
+                used={currentSub.usage?.courtsUsed}
+                max={currentSub.maxCourts}
+              />
             </div>
           </div>
         </div>

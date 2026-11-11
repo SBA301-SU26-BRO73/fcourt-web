@@ -1,6 +1,5 @@
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 
-import { ImageUploadField } from '@/components/ui/image-upload-field'
 import type {
   BranchFormErrors,
   BranchFormValues,
@@ -12,9 +11,7 @@ type BranchFormProps = {
   isSubmitting: boolean
   submitLabel: string
   onChange: (field: keyof BranchFormValues, value: string) => void
-  imageFile: File | null
-  onImageFileChange: (file: File | null) => void
-  onClearImage: () => void
+  gallery: ReactNode
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   cities: string[]
   districts: string[]
@@ -123,9 +120,7 @@ export function BranchForm({
   isSubmitting,
   submitLabel,
   onChange,
-  imageFile,
-  onImageFileChange,
-  onClearImage,
+  gallery,
   onSubmit,
   cities,
   districts,
@@ -228,50 +223,34 @@ export function BranchForm({
             required
             onChange={(field, value) => onChange(field, value.replace(' phút', ''))}
           />
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-slate-700">Trạng thái</span>
+            <select
+              name="status"
+              value={values.status}
+              onChange={(event) => onChange('status', event.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+            >
+              <option value="ACTIVE">Hoạt động</option>
+              <option value="INACTIVE">Tạm đóng</option>
+            </select>
+          </label>
         </div>
 
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 className="text-lg font-bold text-slate-950">Thông tin ngân hàng</h2>
-        <p className="mt-1 text-sm text-slate-500">Tất cả các trường trong phần này đều không bắt buộc.</p>
+        <p className="mt-1 text-sm text-slate-500">Dùng để tạo mã VietQR khi khách thanh toán. Tất cả các trường đều bắt buộc.</p>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
-          <Field
-            label="Số tài khoản"
-            name="bankAccountNumber"
-            value={values.bankAccountNumber}
-            error={errors.bankAccountNumber}
-            maxLength={50}
-            onChange={onChange}
-          />
-          <Field
-            label="Tên chủ tài khoản"
-            name="bankAccountName"
-            value={values.bankAccountName}
-            error={errors.bankAccountName}
-            maxLength={150}
-            onChange={onChange}
-          />
-          <Field
-            label="Tên ngân hàng"
-            name="bankName"
-            value={values.bankName}
-            error={errors.bankName}
-            maxLength={100}
-            onChange={onChange}
-          />
-          <div className="md:col-span-2">
-            <ImageUploadField
-              label="Ảnh mã QR thanh toán"
-              value={values.bankQrImageUrl}
-              file={imageFile}
-              error={errors.bankQrImageUrl}
-              onFileChange={onImageFileChange}
-              onClear={onClearImage}
-            />
-          </div>
+          <Field label="Tên ngân hàng" name="bankName" value={values.bankName} error={errors.bankName} maxLength={100} required onChange={onChange} />
+          <Field label="Mã BIN ngân hàng" name="bankBin" value={values.bankBin} error={errors.bankBin} maxLength={6} placeholder="Ví dụ 970436" required onChange={onChange} />
+          <Field label="Số tài khoản" name="bankAccountNumber" value={values.bankAccountNumber} error={errors.bankAccountNumber} maxLength={20} required onChange={onChange} />
+          <Field label="Tên chủ tài khoản" name="bankAccountName" value={values.bankAccountName} error={errors.bankAccountName} maxLength={150} required onChange={onChange} />
         </div>
       </section>
+
+      {gallery}
 
       <div className="flex justify-end">
         <button

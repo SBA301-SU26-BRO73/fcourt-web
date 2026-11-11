@@ -1,8 +1,7 @@
 import type {
   Court,
   CourtStatus,
-  CreateCourtRequest,
-  UpdateCourtRequest,
+  CourtRequest,
 } from '@/types/court'
 
 export interface CourtFormValues {
@@ -11,6 +10,7 @@ export interface CourtFormValues {
   courtTypeId: string
   description: string
   imageUrl: string
+  defaultPricePerHour: string
   status: CourtStatus
 }
 
@@ -22,6 +22,7 @@ export const emptyCourtFormValues: CourtFormValues = {
   courtTypeId: '',
   description: '',
   imageUrl: '',
+  defaultPricePerHour: '',
   status: 'ACTIVE',
 }
 
@@ -32,6 +33,7 @@ export function courtToFormValues(court: Court): CourtFormValues {
     courtTypeId: String(court.courtTypeId),
     description: court.description ?? '',
     imageUrl: court.imageUrl ?? '',
+    defaultPricePerHour: String(court.defaultPricePerHour ?? ''),
     status: court.status,
   }
 }
@@ -53,6 +55,15 @@ export function validateCourtForm(values: CourtFormValues): CourtFormErrors {
     errors.courtTypeId = 'Loại sân là bắt buộc.'
   }
 
+  const price = Number(values.defaultPricePerHour)
+  if (!values.defaultPricePerHour.trim() || !Number.isFinite(price) || price <= 0) {
+    errors.defaultPricePerHour = 'Giá mỗi giờ phải lớn hơn 0.'
+  } else if (Math.round(price * 100) !== price * 100 || price >= 1e10) {
+    errors.defaultPricePerHour = 'Giá tối đa 10 chữ số và 2 chữ số thập phân.'
+  }
+  if (values.imageUrl.trim().length > 2048) errors.imageUrl = 'Đường dẫn ảnh không được vượt quá 2048 ký tự.'
+  if (values.description.length > 2000) errors.description = 'Mô tả không được vượt quá 2000 ký tự.'
+
   return errors
 }
 
@@ -60,23 +71,24 @@ function nullable(value: string) {
   return value.trim() || null
 }
 
-export function toCreateCourtPayload(values: CourtFormValues): CreateCourtRequest {
+/** Same body for create and update: PUT /admin/courts/{id} replaces the whole court. */
+export function toCourtPayload(values: CourtFormValues): CourtRequest {
   return {
-    branchId: Number(values.branchId),
     name: values.name.trim(),
     courtTypeId: Number(values.courtTypeId),
     description: nullable(values.description),
     imageUrl: nullable(values.imageUrl),
+    defaultPricePerHour: Number(values.defaultPricePerHour),
     status: values.status,
   }
 }
 
-export function toUpdateCourtPayload(values: CourtFormValues): UpdateCourtRequest {
-  return {
-    name: values.name.trim(),
-    courtTypeId: Number(values.courtTypeId),
-    description: values.description.trim(),
-    imageUrl: values.imageUrl.trim(),
-    status: values.status,
-  }
+export const COURT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+export const COURT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+
+/** Returns an error message when the file cannot be uploaded as a court photo, else null. */
+export function validateCourtImageFile(file: File): string | null {
+  if (!COURT_IMAGE_TYPES.includes(file.type)) return 'Chỉ nhận ảnh JPEG, PNG hoặc WebP.'
+  if (file.size > COURT_IMAGE_MAX_BYTES) return 'Dung lượng ảnh không được vượt quá 5 MB.'
+  return null
 }

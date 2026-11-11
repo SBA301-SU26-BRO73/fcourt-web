@@ -1,32 +1,31 @@
 ﻿import { Upload, X } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { createPayment } from '@/services/booking/booking.api';
-import type { CreateBookingsResponse } from '@/types/booking';
-
-const MAX_SIZE_MB = 5;
+import { useEffect, useRef, useState } from 'react';
+import { getApiErrorMessage } from '@/common/utils/api-error';
+import { validateReceiptFile } from '@/services/payment/customer-payment.api';
 
 interface UploadReceiptProps {
-  bookingData: CreateBookingsResponse;
-  paymentCode: string;
+  /** Sends the file; resolves when the server accepted the receipt. */
+  onSubmit: (file: File) => Promise<unknown>;
+  /** Called after a successful upload with the picked file and its local preview URL. */
+  onUploaded: (file: { name: string; size: number; previewUrl: string }) => void;
   isExpired?: boolean;
-  discount?: number;
-  voucherCode?: string | null;
 }
 
-export function UploadReceipt({
-  bookingData,
-  paymentCode,
-  isExpired,
-  discount = 0,
-  voucherCode,
-}: UploadReceiptProps) {
-  const navigate = useNavigate();
+export function UploadReceipt({ onSubmit, onUploaded, isExpired }: UploadReceiptProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const keepPreviewRef = useRef(false);
+
+  // The preview URL is handed to the confirmation page after a successful upload, so only revoke otherwise.
+  useEffect(() => {
+    return () => {
+      if (previewUrl && !keepPreviewRef.current) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -37,18 +36,14 @@ export function UploadReceipt({
   const processFile = (file: File) => {
     setError(null);
 
-    if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
-      setError('Chi chap nhan file PNG hoac JPG.');
-      return;
-    }
-    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      setError(`Kich thuoc file vuot qua ${MAX_SIZE_MB}MB.`);
+    const invalid = validateReceiptFile(file);
+    if (invalid) {
+      setError(invalid);
       return;
     }
 
     setSelectedFile(file);
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
+    setPreviewUrl(URL.createObjectURL(file));
   };
 
   const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
@@ -60,45 +55,26 @@ export function UploadReceipt({
   const clearFile = (e: React.MouseEvent) => {
     e.preventDefault();
     setSelectedFile(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     setError(null);
     if (inputRef.current) inputRef.current.value = '';
   };
 
   const handleSubmit = async () => {
-    if (!selectedFile || !bookingData) return;
+    if (!selectedFile || !previewUrl || submittingRef.current) return;
+    submittingRef.current = true;
     setError(null);
     setSubmitting(true);
 
-    const finalAmount = Math.max(0, bookingData.totalAmount - discount);
-
     try {
-      const payment = await createPayment({
-        branchId: bookingData.branchId,
-        bookingIds: bookingData.bookings.map((booking) => booking.id),
-        amount: finalAmount,
-        billImage: selectedFile,
-        voucherCode: voucherCode || undefined,
-      });
-
-      navigate('/confirmation?paymentId=' + payment.id, {
-        state: {
-          booking: bookingData,
-          payment,
-          paymentCode,
-          file: {
-            name: selectedFile.name,
-            size: selectedFile.size,
-            previewUrl,
-          },
-        },
-      });
+      await onSubmit(selectedFile);
+      keepPreviewRef.current = true;
+      onUploaded({ name: selectedFile.name, size: selectedFile.size, previewUrl });
     } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Không thể gửi biên lai.'));
+    } finally {
+      submittingRef.current = false;
       setSubmitting(false);
-      const errorResponse = err as { response?: { data?: { message?: string } }; message?: string };
-      const serverMsg = errorResponse?.response?.data?.message || errorResponse?.message || 'Không thể gửi biên lai.';
-      setError(serverMsg);
     }
   };
 
@@ -109,7 +85,7 @@ export function UploadReceipt({
           <h3 className="text-sm font-bold text-[#191c1d]">Xác nhận thanh toán</h3>
           <p className="text-[11px] text-[#667267]">Ảnh biên lai PNG/JPG, tối đa 5MB</p>
         </div>
-        {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+        {error && <p role="alert" className="text-xs font-medium text-destructive">{error}</p>}
       </div>
 
       <div className="flex items-center gap-3">
@@ -132,14 +108,14 @@ export function UploadReceipt({
             type="file"
             id="receipt-upload"
             className="hidden"
-            disabled={isExpired}
+            disabled={isExpired || submitting}
             accept="image/png,image/jpeg,image/jpg"
             onChange={handleFileChange}
           />
 
           {selectedFile && previewUrl ? (
             <>
-              <img src={previewUrl} alt="Bien lai xem truoc" className="h-10 w-10 shrink-0 rounded-md object-cover" />
+              <img src={previewUrl} alt="Biên lai xem trước" className="h-10 w-10 shrink-0 rounded-md object-cover" />
               <span className="truncate text-xs font-semibold text-[#191c1d]">Đổi ảnh</span>
             </>
           ) : (
@@ -150,8 +126,8 @@ export function UploadReceipt({
           )}
         </label>
 
-        {selectedFile && !isExpired && (
-          <button type="button" onClick={clearFile} className="rounded-lg p-1.5 hover:bg-muted" title="Xoa file">
+        {selectedFile && !isExpired && !submitting && (
+          <button type="button" onClick={clearFile} className="rounded-lg p-1.5 hover:bg-muted" title="Xóa file" aria-label="Xóa ảnh đã chọn">
             <X className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
@@ -167,7 +143,7 @@ export function UploadReceipt({
 
       {isExpired && (
         <p className="mt-2 px-1 text-xs font-medium text-destructive">
-          Thoi han thanh toan da het. Vui long quay lai trang dat san va chon lai slot moi.
+          Thời hạn thanh toán đã hết. Vui lòng quay lại trang đặt sân và chọn lại khung giờ.
         </p>
       )}
     </div>

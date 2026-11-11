@@ -17,6 +17,7 @@ import { ForgotPage } from '@/pages/auth/forgot-page'
 import { LoginPage } from '@/pages/auth/login-page'
 import { RegisterAdminPage } from '@/pages/auth/register-admin-page'
 import { RegisterCustomerPage } from '@/pages/auth/register-customer-page'
+import { ResetPasswordPage } from '@/pages/auth/reset-password-page'
 import { RolePickPage } from '@/pages/auth/role-pick-page'
 import { DocsPage } from '@/pages/docs/docs-page'
 import { ForbiddenPage } from '@/pages/errors/forbidden-page'
@@ -34,6 +35,8 @@ import {AdminBookingPage} from "@/pages/admin/AdminBookingPage.tsx";
 import AdminVoucherPage from "@/pages/admin/vouchers/AdminVoucherPage.tsx";
 import { AdminDashboardPage } from '@/pages/admin/admin-dashboard-page'
 import { AdminRefundRequestsPage } from '@/pages/admin/AdminRefundRequestsPage'
+import { AdminTransactionsPage } from '@/pages/admin/AdminTransactionsPage'
+import { AdminFullCourtPage } from '@/pages/admin/AdminFullCourtPage'
 import { StaffPage } from '@/pages/staff/staff-page'
 import { StaffSchedulePage } from '@/pages/staff/staff-schedule-page'
 import { StaffCheckInPage } from '@/pages/staff/staff-check-in-page'
@@ -44,7 +47,8 @@ import { StaffPosPage } from '@/pages/staff/staff-pos-page'
 import { ProfilePage } from '@/pages/profile/profile-page'
 import { PaymentPage } from '@/pages/payment/PaymentPage'
 import { ConfirmationPage } from '@/pages/payment/ConfirmationPage'
-import { TimeSlotDetailPage } from '@/pages/time-slots/time-slot-detail-page'
+import { CourtLocksPage } from '@/pages/court-locks/court-locks-page'
+import { PricingRulesPage } from '@/pages/pricing-rules/pricing-rules-page'
 import { TimeSlotFormPage } from '@/pages/time-slots/time-slot-form-page'
 import { TimeSlotListPage } from '@/pages/time-slots/time-slot-list-page'
 import HomePage from '@/pages/home/home-page'
@@ -52,6 +56,8 @@ import SubscriptionPlansPage from '@/pages/admin/subscriptions/SubscriptionPlans
 import SubscriptionPaymentPage from '@/pages/admin/subscriptions/SubscriptionPaymentPage'
 
 export const router = createBrowserRouter([
+  // Target of the link in the reset-password email (NOTIFICATION_RESET_PASSWORD_URL).
+  { path: 'reset-password', element: <ResetPasswordPage /> },
   {
     path: '/',
     element: <MainLayout />,
@@ -84,6 +90,7 @@ export const router = createBrowserRouter([
       { path: 'register/customer', element: <RegisterCustomerPage /> },
       { path: 'register/court-owner', element: <RegisterAdminPage /> },
       { path: 'forgot-password', element: <ForgotPage /> },
+      { path: 'reset-password', element: <ResetPasswordPage /> },
       {
         path: 'branches',
         element: <BranchListPage />,
@@ -119,10 +126,6 @@ export const router = createBrowserRouter([
       {
         path: 'time-slots/new',
         element: <TimeSlotFormPage mode="create" />,
-      },
-      {
-        path: 'time-slots/:timeSlotId',
-        element: <TimeSlotDetailPage />,
       },
       {
         path: 'time-slots/:timeSlotId/edit',
@@ -199,12 +202,16 @@ export const router = createBrowserRouter([
         element: <TimeSlotFormPage mode="create" />,
       },
       {
-        path: 'time-slots/:timeSlotId',
-        element: <TimeSlotDetailPage />,
-      },
-      {
         path: 'time-slots/:timeSlotId/edit',
         element: <TimeSlotFormPage mode="edit" />,
+      },
+      {
+        path: 'pricing-rules',
+        element: <PricingRulesPage />,
+      },
+      {
+        path: 'court-locks',
+        element: <CourtLocksPage />,
       },
       {
         path: 'bookings',
@@ -213,6 +220,14 @@ export const router = createBrowserRouter([
       {
         path: 'refund-requests',
         element: <AdminRefundRequestsPage />,
+      },
+      {
+        path: 'transactions',
+        element: <AdminTransactionsPage />,
+      },
+      {
+        path: 'full-court',
+        element: <AdminFullCourtPage />,
       },
       {
         path: 'vouchers',

@@ -1,6 +1,6 @@
-﻿import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
-import { useSearchParams } from 'react-router-dom';
+﻿import { ZoomableImage } from '@/components/ui/image-viewer'
+import { useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   CheckCircle2,
   XCircle,
@@ -14,170 +14,97 @@ import {
 } from 'lucide-react';
 import { ProgressStepper } from '../../components/ProgressStepper';
 import { BookingSummary } from '../../components/BookingSummary';
-import type { CreateBookingsResponse, PaymentResponse } from '@/types/booking';
-import { getPaymentDetails } from '@/services/booking/booking.api';
-
-type PaymentStatus = 'uploading' | 'pending' | 'approved' | 'rejected' | 'error';
+import { CheckinQrCard } from '@/components/booking/CheckinQrCard';
+import { PaymentLoading, PaymentMessage } from './payment-state-card';
+import {
+  CHECKOUT_FAILURE_MESSAGE,
+  classifyCheckoutError,
+  parsePositiveInt,
+  POLL_DEADLINE_MS,
+  resolveConfirmationView,
+  type ConfirmationView,
+} from './payment.utils';
+import { useBookingDetail, usePaymentStatus } from '@/hooks/use-customer-checkout';
+import { useAuth } from '@/hooks/use-auth-context';
+import { loadGuestBookingToken } from '@/utils/guest-booking-storage';
+import { clearActiveHold } from '@/utils/hold-storage';
 
 interface LocationState {
-  booking?: CreateBookingsResponse;
-  payment?: PaymentResponse;
-  paymentCode?: string;
-  file?: {
-    name: string;
-    size: number;
-    previewUrl: string;
-  };
-}
-
-// Real polling — queries backend payment status
-function useRealPolling(
-  paymentId: number | undefined,
-  active: boolean,
-  onStatusChange: (status: PaymentStatus) => void
-) {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!active || !paymentId) return;
-
-    const poll = async () => {
-      try {
-        const payment = await getPaymentDetails(paymentId);
-        if (payment.status === 'CONFIRMED') {
-          onStatusChange('approved');
-          return;
-        } else if (payment.status === 'REJECTED') {
-          onStatusChange('rejected');
-          return;
-        }
-      } catch (error) {
-        console.error('Error polling payment status:', error);
-      }
-
-      timerRef.current = setTimeout(poll, 3000);
-    };
-
-    timerRef.current = setTimeout(poll, 3000);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [active, paymentId, onStatusChange]);
+  file?: { name: string; size: number; previewUrl: string };
+  free?: boolean;
 }
 
 export function ConfirmationPage() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const bookingId = parsePositiveInt(searchParams.get('bookingId'));
+
+  if (bookingId === null) {
+    return (
+      <PaymentMessage
+        title="Không tìm thấy thông tin thanh toán"
+        message="Vui lòng chọn slot và gửi biên lai lại."
+        actions={[{ label: 'Chọn sân', onClick: () => navigate('/slot-booking') }]}
+      />
+    );
+  }
+  return <ConfirmationView key={bookingId} bookingId={bookingId} />;
+}
+
+function ConfirmationView({ bookingId }: { bookingId: number }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const paymentIdParam = searchParams.get('paymentId');
-  const state = (location.state as LocationState) ?? {};
-  const [paymentData, setPaymentData] = useState<PaymentResponse | null>(() => state.payment ?? null);
-  const [paymentLoading, setPaymentLoading] = useState(!state.payment && !!paymentIdParam);
-  const [paymentLoadError, setPaymentLoadError] = useState<string | null>(null);
-  const summaryData = paymentData ?? state.booking;
-  const paymentCode = state.paymentCode || (
-    summaryData ? `BOOK-${summaryData.bookings.map((booking) => booking.id).join('-')}` : 'BOOK'
-  );
+  const state = (location.state as LocationState | null) ?? {};
+  const [startedAt] = useState(() => Date.now());
+  const { user } = useAuth();
+  // Guest booking: the hold token that created it is the credential (no account, no JWT).
+  const [holdToken] = useState(() => loadGuestBookingToken(bookingId));
+  const isGuest = !user && holdToken !== null;
+  const myBookingsPath = isGuest ? '/lookup' : '/my-bookings';
 
-  const [status, setStatus] = useState<PaymentStatus>(() => {
-    if (paymentData?.status === 'CONFIRMED') return 'approved';
-    if (paymentData?.status === 'REJECTED') return 'rejected';
-    return paymentData ? 'pending' : 'uploading';
+  const payment = usePaymentStatus(bookingId, { startedAt, holdToken });
+  const bookingQuery = useBookingDetail(bookingId, {
+    holdToken,
+    // The booking is updated from the payment event: keep reading until the ticket code exists.
+    refetchWhile: (booking) =>
+      payment.data?.paymentStatus === 'SUCCESS' && !booking.checkInCode && booking.status !== 'CANCELLED',
   });
-  const [pollActive, setPollActive] = useState(() => {
-    return !!paymentData && paymentData.status === 'PENDING';
+  const booking = bookingQuery.data;
+
+  const deadlineReached = Date.now() - startedAt >= POLL_DEADLINE_MS && payment.data?.paymentStatus !== 'SUCCESS';
+  const view = resolveConfirmationView({
+    paymentState: payment.data?.paymentStatus ?? null,
+    rejectReason: payment.data?.rejectReason ?? null,
+    paymentError: payment.error,
+    bookingStatus: booking?.status ?? null,
+    checkInCode: booking?.checkInCode ?? null,
+    deadlineReached,
   });
-  const [pollCount, setPollCount] = useState(0);
-  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    if (paymentData || !paymentIdParam) return;
+  if (!booking && bookingQuery.isError) {
+    const failure = classifyCheckoutError(bookingQuery.error);
+    return (
+      <PaymentMessage
+        title="Không tìm thấy thông tin thanh toán"
+        message={CHECKOUT_FAILURE_MESSAGE[failure]}
+        actions={[
+          { label: 'Thử lại', onClick: () => void bookingQuery.refetch(), primary: false },
+          { label: 'Chọn sân', onClick: () => navigate('/slot-booking') },
+        ]}
+      />
+    );
+  }
 
-    const paymentId = Number(paymentIdParam);
-    if (!Number.isInteger(paymentId) || paymentId <= 0) {
-      setPaymentLoadError('Mã thanh toán không hợp lệ.');
-      setPaymentLoading(false);
-      return;
-    }
+  if (!booking) return <PaymentLoading label="Đang tải trạng thái thanh toán..." />;
 
-    getPaymentDetails(paymentId)
-      .then((payment) => {
-        setPaymentData(payment);
-        setPaymentLoadError(null);
-      })
-      .catch(() => setPaymentLoadError('Không thể tải trạng thái thanh toán.'))
-      .finally(() => setPaymentLoading(false));
-  }, [paymentData, paymentIdParam]);
-
-  const previewUrl = state.file?.previewUrl;
+  const previewUrl = state.file?.previewUrl ?? booking.receiptImageUrl ?? undefined;
   const fileName = state.file?.name ?? 'Biên lai thanh toán';
+  const isFree = (state.free ?? false) || booking.totalPrice === 0;
 
-  useEffect(() => {
-    if (paymentData) {
-      if (paymentData.status === 'PENDING') {
-        setStatus('pending');
-        setPollActive(true);
-      }
-      return;
-    }
-    const uploadTimer = setTimeout(() => {
-      setStatus('pending');
-      setPollActive(true);
-    }, 2000);
-    return () => clearTimeout(uploadTimer);
-  }, [retryCount, paymentData]);
-
-  // Polling tick counter for UI feedback
-  useEffect(() => {
-    if (!pollActive) return;
-    const interval = setInterval(() => setPollCount((c) => c + 1), 3000);
-    return () => clearInterval(interval);
-  }, [pollActive]);
-
-  const handleStatusChange = (newStatus: PaymentStatus) => {
-    setPollActive(false);
-    setStatus(newStatus);
+  const goNewBooking = () => {
+    clearActiveHold();
+    navigate('/slot-booking');
   };
-
-  useRealPolling(paymentData?.id, pollActive, handleStatusChange);
-
-  const handleRetry = () => {
-    setRetryCount((c) => c + 1);
-    setStatus('uploading');
-    setPollActive(false);
-    setPollCount(0);
-  };
-
-  const handleNewBooking = () => navigate('/slot-booking');
-  const handleUploadNew = () => navigate('/payment', { state: { booking: state.booking } });
-
-  if (!summaryData && paymentLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-sm text-muted-foreground">Đang tải trạng thái thanh toán...</div>
-      </div>
-    );
-  }
-
-  if (!summaryData) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-6">
-        <div className="bg-card border border-border rounded-3xl p-8 max-w-md w-full text-center shadow-sm">
-          <h1 className="text-xl font-bold text-foreground mb-2">Không tìm thấy thông tin thanh toán</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            {paymentLoadError || 'Vui lòng chọn slot và gửi biên lai lại.'}
-          </p>
-          <button
-            onClick={() => navigate('/slot-booking')}
-            className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold"
-          >
-            Chọn sân
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -185,11 +112,11 @@ export function ConfirmationPage() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <button
-              onClick={() => navigate('/payment')}
+              onClick={() => navigate(myBookingsPath)}
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Quay lại thanh toán</span>
+              <span>{isGuest ? 'Tra cứu đơn' : 'Đơn của tôi'}</span>
             </button>
 
             <div className="absolute left-1/2 -translate-x-1/2">
@@ -210,7 +137,7 @@ export function ConfirmationPage() {
             Xác nhận thanh toán
           </h1>
           <p className="text-muted-foreground">
-            Chúng tôi đang xem xét biên lai của bạn
+            {view.kind === 'approved' ? 'Đặt sân của bạn đã được xác nhận' : 'Chúng tôi đang xem xét biên lai của bạn'}
           </p>
         </div>
 
@@ -220,80 +147,82 @@ export function ConfirmationPage() {
           {/* Left — status panel */}
           <div className="lg:col-span-2 space-y-6">
             {/* Receipt preview */}
-            <div className="bg-card border border-border rounded-3xl p-8 shadow-sm">
-              <h2 className="text-lg font-semibold text-foreground mb-4">
-                Biên lai đã tải lên
-              </h2>
+            {!isFree && (
+              <div className="bg-card border border-border rounded-3xl p-8 shadow-sm">
+                <h2 className="text-lg font-semibold text-foreground mb-4">
+                  Biên lai đã tải lên
+                </h2>
 
-              <div className="flex gap-6 items-start">
-                {/* Image preview */}
-                <div className="w-48 h-48 rounded-2xl overflow-hidden border border-border bg-muted/30 flex-shrink-0 flex items-center justify-center">
-                  {previewUrl ? (
-                    <img
-                      src={previewUrl}
-                      alt="Biên lai"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <ImageOff className="w-10 h-10" />
-                      <span className="text-xs">Không có ảnh</span>
+                <div className="flex gap-6 items-start">
+                  <div className="w-48 h-48 rounded-2xl overflow-hidden border border-border bg-muted/30 flex-shrink-0 flex items-center justify-center">
+                    {previewUrl ? (
+                      <ZoomableImage
+                        src={previewUrl}
+                        alt="Biên lai"
+                        buttonClassName="block h-full w-full cursor-zoom-in"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <ImageOff className="w-10 h-10" />
+                        <span className="text-xs">Không có ảnh</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 pt-2 space-y-3">
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Tên file</div>
+                      <div className="text-sm font-semibold text-foreground truncate">{fileName}</div>
                     </div>
-                  )}
-                </div>
 
-                <div className="flex-1 pt-2 space-y-3">
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Tên file</div>
-                    <div className="text-sm font-semibold text-foreground truncate">{fileName}</div>
-                  </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Mã đặt sân</div>
+                      <div className="text-sm font-semibold text-foreground">{booking.bookingCode}</div>
+                    </div>
 
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Mã đặt sân</div>
-                    <div className="text-sm font-semibold text-foreground">{paymentCode}</div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Thời gian nộp</div>
-                    <div className="text-sm font-semibold text-foreground">
-                      {new Date().toLocaleTimeString('vi-VN', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}{' '}
-                      —{' '}
-                      {new Date().toLocaleDateString('vi-VN', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                      })}
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Cập nhật lần cuối</div>
+                      <div className="text-sm font-semibold text-foreground">
+                        {payment.data?.updatedAt ? formatDateTime(payment.data.updatedAt) : '—'}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Status card */}
             <StatusCard
-              status={status}
-              pollCount={pollCount}
-              onRetry={handleRetry}
-              onNewBooking={handleNewBooking}
-              onUploadNew={handleUploadNew}
+              view={view}
+              isChecking={payment.isFetching}
+              onCheckAgain={() => void payment.refetch()}
+              onNewBooking={goNewBooking}
+              onMyBookings={() => navigate(myBookingsPath)}
+              guest={isGuest}
             />
 
-            {/* Polling log */}
-            {(status === 'pending' || status === 'approved' || status === 'rejected') && (
-              <PollingLog pollCount={pollCount} status={status} />
+            {view.kind === 'approved' && (
+              <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
+                <h4 className="mb-4 text-sm font-semibold text-foreground">Mã check-in</h4>
+                {booking.checkInCode ? (
+                  <>
+                    <CheckinQrCard checkinCode={booking.checkInCode} bookingCode={booking.bookingCode} />
+                    <p className="mt-3 break-all text-center font-mono text-xs text-muted-foreground">{booking.checkInCode}</p>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Đang đồng bộ mã check-in, vui lòng đợi vài giây...
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
           {/* Right — booking summary */}
           <div className="lg:col-span-1">
-            <BookingSummary
-              data={summaryData}
-              guestPhone={getGuestPhone(summaryData)}
-              paymentCode={paymentCode}
-            />
+            <BookingSummary booking={booking} paymentCode={booking.bookingCode} />
           </div>
         </div>
       </main>
@@ -301,28 +230,31 @@ export function ConfirmationPage() {
   );
 }
 
-function getGuestPhone(data: CreateBookingsResponse | PaymentResponse) {
-  for (const booking of data.bookings) {
-    if ('guestPhone' in booking && booking.guestPhone) {
-      return booking.guestPhone;
-    }
-  }
-  return null;
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
 // ─── Status Card ────────────────────────────────────────────────────────────
 
 interface StatusCardProps {
-  status: PaymentStatus;
-  pollCount: number;
-  onRetry: () => void;
+  view: ConfirmationView;
+  isChecking: boolean;
+  onCheckAgain: () => void;
   onNewBooking: () => void;
-  onUploadNew: () => void;
+  onMyBookings: () => void;
+  /** Guest (no account): the orders list is the code + phone lookup. */
+  guest?: boolean;
 }
 
-function StatusCard({ status, pollCount, onRetry, onNewBooking, onUploadNew }: StatusCardProps) {
+export function StatusCard({ view, isChecking, onCheckAgain, onNewBooking, onMyBookings, guest = false }: StatusCardProps) {
   const configs: Record<
-    PaymentStatus,
+    ConfirmationView['kind'],
     {
       icon: React.ReactNode;
       bg: string;
@@ -332,34 +264,33 @@ function StatusCard({ status, pollCount, onRetry, onNewBooking, onUploadNew }: S
       actions?: React.ReactNode;
     }
   > = {
-    uploading: {
-      icon: <Loader2 className="w-10 h-10 text-primary animate-spin" />,
-      bg: 'bg-primary/5',
-      border: 'border-primary/20',
-      title: 'Đang tải biên lai lên...',
-      description: (
-        <p className="text-sm text-muted-foreground">
-          Vui lòng đợi trong giây lát, hệ thống đang xử lý ảnh biên lai của bạn.
-        </p>
-      ),
-    },
     pending: {
       icon: <Clock className="w-10 h-10 text-amber-500" />,
       bg: 'bg-amber-50',
       border: 'border-amber-200',
-      title: 'Đang chờ xác nhận',
+      title: view.kind === 'pending' && view.stalled ? 'Vẫn đang chờ xác nhận' : 'Đang chờ xác nhận',
       description: (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
             Biên lai của bạn đang được đội ngũ xem xét. Thường mất từ 5–15 phút trong giờ
-            cao điểm.
+            cao điểm. Bạn có thể đóng trang này, {guest ? 'hãy lưu mã đặt sân và số điện thoại để tra cứu lại tại mục Tra cứu đơn.' : 'đơn vẫn được giữ trong mục Đơn của tôi.'}
           </p>
-          <div className="flex items-center gap-2 mt-3">
-            <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
-            <span className="text-xs text-amber-600 font-medium">
-              Đang kiểm tra trạng thái... (lần {pollCount + 1})
-            </span>
-          </div>
+          {view.kind === 'pending' && view.stalled ? (
+            <button
+              type="button"
+              disabled={isChecking}
+              onClick={onCheckAgain}
+              className="mt-3 inline-flex items-center gap-2 rounded-xl bg-muted px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/80 disabled:opacity-60"
+            >
+              <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
+              Kiểm tra lại
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 mt-3">
+              <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
+              <span className="text-xs text-amber-600 font-medium">Đang kiểm tra trạng thái...</span>
+            </div>
+          )}
         </div>
       ),
     },
@@ -370,8 +301,7 @@ function StatusCard({ status, pollCount, onRetry, onNewBooking, onUploadNew }: S
       title: 'Thanh toán được xác nhận!',
       description: (
         <p className="text-sm text-muted-foreground">
-          Tuyệt vời! Đặt sân của bạn đã được xác nhận thành công. Chúng tôi sẽ gửi thông
-          báo qua SMS đến số điện thoại đã đăng ký.
+          Tuyệt vời! Đặt sân của bạn đã được xác nhận thành công. Hãy đưa mã QR bên dưới cho nhân viên khi đến sân.
         </p>
       ),
       actions: (
@@ -382,8 +312,11 @@ function StatusCard({ status, pollCount, onRetry, onNewBooking, onUploadNew }: S
           >
             Đặt sân mới
           </button>
-          <button className="flex-1 bg-muted text-foreground py-3 px-6 rounded-xl font-semibold text-sm hover:bg-muted/80 transition-colors">
-            Tải biên nhận
+          <button
+            onClick={onMyBookings}
+            className="flex-1 bg-muted text-foreground py-3 px-6 rounded-xl font-semibold text-sm hover:bg-muted/80 transition-colors"
+          >
+            {guest ? 'Tra cứu đơn' : 'Xem đơn của tôi'}
           </button>
         </div>
       ),
@@ -396,37 +329,54 @@ function StatusCard({ status, pollCount, onRetry, onNewBooking, onUploadNew }: S
       description: (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            Biên lai không hợp lệ hoặc không đúng số tiền/nội dung chuyển khoản. Vui lòng
-            kiểm tra lại và tải lên biên lai mới.
+            Biên lai không hợp lệ hoặc không đúng số tiền/nội dung chuyển khoản. Đơn này đã bị hủy
+            và khung giờ được mở lại, vui lòng đặt lại.
           </p>
-          <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 mt-3">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-destructive space-y-1">
-                <div>• Số tiền không khớp với yêu cầu (350.000 VND)</div>
-                <div>• Nội dung chuyển khoản thiếu mã đặt sân SC240529ABCD</div>
-                <div>• Ảnh biên lai mờ hoặc không đọc được</div>
+          {view.kind === 'rejected' && view.reason && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 mt-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-destructive">Lý do: {view.reason}</div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       ),
       actions: (
         <div className="flex flex-col sm:flex-row gap-3 mt-6">
           <button
-            onClick={onUploadNew}
+            onClick={onNewBooking}
             className="flex-1 bg-primary text-primary-foreground py-3 px-6 rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
           >
             <RefreshCw className="w-4 h-4" />
-            Tải lại biên lai
+            Đặt lại
           </button>
           <button
-            onClick={onRetry}
+            onClick={onMyBookings}
             className="flex-1 bg-muted text-foreground py-3 px-6 rounded-xl font-semibold text-sm hover:bg-muted/80 transition-colors"
           >
-            Thử lại
+            {guest ? 'Tra cứu đơn' : 'Xem đơn của tôi'}
           </button>
         </div>
+      ),
+    },
+    cancelled: {
+      icon: <XCircle className="w-10 h-10 text-destructive" />,
+      bg: 'bg-destructive/5',
+      border: 'border-destructive/20',
+      title: 'Đơn đã bị hủy',
+      description: (
+        <p className="text-sm text-muted-foreground">
+          Đơn đặt sân đã hết hạn hoặc bị hủy nên khung giờ đã được mở lại. Vui lòng chọn lại khung giờ.
+        </p>
+      ),
+      actions: (
+        <button
+          onClick={onNewBooking}
+          className="mt-6 w-full bg-primary text-primary-foreground py-3 px-6 rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors"
+        >
+          Đặt sân mới
+        </button>
       ),
     },
     error: {
@@ -436,12 +386,12 @@ function StatusCard({ status, pollCount, onRetry, onNewBooking, onUploadNew }: S
       title: 'Lỗi kết nối',
       description: (
         <p className="text-sm text-muted-foreground">
-          Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.
+          {view.kind === 'error' ? CHECKOUT_FAILURE_MESSAGE[view.failure] : 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.'}
         </p>
       ),
       actions: (
         <button
-          onClick={onRetry}
+          onClick={onCheckAgain}
           className="mt-6 w-full bg-primary text-primary-foreground py-3 px-6 rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
         >
           <RefreshCw className="w-4 h-4" />
@@ -451,7 +401,7 @@ function StatusCard({ status, pollCount, onRetry, onNewBooking, onUploadNew }: S
     },
   };
 
-  const cfg = configs[status];
+  const cfg = configs[view.kind];
 
   return (
     <div className={`${cfg.bg} border ${cfg.border} rounded-3xl p-8 shadow-sm`}>
@@ -466,93 +416,3 @@ function StatusCard({ status, pollCount, onRetry, onNewBooking, onUploadNew }: S
     </div>
   );
 }
-
-// ─── Polling Activity Log ────────────────────────────────────────────────────
-
-interface PollingLogProps {
-  pollCount: number;
-  status: PaymentStatus;
-}
-
-function PollingLog({ pollCount, status }: PollingLogProps) {
-  const isFinished = status === 'approved' || status === 'rejected';
-  const effectiveCount = isFinished ? Math.max(pollCount, 1) : pollCount;
-
-  const entries = Array.from({ length: effectiveCount }, (_, i) => {
-    const isLast = i === effectiveCount - 1;
-    const isResult = isLast && isFinished;
-    return { index: i, isResult };
-  });
-
-  return (
-    <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-        <h4 className="text-sm font-semibold text-foreground">Nhật ký kiểm tra trạng thái</h4>
-      </div>
-
-      <div className="space-y-2 max-h-48 overflow-y-auto">
-        <LogEntry
-          time={getOffsetTime(-(entries.length) * 3)}
-          message="Biên lai đã được gửi lên máy chủ"
-          type="info"
-        />
-        {entries.map(({ index, isResult }) => (
-          <LogEntry
-            key={index}
-            time={getOffsetTime(-(entries.length - 1 - index) * 3)}
-            message={
-              isResult
-                ? status === 'approved'
-                  ? '✓ Thanh toán được xác nhận bởi nhân viên'
-                  : '✗ Biên lai bị từ chối — vui lòng kiểm tra lại'
-                : `Kiểm tra trạng thái lần ${index + 1}... chưa có phản hồi`
-            }
-            type={isResult ? (status === 'approved' ? 'success' : 'error') : 'pending'}
-          />
-        ))}
-        {!isFinished && (
-          <div className="flex items-center gap-3 py-2">
-            <Loader2 className="w-3.5 h-3.5 text-muted-foreground animate-spin flex-shrink-0" />
-            <span className="text-xs text-muted-foreground">
-              Lần kiểm tra tiếp theo sau vài giây...
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function getOffsetTime(secondsOffset: number): string {
-  const d = new Date(Date.now() + secondsOffset * 1000);
-  return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
-
-interface LogEntryProps {
-  time: string;
-  message: string;
-  type: 'info' | 'pending' | 'success' | 'error';
-}
-
-function LogEntry({ time, message, type }: LogEntryProps) {
-  const dotColor =
-    type === 'success'
-      ? 'bg-primary'
-      : type === 'error'
-      ? 'bg-destructive'
-      : type === 'info'
-      ? 'bg-blue-400'
-      : 'bg-amber-400';
-
-  return (
-    <div className="flex items-start gap-3 py-1.5">
-      <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0 pt-0.5">
-        {time}
-      </span>
-      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${dotColor}`} />
-      <span className="text-xs text-foreground leading-relaxed">{message}</span>
-    </div>
-  );
-}
-

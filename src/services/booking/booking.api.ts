@@ -1,93 +1,69 @@
 import { API_ENDPOINTS } from '@/common/constants/api-endpoints'
 import { axiosClient } from '@/services/http/axios-client'
-import type { ApiResponse } from '@/types/auth'
-import type { SpringPage } from '@/types/court'
-import type {
-  BookingResponse,
-  CancelBookingRequest,
-  CreateBookingsRequest,
-  CreateBookingsResponse,
-  PaymentResponse,
-} from '@/types/booking'
+import type { GuestBooking } from '@/types/booking'
+import type { CreateBookingRequest } from '@/types/checkout'
+import type { MyBooking } from '@/types/my-booking'
 
-function requireData<T>(response: ApiResponse<T>): T {
-  if (response.data === undefined) {
-    throw new Error(response.message || 'The server returned no data.')
-  }
-  return response.data
-}
-
-export async function createBookings(payload: CreateBookingsRequest) {
-  const { data } = await axiosClient.post<ApiResponse<CreateBookingsResponse>>(
-    API_ENDPOINTS.bookings.list,
-    payload,
-  )
-  return requireData(data)
-}
-
-export async function createPayment(payload: {
-  branchId: number
-  bookingIds: number[]
-  amount: number
-  billImage: File
-  voucherCode?: string
-}) {
-  const formData = new FormData()
-  formData.append('branchId', String(payload.branchId))
-  payload.bookingIds.forEach((bookingId) => {
-    formData.append('bookingIds', String(bookingId))
+/** UUID for the Idempotency-Key header; a fallback keeps old WebViews and tests working. */
+export function newIdempotencyKey() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = (Math.random() * 16) | 0
+    return (char === 'x' ? random : (random & 0x3) | 0x8).toString(16)
   })
-  formData.append('amount', String(payload.amount))
-  formData.append('billImage', payload.billImage)
-  if (payload.voucherCode) {
-    formData.append('voucherCode', payload.voucherCode)
-  }
-
-  const { data } = await axiosClient.post<ApiResponse<PaymentResponse>>(
-    API_ENDPOINTS.payments.list,
-    formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } },
-  )
-  return requireData(data)
 }
 
-export async function getPaymentDetails(paymentId: number) {
-  const { data } = await axiosClient.get<ApiResponse<PaymentResponse>>(
-    API_ENDPOINTS.payments.detail(paymentId),
-  )
-  return requireData(data)
+/** X-Hold-Token is the credential of a guest booking; a signed-in customer uses the JWT instead. */
+export function holdTokenHeaders(holdToken?: string | null) {
+  return holdToken ? { 'X-Hold-Token': holdToken } : undefined
 }
 
-export async function getBookingDetails(bookingId: number) {
-  const { data } = await axiosClient.get<ApiResponse<BookingResponse>>(
-    `${API_ENDPOINTS.bookings.list}/${bookingId}`,
-  )
-  return requireData(data)
+/**
+ * POST /api/bookings (booking-service, CUSTOMER JWT): turns a live hold into a PENDING_PAYMENT
+ * booking. The same key and selection replay the same booking, so a lost response is safe to retry.
+ */
+export async function createBooking(payload: CreateBookingRequest, idempotencyKey: string) {
+  const { data } = await axiosClient.post<MyBooking>(API_ENDPOINTS.bookings.create, payload, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  })
+  return data
 }
 
-export async function cancelBooking(bookingId: number, payload: CancelBookingRequest) {
-  const { data } = await axiosClient.post<ApiResponse<BookingResponse>>(
-    API_ENDPOINTS.bookings.cancel(bookingId),
-    payload,
-  )
-  return requireData(data)
+/** GET /api/bookings/{id}: owner JWT, or the guest `X-Hold-Token` for a guest-only booking. */
+export async function getBookingDetail(bookingId: number, holdToken?: string | null) {
+  const { data } = await axiosClient.get<MyBooking>(API_ENDPOINTS.bookings.detail(bookingId), {
+    headers: holdTokenHeaders(holdToken),
+  })
+  return data
 }
 
-/** Booking history for the logged-in member. */
-export async function getMyBookings(page = 0, size = 20) {
-  const { data } = await axiosClient.get<ApiResponse<SpringPage<BookingResponse>>>(
-    API_ENDPOINTS.bookings.my,
-    { params: { page, size, sort: 'createdAt,desc' } },
-  )
-  return requireData(data)
+/** Phone as typed by a guest: spaces and dots dropped, +84 / 84 prefix kept (the server normalises). */
+export function normalizeLookupPhone(phone: string) {
+  return phone.replace(/[\s.-]/g, '')
 }
 
-/** Public guest lookup by booking code + the phone on the booking. */
-export async function lookupBooking(bookingCode: string, phone: string) {
-  const { data } = await axiosClient.get<ApiResponse<BookingResponse>>(
-    API_ENDPOINTS.bookings.lookup,
-    { params: { bookingCode, phone } },
-  )
-  return requireData(data)
+/** POST /api/public/bookings/lookup: minimal view of a guest booking; 404 on any miss, 429 with Retry-After. */
+export async function lookupGuestBooking(bookingCode: string, phone: string) {
+  const { data } = await axiosClient.post<GuestBooking>(API_ENDPOINTS.bookings.lookup, {
+    bookingCode: bookingCode.trim().toUpperCase(),
+    phone: normalizeLookupPhone(phone),
+  })
+  return data
 }
 
+export interface GuestCancelResult {
+  bookingCode: string
+  status: string
+  refundAmount: number | null
+  currency: string
+}
+
+/** POST /api/public/bookings/cancel: guest cancels by code + phone; 404 on any miss, 400 when past the cut-off. */
+export async function cancelGuestBooking(bookingCode: string, phone: string, reason?: string) {
+  const { data } = await axiosClient.post<GuestCancelResult>(API_ENDPOINTS.bookings.guestCancel, {
+    bookingCode: bookingCode.trim().toUpperCase(),
+    phone: normalizeLookupPhone(phone),
+    ...(reason?.trim() ? { reason: reason.trim() } : {}),
+  })
+  return data
+}

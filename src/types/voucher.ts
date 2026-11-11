@@ -1,53 +1,48 @@
-export type VoucherDiscountType = 'PERCENTAGE' | 'FIXED'
+export type VoucherDiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT'
 
+/** The backend only has ACTIVE and EXPIRED; a voucher past its endDate is reported as EXPIRED. */
+export type VoucherStatus = 'ACTIVE' | 'EXPIRED'
+
+/** Voucher of voucher-service (`/api/admin/vouchers`). Money fields are plain numbers. */
 export interface Voucher {
   id: number
-  branchId: number
-  branchName: string
   code: string
-  discountType: VoucherDiscountType
-  discountValue: number
-  minOrderValue: number | null
-  maxDiscountValue: number | null
-  usageLimit: number
-  usageCount: number
-  startDate: string
-  expiryDate: string
-  active: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-export interface CreateVoucherRequest {
   branchId: number
+  discountType: VoucherDiscountType
+  discountValue: number
+  maxDiscountAmount: number | null
+  minOrderAmount: number
+  /** ISO instant */
+  startDate: string
+  endDate: string
+  usageLimit: number
+  usedCount: number
+  status: VoucherStatus
+}
+
+/** Body of POST and PUT (PUT replaces the voucher; the branch must still belong to the owner). */
+export interface VoucherRequest {
   code: string
+  branchId: number
   discountType: VoucherDiscountType
   discountValue: number
-  minOrderValue?: number
-  maxDiscountValue?: number
-  usageLimit: number
+  maxDiscountAmount?: number | null
+  minOrderAmount?: number | null
   startDate: string
-  expiryDate: string
-}
-
-export interface UpdateVoucherRequest {
-  discountType: VoucherDiscountType
-  discountValue: number
-  minOrderValue?: number
-  maxDiscountValue?: number
+  endDate: string
   usageLimit: number
-  startDate: string
-  expiryDate: string
-  active: boolean
+  status?: VoucherStatus
 }
 
-export interface ApiResponse<T> {
-  httpStatus?: number
-  errorCode?: string
-  data?: T
-  message: string
+/** Raw page of the service: `{ items, page, size, total }`, 0-based. */
+export interface VoucherApiPage<T> {
+  items: T[]
+  page: number
+  size: number
+  total: number
 }
 
+/** Same page in the shape the old screens already read. */
 export interface SpringPage<T> {
   content: T[]
   totalPages: number
@@ -63,4 +58,74 @@ export interface SpringPage<T> {
 export interface VoucherListParams {
   page: number
   size: number
+  branchId?: number
+}
+
+export interface VoucherUsage {
+  id: string
+  voucherId: number
+  bookingId: number
+  userId: number
+  discountAmount: number
+  usedAt: string
+  usedAtSource: string | null
+  /** Snapshots taken when the voucher was used; null for old rows. */
+  customerName: string | null
+  customerPhone: string | null
+  bookingCode: string | null
+}
+
+export interface VoucherUsageApiPage extends VoucherApiPage<VoucherUsage> {
+  totalDiscountAmount: number
+}
+
+export interface VoucherUsagePage extends SpringPage<VoucherUsage> {
+  totalDiscountAmount: number
+}
+
+export interface VoucherUsageParams {
+  page: number
+  size: number
+  phone?: string
+}
+
+/** POST /api/vouchers/apply response (voucher-service). */
+export interface VoucherApplication {
+  applicationId: string
+  voucherId: number
+  bookingId: number
+  originalAmount: number
+  discountAmount: number
+  finalAmount: number
+  expiresAt: string
+}
+
+export type VoucherValidateReason =
+  | 'VALID'
+  | 'ALREADY_APPLIED'
+  | 'NOT_FOUND'
+  | 'WRONG_BRANCH'
+  | 'EXPIRED'
+  | 'NOT_STARTED'
+  | 'USAGE_LIMIT_REACHED'
+  | 'MIN_ORDER_NOT_MET'
+  | 'ALREADY_USED'
+  | 'BOOKING_LOCKED'
+  | 'BOOKING_HAS_VOUCHER'
+
+/** POST /api/vouchers/validate response: a preview, nothing is written. */
+export interface VoucherValidation {
+  valid: boolean
+  reason: VoucherValidateReason
+  bookingId: number
+  originalAmount: number
+  discountAmount: number
+  finalAmount: number
+}
+
+/** DELETE /api/vouchers/apply/{bookingId} response (idempotent: `removed` is false on repeat). */
+export interface VoucherRemoval {
+  bookingId: number
+  removed: boolean
+  totalAmount: number
 }

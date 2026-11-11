@@ -4,7 +4,8 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-route
 
 import { useCourtTypes } from '@/hooks/use-court-types'
 import { getBranches } from '@/services/branch/branch.api'
-import { createCourt, getCourtDetail, updateCourt } from '@/services/court/court.api'
+import { toastApiError } from '@/common/utils/api-error'
+import { createCourt, deleteCourtImage, getCourtDetail, updateCourt, uploadCourtImage } from '@/services/court/court.api'
 import type { CourtTypeData } from '@/types/admin'
 import type { Court } from '@/types/court'
 import { CourtForm } from './court-form'
@@ -12,15 +13,14 @@ import { getCourtErrorCode, getCourtErrorMessage, getCourtFieldErrors } from './
 import {
   courtToFormValues,
   emptyCourtFormValues,
-  toCreateCourtPayload,
-  toUpdateCourtPayload,
+  toCourtPayload,
   validateCourtForm,
+  validateCourtImageFile,
   type CourtFormErrors,
   type CourtFormValues,
 } from './court-form.utils'
 
 import { UpgradePlanModal } from '@/components/admin/UpgradePlanModal'
-import { uploadImage } from '@/services/upload/image-upload.api'
 
 type CourtFormPageProps = { mode: 'create' | 'edit' }
 type CourtNavigationState = {
@@ -57,7 +57,7 @@ export function CourtFormPage({ mode }: CourtFormPageProps) {
   if (!hasValidId) return <Navigate to="/admin/courts" replace />
   if (detailQuery.isPending) return <PageMessage title="Đang tải thông tin sân..." />
   if (detailQuery.isError) {
-    const notFound = getCourtErrorCode(detailQuery.error) === 'RESOURCE_NOT_FOUND'
+    const notFound = getCourtErrorCode(detailQuery.error) === '404'
     return (
       <PageMessage
         title={notFound ? 'Không tìm thấy sân' : 'Không thể tải thông tin sân'}
@@ -104,26 +104,43 @@ function CourtEditor({
         },
   )
   const [errors, setErrors] = useState<CourtFormErrors>({})
-  const [imageFile, setImageFile] = useState<File | null>(null)
   const [submitError, setSubmitError] = useState('')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [limitMessage, setLimitMessage] = useState<string | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageRemoved, setImageRemoved] = useState(false)
 
   const branchesQuery = useQuery({
     queryKey: ['branches', 'court-form-options'],
-    queryFn: () => getBranches({ page: 0, size: 100, sortField: 'name', sortDirection: 'asc' }),
+    queryFn: () => getBranches({ page: 0, size: 1000, sortField: 'name', sortDirection: 'asc' }),
   })
   const courtTypesQuery = useCourtTypes()
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const imageUrl = imageFile ? await uploadImage(imageFile, 'courts') : values.imageUrl
-      return isEdit && court
-        ? updateCourt(court.id, { ...toUpdateCourtPayload(values), imageUrl: imageUrl || null })
-        : createCourt({ ...toCreateCourtPayload(values), imageUrl: imageUrl || null })
+      const payload = toCourtPayload(values)
+      const saved = isEdit && court
+        ? await updateCourt(court.id, payload)
+        : await createCourt(Number(values.branchId), payload)
+      // The court exists now; a failed photo upload must not hide that.
+      let imageFailed: unknown = null
+      try {
+        if (imageFile) await uploadCourtImage(saved.id, imageFile)
+        else if (imageRemoved && isEdit) await deleteCourtImage(saved.id)
+      } catch (error) {
+        imageFailed = error
+      }
+      return { saved, imageFailed }
     },
-    onSuccess: async (savedCourt) => {
+    onSuccess: async ({ saved: savedCourt, imageFailed }) => {
       await queryClient.invalidateQueries({ queryKey: ['courts'] })
+      if (imageFailed) {
+        toastApiError(imageFailed, 'Đã lưu sân nhưng không cập nhật được ảnh. Hãy thử lại.')
+        if (!isEdit) {
+          navigate(`/admin/courts/${savedCourt.id}/edit`, { replace: true })
+          return
+        }
+      }
       navigate(returnTo ?? '/admin/courts', {
         replace: true,
         state: {
@@ -134,9 +151,9 @@ function CourtEditor({
       })
     },
     onError: (error: unknown) => {
-      const errorObj = error as { response?: { data?: { code?: string; message?: string } }; message?: string }
-      const errCode = errorObj?.response?.data?.code || ''
-      const errServerMsg = errorObj?.response?.data?.message || errorObj?.message || ''
+      const errorObj = error as { status?: number; detail?: string; message?: string }
+      const errCode = String(errorObj?.status ?? '')
+      const errServerMsg = errorObj?.detail || errorObj?.message || ''
 
       if (
         errCode === 'court_limit_exceeded' ||
@@ -160,6 +177,22 @@ function CourtEditor({
     setSubmitError('')
   }
 
+  function handleImageSelect(file: File) {
+    const problem = validateCourtImageFile(file)
+    if (problem) {
+      setErrors((current) => ({ ...current, imageUrl: problem }))
+      return
+    }
+    setErrors((current) => ({ ...current, imageUrl: undefined }))
+    setImageFile(file)
+    setImageRemoved(false)
+  }
+
+  function handleImageClear() {
+    setImageFile(null)
+    setErrors((current) => ({ ...current, imageUrl: undefined }))
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const nextErrors = validateCourtForm(values)
@@ -178,7 +211,7 @@ function CourtEditor({
       status: 'ACTIVE',
     })
   }
-  const courtTypes = courtTypesQuery.data?.data?.content ?? []
+  const courtTypes = courtTypesQuery.data?.content ?? []
   const selectableCourtTypes = courtTypes.filter((courtType) => (
     courtType.active || String(courtType.id) === values.courtTypeId
   ))
@@ -226,16 +259,13 @@ function CourtEditor({
           isEdit={isEdit}
           isSubmitting={mutation.isPending || branchesQuery.isPending || courtTypesQuery.isPending}
           submitLabel={isEdit ? 'Cập nhật sân' : 'Tạo sân'}
-          onChange={handleChange}
           imageFile={imageFile}
-          onImageFileChange={(file) => {
-            setImageFile(file)
-            setErrors((current) => ({ ...current, imageUrl: undefined }))
-          }}
-          onClearImage={() => {
-            setImageFile(null)
-            handleChange('imageUrl', '')
-          }}
+          imageRemoved={imageRemoved}
+          onImageSelect={handleImageSelect}
+          onImageClear={handleImageClear}
+          onImageRemove={() => setImageRemoved(true)}
+          onImageUndoRemove={() => setImageRemoved(false)}
+          onChange={handleChange}
           onSubmit={handleSubmit}
         />
 

@@ -1,9 +1,13 @@
+import { ZoomableImage } from '@/components/ui/image-viewer'
 import { useEffect, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Eye, ImageOff, MapPin, Pencil, Plus, Trash2 } from 'lucide-react'
+import { CalendarDays, Eye, ImageOff, MapPin, Pencil, Plus, Power, Trash2 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
-import { deleteCourt, getCourts } from '@/services/court/court.api'
+import { toast } from 'sonner'
+
+import { toastApiError } from '@/common/utils/api-error'
+import { changeCourtStatus, deleteCourt, getCourts } from '@/services/court/court.api'
 import type { Court, CourtSortField, CourtStatus, SortDirection } from '@/types/court'
 import { getCourtErrorMessage } from './court-error.utils'
 
@@ -19,6 +23,10 @@ const statusLabels: Record<CourtStatus, string> = {
   ACTIVE: 'Hoạt động',
   INACTIVE: 'Ngừng hoạt động',
   MAINTENANCE: 'Bảo trì',
+}
+
+function formatPrice(value: number) {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
 }
 
 function formatDateTime(value: string) {
@@ -49,6 +57,15 @@ export function CourtListPage() {
       await queryClient.invalidateQueries({ queryKey: ['courts'] })
       navigate(location.pathname, { replace: true, state: { successMessage: 'Xóa sân thành công.' } })
     },
+  })
+
+  const statusMutation = useMutation({
+    mutationFn: (court: Court) => changeCourtStatus(court.id, court.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'),
+    onSuccess: async (saved) => {
+      await queryClient.invalidateQueries({ queryKey: ['courts'] })
+      toast.success(saved.status === 'ACTIVE' ? 'Đã kích hoạt sân.' : 'Đã ngừng hoạt động sân.')
+    },
+    onError: (error) => toastApiError(error),
   })
 
   useEffect(() => {
@@ -123,7 +140,7 @@ export function CourtListPage() {
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusStyles[court.status]}`}>{statusLabels[court.status]}</span>
                   </div>
-                  <div className="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-sm"><span className="text-slate-500">Loại sân: </span><span className="font-semibold text-slate-800">{court.courtTypeName}</span></div>
+                  <div className="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-sm"><span className="text-slate-500">Loại sân: </span><span className="font-semibold text-slate-800">{court.courtTypeName}</span><span className="float-right font-semibold text-emerald-700">{formatPrice(court.defaultPricePerHour)}/giờ</span></div>
                   <p className="mt-3 line-clamp-2 min-h-10 text-sm leading-5 text-slate-600">{court.description || 'Chưa có mô tả.'}</p>
                   <div className="mt-4 space-y-1 text-xs text-slate-400">
                     <p className="flex items-center gap-2"><CalendarDays className="size-3.5" aria-hidden="true" />Tạo: {formatDateTime(court.createdAt)}</p>
@@ -132,6 +149,7 @@ export function CourtListPage() {
                   <div className="mt-5 flex gap-2 border-t border-slate-100 pt-4">
                     <ActionLink to={`/admin/courts/${court.id}`} label="Chi tiết" icon={Eye} />
                     <ActionLink to={`/admin/courts/${court.id}/edit`} label="Sửa" icon={Pencil} />
+                    <button type="button" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate(court)} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-50"><Power className="size-4" aria-hidden="true" />{court.status === 'ACTIVE' ? 'Tắt' : 'Bật'}</button>
                     <button type="button" disabled={deleteMutation.isPending} onClick={() => handleDelete(court)} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"><Trash2 className="size-4" aria-hidden="true" />Xóa</button>
                   </div>
                 </div>
@@ -156,7 +174,7 @@ export function CourtListPage() {
 function CourtImage({ court }: { court: Court }) {
   const [failed, setFailed] = useState(false)
   if (!court.imageUrl || failed) return <div className="grid h-44 place-items-center bg-emerald-50 text-emerald-300"><ImageOff className="size-12" aria-label="Không có ảnh sân" /></div>
-  return <img src={court.imageUrl} alt={court.name} className="h-44 w-full bg-slate-100 object-cover" onError={() => setFailed(true)} />
+  return <ZoomableImage src={court.imageUrl} alt={court.name} buttonClassName="block w-full cursor-zoom-in" className="h-44 w-full bg-slate-100 object-cover" onError={() => setFailed(true)} />
 }
 
 function ActionLink({ to, label, icon: Icon }: { to: string; label: string; icon: typeof Eye }) {

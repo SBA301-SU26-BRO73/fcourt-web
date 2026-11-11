@@ -1,11 +1,13 @@
 import { axiosClient } from "../http/axios-client";
 import { API_ENDPOINTS } from "@/common/constants/api-endpoints";
+import { pageOf, sortedBy } from "@/common/utils/paging";
 import type {
-  ApiResponse as AdminApiResponse,
   Branch as AdminBranch,
+  BranchImage,
   BranchListParams,
+  BranchRequest,
+  BranchStatus,
   CreateBranchRequest,
-  SpringPage,
   UpdateBranchRequest,
 } from "@/types/branch";
 
@@ -43,7 +45,7 @@ export interface BranchFilterRequest {
   courtTypeName?: string; 
 }
 
-export interface ApiResponse<T> {
+export interface T {
   httpStatus: number;
   data: T;
   message: string;
@@ -60,17 +62,6 @@ export interface PageContent<T> {
     number: number;
     totalElements: number;
     totalPages: number;
-  };
-}
-
-function normalizePage<T>(page: PageContent<T>): PageContent<T> {
-  const metadata = page.page ?? page;
-  return {
-    content: page.content,
-    size: metadata.size,
-    number: metadata.number,
-    totalElements: metadata.totalElements,
-    totalPages: metadata.totalPages,
   };
 }
 
@@ -98,91 +89,107 @@ export interface DailySlotResponse {
 
 // Client Side API
 export const branchApi = {
-  getAll: async (page: number = 0, size: number = 6): Promise<PageContent<Branch>> => {
-    const response = await axiosClient.get<ApiResponse<PageContent<Branch>>>('/branches', {
-      params: { page, size }
-    });
-    return normalizePage(response.data.data);
-  },
-
-  search: async (filters: BranchFilterRequest, page: number = 0, size: number = 6): Promise<PageContent<Branch>> => {
-    const response = await axiosClient.get<ApiResponse<PageContent<Branch>>>('/branches/search', {
-      params: { 
-        ...filters,
-        page: page + 1,
-        size: size 
-      }
-    });
-    return normalizePage(response.data.data);
-  },
-
-  getById: async (id: string | number): Promise<Branch> => {
-    const response = await axiosClient.get<ApiResponse<Branch>>(`/branches/${id}`);
-    return response.data.data;
-  },
-
   getCourtsByBranch: async (branchId: string | number): Promise<CourtResponse[]> => {
-    const response = await axiosClient.get<ApiResponse<CourtResponse[]>>(`/branches/${branchId}/courts`);
-    return response.data.data;
+    const response = await axiosClient.get<CourtResponse[]>(API_ENDPOINTS.branches.courts(branchId));
+    return response.data;
   },
 
   getDailyCourtSchedule: async (courtId: number, date: string): Promise<DailySlotResponse[]> => {
-    const response = await axiosClient.get<ApiResponse<DailySlotResponse[]>>(`/courts/${courtId}/daily-schedule`, {
+    // Owner-side board only. Customer slot picking uses getPublicCourtSlots (slotId, status HOLD).
+    const response = await axiosClient.get<DailySlotResponse[]>(API_ENDPOINTS.courtSlots(courtId), {
       params: { date }
     });
-    return response.data.data;
+    return response.data;
   },
 };
 
-// Admin Side Helper
-function requireData<T>(response: AdminApiResponse<T>): T {
-  if (response.data === undefined) {
-    throw new Error(response.message || 'The server returned no data.')
-  }
+// Admin Side API Functions (facility-service, role ADMIN)
+
+/** The backend returns every branch of the owner as one array, with no paging. */
+export async function listBranches() {
+  const response = await axiosClient.get<AdminBranch[]>(API_ENDPOINTS.adminBranches.list)
   return response.data
 }
 
-// Admin Side API Functions
 export async function getBranches(params: BranchListParams) {
-  const response = await axiosClient.get<AdminApiResponse<SpringPage<AdminBranch>>>(
-    API_ENDPOINTS.branches.list,
-    {
-      params: {
-        page: params.page,
-        size: params.size,
-        sort: `${params.sortField},${params.sortDirection}`,
-      },
-    },
-  )
-  return requireData(response.data)
+  const all = await listBranches()
+  return pageOf(sortedBy(all, params.sortField, params.sortDirection), params.page, params.size)
 }
 
 export async function getBranchDetail(branchId: number) {
-  const response = await axiosClient.get<AdminApiResponse<AdminBranch>>(
-    API_ENDPOINTS.branches.detail(branchId),
+  const response = await axiosClient.get<AdminBranch>(
+    API_ENDPOINTS.adminBranches.detail(branchId),
   )
-  return requireData(response.data)
+  return response.data
 }
 
 export async function createBranch(payload: CreateBranchRequest) {
-  const response = await axiosClient.post<AdminApiResponse<AdminBranch>>(
-    API_ENDPOINTS.branches.list,
+  const response = await axiosClient.post<AdminBranch>(
+    API_ENDPOINTS.adminBranches.list,
     payload,
   )
-  return requireData(response.data)
+  return response.data
 }
 
 export async function updateBranch(
   branchId: number,
   payload: UpdateBranchRequest,
 ) {
-  const response = await axiosClient.put<AdminApiResponse<AdminBranch>>(
-    API_ENDPOINTS.branches.detail(branchId),
+  const response = await axiosClient.put<AdminBranch>(
+    API_ENDPOINTS.adminBranches.detail(branchId),
     payload,
   )
-  return requireData(response.data)
+  return response.data
 }
 
 export async function deleteBranch(branchId: number) {
-  await axiosClient.delete(API_ENDPOINTS.branches.detail(branchId))
+  await axiosClient.delete(API_ENDPOINTS.adminBranches.detail(branchId))
+}
+
+/** Rebuilds the full-replacement body from a stored branch, optionally with another status. */
+export function branchToRequest(branch: AdminBranch, status: BranchStatus = branch.status): BranchRequest {
+  return {
+    name: branch.name,
+    address: branch.address,
+    ward: branch.ward,
+    district: branch.district,
+    city: branch.city,
+    latitude: branch.latitude,
+    longitude: branch.longitude,
+    phone: branch.phone,
+    openTime: branch.openTime.slice(0, 5),
+    closeTime: branch.closeTime.slice(0, 5),
+    slotDurationMinutes: branch.slotDurationMinutes,
+    bankName: branch.bankName,
+    bankBin: branch.bankBin,
+    bankAccountNumber: branch.bankAccountNumber,
+    bankAccountName: branch.bankAccountName,
+    status,
+  }
+}
+
+/** There is no status endpoint for branches: activate/deactivate is a PUT with the new status. */
+export async function setBranchStatus(branch: AdminBranch, status: BranchStatus) {
+  return updateBranch(branch.id, branchToRequest(branch, status))
+}
+
+export async function getBranchImages(branchId: number) {
+  const response = await axiosClient.get<BranchImage[]>(API_ENDPOINTS.adminBranches.images(branchId))
+  return [...response.data].sort((a, b) => a.sortOrder - b.sortOrder)
+}
+
+/** Multipart field name is `files` (repeatable); JPEG, PNG or WebP, up to 5 MB each, 10 per branch. */
+export async function uploadBranchImages(branchId: number, files: File[]) {
+  const formData = new FormData()
+  for (const file of files) formData.append('files', file)
+  const response = await axiosClient.post<BranchImage[]>(
+    API_ENDPOINTS.adminBranches.images(branchId),
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60_000 },
+  )
+  return response.data
+}
+
+export async function deleteBranchImage(imageId: number) {
+  await axiosClient.delete(API_ENDPOINTS.adminBranches.image(imageId))
 }

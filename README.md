@@ -28,7 +28,12 @@ npm run lint
 
 | Biến | Ý nghĩa |
 |---|---|
-| `VITE_API_URL` | Base URL của API, mặc định `http://localhost:8080/api`. Với backend microservice, trỏ vào API gateway của `fcourt-backend` (mọi route đều bắt đầu bằng `/api`). |
+| `VITE_API_URL` | Base URL của API, mặc định `/api` (cùng origin). `npm run dev` proxy từng prefix `/api/...` sang đúng service qua `vite.config.ts`; image production dùng nginx proxy `/api` và `/ws-fcourt` sang `API_UPSTREAM`. |
+| `VITE_GOOGLE_CLIENT_ID` | OAuth Web client ID cho đăng nhập Google (khách hàng). Nếu trống thì nút Google bị ẩn. Phải trùng client mà auth-service kiểm tra (`AUTH_GOOGLE_CLIENT_ID`); thêm origin của web (ví dụ `http://localhost:5173`) vào "Authorized JavaScript origins" trong Google Cloud Console. Web gửi `credential` của Google Identity Services lên `POST /api/auth/google` dưới dạng `{ idToken }`. |
+| `DEV_BACKEND_HOST` | Chỉ dùng khi dev: host chạy các service (mặc định `localhost`). |
+| `API_UPSTREAM` | Chỉ dùng khi chạy container: origin của gateway/ALB, mặc định `http://gateway:8080`. |
+
+Link quên mật khẩu trong email trỏ tới route `/reset-password?token=...` của web: đặt `NOTIFICATION_RESET_PASSWORD_URL` của notification-service thành `<origin web>/reset-password`.
 
 `.env` và `.env.local` không được commit; chỉ `.env.example` nằm trong git.
 

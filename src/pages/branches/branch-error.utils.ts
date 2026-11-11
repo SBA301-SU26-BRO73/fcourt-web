@@ -1,50 +1,18 @@
-import axios from 'axios'
-
-import type { ApiResponse } from '@/types/branch'
+import { isApiError } from '@/common/utils/api-error'
 import type { BranchFormErrors } from './branch-form.utils'
 
-type BranchApiErrorData = ApiResponse<Record<string, string>>
-
+/** RFC 7807 errors carry no machine code; the HTTP status is the closest equivalent. */
 export function getBranchErrorCode(error: unknown) {
-  if (!axios.isAxiosError<BranchApiErrorData>(error)) return undefined
-  return error.response?.data?.errorCode
+  return isApiError(error) ? String(error.status) : undefined
 }
 
 export function getBranchErrorMessage(error: unknown) {
-  if (!axios.isAxiosError<BranchApiErrorData>(error)) {
-    return error instanceof Error
-      ? error.message
-      : 'Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.'
-  }
-
-  if (!error.response) {
-    return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend và thử lại.'
-  }
-
-  return error.response.data?.message || 'Không thể hoàn tất yêu cầu.'
+  if (isApiError(error)) return error.message
+  return error instanceof Error ? error.message : 'Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.'
 }
 
+/** Field messages come straight from the `errors[]` array of a 400 problem response. */
 export function getBranchFieldErrors(error: unknown): BranchFormErrors {
-  if (!axios.isAxiosError<BranchApiErrorData>(error)) return {}
-
-  const response = error.response?.data
-  if (!response) return {}
-
-  if (response.errorCode === 'branch_name_already_exists') {
-    return { name: 'Tên chi nhánh đã tồn tại.' }
-  }
-
-  if (response.errorCode === 'invalid_input' && response.data) {
-    const fieldMessages: BranchFormErrors = {}
-    for (const field of Object.keys(response.data) as Array<keyof BranchFormErrors>) {
-      const labels: Partial<Record<keyof BranchFormErrors, string>> = {
-        name: 'Tên chi nhánh', address: 'Địa chỉ', ward: 'Phường/Xã', city: 'Tỉnh/Thành phố',
-        openTime: 'Giờ mở cửa', closeTime: 'Giờ đóng cửa', slotDurationMinutes: 'Thời lượng khung giờ',
-      }
-      fieldMessages[field] = `${labels[field] ?? 'Thông tin này'} không hợp lệ.`
-    }
-    return fieldMessages
-  }
-
-  return {}
+  if (!isApiError(error)) return {}
+  return { ...error.fieldErrors } as BranchFormErrors
 }

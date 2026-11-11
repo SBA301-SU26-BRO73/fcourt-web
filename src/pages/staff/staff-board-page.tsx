@@ -1,12 +1,9 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { LayoutGrid } from 'lucide-react'
 
-import { getCourtBoard } from '@/services/staff/staff.api'
-import { useCheckin } from '@/hooks/staff/use-checkin'
-import { useCheckout } from '@/hooks/staff/use-checkout'
-import type { CourtBoardItem, CourtBoardStatus } from '@/types/staff'
-
-const COURT_BOARD_QUERY_KEY = ['court-board'] as const
+import { useBranchGrid } from '@/hooks/staff/use-branch-grid'
+import { useTodaySchedule } from '@/hooks/staff/use-today-schedule'
+import { businessNowMinutes, deriveCourtBoard, type CourtBoardItem, type CourtBoardStatus } from '@/pages/staff/counter-utils'
 
 const STATUS_STYLES: Record<CourtBoardStatus, { block: string; dot: string; label: string }> = {
   FREE: { block: 'border-green-200 bg-green-50', dot: 'bg-green-500', label: 'Trống' },
@@ -21,24 +18,8 @@ function formatClock(time: string | null): string {
 }
 
 function CourtCard({ court }: { court: CourtBoardItem }) {
-  const queryClient = useQueryClient()
-  const checkin = useCheckin()
-  const checkout = useCheckout()
+  const navigate = useNavigate()
   const style = STATUS_STYLES[court.status]
-
-  function handleCheckin() {
-    if (!court.checkinCode) return
-    checkin.mutate(court.checkinCode, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: COURT_BOARD_QUERY_KEY }),
-    })
-  }
-
-  function handleCheckout() {
-    if (!court.bookingId) return
-    checkout.mutate(court.bookingId, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: COURT_BOARD_QUERY_KEY }),
-    })
-  }
 
   return (
     <div className={`flex flex-col gap-2 rounded-xl border p-4 ${style.block}`}>
@@ -64,21 +45,19 @@ function CourtCard({ court }: { court: CourtBoardItem }) {
         {court.status === 'BOOKED_NOT_CHECKED_IN' && (
           <button
             type="button"
-            disabled={checkin.isPending}
-            onClick={handleCheckin}
-            className="w-full rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+            onClick={() => navigate('/staff/check-in')}
+            className="w-full rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
           >
-            {checkin.isPending ? 'Đang check-in…' : 'Check-in nhanh'}
+            Check-in
           </button>
         )}
-        {(court.status === 'PLAYING' || court.status === 'ENDING_SOON') && (
+        {(court.status === 'PLAYING' || court.status === 'ENDING_SOON') && court.bookingId != null && (
           <button
             type="button"
-            disabled={checkout.isPending}
-            onClick={handleCheckout}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            onClick={() => navigate(`/staff/checkout/${court.bookingId}`)}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
           >
-            {checkout.isPending ? 'Đang checkout…' : 'Checkout nhanh'}
+            Checkout
           </button>
         )}
       </div>
@@ -87,13 +66,12 @@ function CourtCard({ court }: { court: CourtBoardItem }) {
 }
 
 export function StaffBoardPage() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: COURT_BOARD_QUERY_KEY,
-    queryFn: getCourtBoard,
-    refetchInterval: 15_000,
-  })
+  const { courts: branchCourts, isLoading: courtsLoading, isError: courtsError } = useBranchGrid()
+  const scheduleQuery = useTodaySchedule()
+  const isLoading = courtsLoading || scheduleQuery.isLoading
+  const isError = courtsError || scheduleQuery.isError
 
-  const courts = data ?? []
+  const courts = deriveCourtBoard(branchCourts ?? [], scheduleQuery.data ?? [], businessNowMinutes())
   const freeCount = courts.filter((c) => c.status === 'FREE').length
 
   return (

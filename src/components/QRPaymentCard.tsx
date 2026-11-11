@@ -10,9 +10,11 @@ interface QRPaymentCardProps {
   amount: number;
   content: string;
   timeLeft: number;
+  /** The checkout deadline passed: the QR is withdrawn so nobody pays a cancelled booking. */
+  expired?: boolean;
 }
 
-export function QRPaymentCard({ branchName, bankName, bankAccountNumber, bankAccountName, bankQrImageUrl, amount, content, timeLeft }: QRPaymentCardProps) {
+export function QRPaymentCard({ branchName, bankName, bankAccountNumber, bankAccountName, bankQrImageUrl, amount, content, timeLeft, expired = false }: QRPaymentCardProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [qrLoadFailed, setQrLoadFailed] = useState(false);
   const minutes = Math.floor(timeLeft / 60);
@@ -45,7 +47,7 @@ export function QRPaymentCard({ branchName, bankName, bankAccountNumber, bankAcc
       <div className="grid items-center gap-7 lg:grid-cols-[minmax(290px,0.95fr)_minmax(0,1.05fr)]">
         <div className="flex flex-col items-center rounded-2xl bg-[#f3f6f4] p-5">
           <div className="flex aspect-square w-full max-w-[320px] items-center justify-center rounded-2xl border border-[#d8e8dc] bg-white p-3 shadow-sm">
-            {bankQrImageUrl && !qrLoadFailed ? <img src={bankQrImageUrl} alt={`QR thanh toán ${branchName}`} className="h-full w-full object-contain" onError={() => setQrLoadFailed(true)} /> : <div className="px-6 text-center text-sm leading-6 text-[#667267]">{qrLoadFailed ? 'Không tải được mã QR. Vui lòng dùng thông tin chuyển khoản bên cạnh.' : 'Chi nhánh chưa cấu hình QR thanh toán.'}</div>}
+            {expired ? <div className="px-6 text-center text-sm leading-6 text-[#b7433d]">Phiên thanh toán đã hết hạn. Vui lòng chọn lại khung giờ.</div> : bankQrImageUrl && !qrLoadFailed ? <img src={bankQrImageUrl} alt={`QR thanh toán ${branchName}`} className="h-full w-full object-contain" onError={() => setQrLoadFailed(true)} /> : <div className="px-6 text-center text-sm leading-6 text-[#667267]">{qrLoadFailed ? 'Không tải được mã QR. Vui lòng dùng thông tin chuyển khoản bên cạnh.' : 'Chưa có thông tin QR thanh toán.'}</div>}
           </div>
           <span className="mt-4 rounded-full bg-[#dff1e2] px-4 py-1.5 text-xs font-bold text-[#2e7d32]">VietQR</span>
           <p className="mt-3 text-center text-sm font-semibold text-[#41493e]">Quét để thanh toán nhanh</p>

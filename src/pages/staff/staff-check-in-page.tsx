@@ -1,52 +1,132 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, CheckCircle, QrCode } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { useCheckin } from '@/hooks/staff/use-checkin'
-import { getApiErrorMessage } from '@/common/utils/api-error'
+import { Badge } from '@/components/ui/badge'
+import { useCheckin, useCheckInPreview, type CheckInSource } from '@/hooks/staff/use-checkin'
+import { useOfflineCheckin } from '@/hooks/staff/use-offline-checkin'
+import { getApiErrorMessage, isApiError } from '@/common/utils/api-error'
+import { formatClock } from '@/pages/staff/schedule-utils'
 import { QrScanner } from '@/pages/staff/components/qr-scanner'
 import { ManualCodeInput } from '@/pages/staff/components/manual-code-input'
 import { ScanErrorOverlay } from '@/pages/staff/components/scan-error-overlay'
-import { CheckinSuccess } from '@/pages/staff/components/checkin-success'
+import { CheckinSuccess, type CheckinSummary } from '@/pages/staff/components/checkin-success'
+import { OfflinePanel } from '@/pages/staff/components/offline-panel'
+import { OFFLINE_REASON_TEXT } from '@/utils/offline-checkin'
 
 const AUTO_RETURN_MS = 30_000
 
+interface Scan {
+  code: string
+  source: CheckInSource
+}
+
 export function StaffCheckInPage() {
   const navigate = useNavigate()
+  const preview = useCheckInPreview()
   const checkin = useCheckin()
-  const { isSuccess, isError, isPending, data, error, mutate, reset } = checkin
+  const offline = useOfflineCheckin()
 
-  const [code, setCode] = useState<string | null>(null)
+  const [scan, setScan] = useState<Scan | null>(null)
+  const [outcome, setOutcome] = useState<CheckinSummary | null>(null)
+  const [offlineError, setOfflineError] = useState<string | null>(null)
 
-  const handleDecode = useCallback((text: string) => setCode(text), [])
+  const { reset: resetPreview } = preview
+  const { reset: resetCheckin } = checkin
 
-  function resetAll() {
-    reset()
-    setCode(null)
+  const resetAll = useCallback(() => {
+    resetPreview()
+    resetCheckin()
+    setScan(null)
+    setOutcome(null)
+    setOfflineError(null)
+  }, [resetPreview, resetCheckin])
+
+  const acceptOffline = useCallback(
+    async (code: string) => {
+      const match = await offline.checkInOffline(code)
+      if (!match.ok) {
+        setOfflineError(OFFLINE_REASON_TEXT[match.reason])
+        return
+      }
+      setOutcome({
+        bookingId: match.ticket.bookingId,
+        courtName: match.ticket.courtName,
+        customerName: match.ticket.customerName,
+        guestPhone: null,
+        startTime: null,
+        endTime: null,
+        checkedInAt: new Date().toISOString(),
+        offline: true,
+      })
+    },
+    [offline],
+  )
+
+  function startScan(code: string, source: CheckInSource) {
+    setOfflineError(null)
+    setScan({ code, source })
+    if (!navigator.onLine) {
+      void acceptOffline(code)
+      return
+    }
+    preview.mutate(code, {
+      onError: (err) => {
+        if (isApiError(err) && err.isNetworkError) void acceptOffline(code)
+      },
+    })
+  }
+
+  // The camera callback must stay stable; it always calls the latest startScan.
+  const startScanRef = useRef(startScan)
+  useEffect(() => {
+    startScanRef.current = startScan
+  })
+  const handleDecode = useCallback((text: string) => startScanRef.current(text, 'QR'), [])
+
+  function confirm() {
+    if (!scan || !preview.data) return
+    const ticket = preview.data
+    checkin.mutate(scan, {
+      onSuccess: (result) =>
+        setOutcome({
+          bookingId: result.bookingId,
+          courtName: ticket.courtName,
+          customerName: ticket.customerName,
+          guestPhone: ticket.guestPhone,
+          startTime: ticket.slotStart,
+          endTime: ticket.slotEnd,
+          checkedInAt: result.checkedInAt,
+        }),
+    })
   }
 
   // Auto-return to the scanner after a successful check-in.
   useEffect(() => {
-    if (!isSuccess) return
-    const t = setTimeout(() => {
-      reset()
-      setCode(null)
-    }, AUTO_RETURN_MS)
+    if (!outcome) return
+    const t = setTimeout(resetAll, AUTO_RETURN_MS)
     return () => clearTimeout(t)
-  }, [isSuccess, reset])
+  }, [outcome, resetAll])
 
-  if (isSuccess && data) {
+  if (outcome) {
     return (
       <CheckinSuccess
-        result={data}
+        result={outcome}
         onScanNext={resetAll}
         onBackToSchedule={() => navigate('/staff')}
       />
     )
   }
 
-  const scannerActive = code == null && !isError
+  const errorMessage =
+    offlineError ??
+    (preview.isError && !(isApiError(preview.error) && preview.error.isNetworkError)
+      ? getApiErrorMessage(preview.error, 'Invalid check-in code')
+      : null)
+  const scannerActive = scan == null && errorMessage == null
+  const ticket = preview.data
+  const canConfirm = ticket?.status === 'CONFIRMED'
 
   return (
     <div className="flex flex-col gap-4">
@@ -74,41 +154,69 @@ export function StaffCheckInPage() {
         {/* Left: scanner */}
         <div className="relative">
           <QrScanner active={scannerActive} onDecode={handleDecode} />
-          {isError && (
-            <ScanErrorOverlay
-              message={getApiErrorMessage(error, 'Invalid check-in code')}
-              onRetry={resetAll}
-            />
-          )}
+          {errorMessage && <ScanErrorOverlay message={errorMessage} onRetry={resetAll} />}
         </div>
 
         {/* Right: controls */}
         <div className="flex flex-col gap-4">
-          <ManualCodeInput onSubmit={setCode} disabled={isPending} />
+          <ManualCodeInput
+            onSubmit={(code) => startScan(code, 'MANUAL')}
+            disabled={preview.isPending || checkin.isPending}
+          />
 
-          {code ? (
+          {scan && preview.isPending ? (
+            <div className="rounded-xl border border-slate-200 bg-white px-5 py-8 text-center text-sm text-slate-500">
+              Đang tra cứu vé…
+            </div>
+          ) : ticket ? (
             <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <CheckCircle size={16} className="text-green-600" />
-                Code ready
+                Ticket found · #{ticket.bookingId}
+                <span className="ml-auto" />
+                <Badge tone={canConfirm ? 'green' : 'amber'}>{ticket.status}</Badge>
               </div>
-              <div className="break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-sm text-slate-700">
-                {code}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg bg-slate-50 p-4 text-sm">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Customer</div>
+                  <div className="mt-0.5 font-medium text-slate-800">
+                    {ticket.customerName ?? ticket.guestPhone ?? 'Guest'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Court</div>
+                  <div className="mt-0.5 font-medium text-slate-800">{ticket.courtName}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Time slot</div>
+                  <div className="mt-0.5 font-mono font-medium text-slate-800">
+                    {formatClock(ticket.slotStart)} – {formatClock(ticket.slotEnd)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Date</div>
+                  <div className="mt-0.5 font-mono font-medium text-slate-800">{ticket.date}</div>
+                </div>
               </div>
+              {checkin.isError && (
+                <p className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
+                  {getApiErrorMessage(checkin.error, 'Check-in failed')}
+                </p>
+              )}
               <Button
                 variant="primary"
-                disabled={isPending}
-                onClick={() => mutate(code)}
+                disabled={checkin.isPending || !canConfirm}
+                onClick={confirm}
                 className="h-14 justify-center text-base"
                 icon={<CheckCircle size={20} />}
               >
-                {isPending ? 'Checking in…' : 'Confirm check-in'}
+                {checkin.isPending ? 'Checking in…' : 'Confirm check-in'}
               </Button>
               <button
                 type="button"
                 className="text-xs text-slate-400 underline-offset-2 hover:underline"
-                onClick={() => setCode(null)}
-                disabled={isPending}
+                onClick={resetAll}
+                disabled={checkin.isPending}
               >
                 Clear code
               </button>
@@ -126,6 +234,17 @@ export function StaffCheckInPage() {
               </p>
             </div>
           )}
+
+          <OfflinePanel
+            snapshot={offline.snapshot}
+            queue={offline.queue}
+            downloading={offline.downloading}
+            syncing={offline.syncing}
+            lastOutcome={offline.lastOutcome}
+            error={offline.error}
+            onDownload={offline.download}
+            onSync={offline.sync}
+          />
         </div>
       </div>
     </div>

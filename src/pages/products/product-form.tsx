@@ -80,6 +80,21 @@ export function ProductForm({
           </label>
 
           <label className="block space-y-2">
+            <span className="text-sm font-semibold text-slate-700">Nhóm sản phẩm *</span>
+            <input
+              name="category"
+              value={values.category}
+              maxLength={60}
+              placeholder="Nước uống, phụ kiện..."
+              aria-invalid={Boolean(errors.category)}
+              aria-describedby={errors.category ? 'category-error' : undefined}
+              onChange={(event) => onChange('category', event.target.value)}
+              className={inputClass(Boolean(errors.category))}
+            />
+            <ErrorText id="category-error" message={errors.category} />
+          </label>
+
+          <label className="block space-y-2">
             <span className="text-sm font-semibold text-slate-700">Đơn vị</span>
             <input
               name="unit"
@@ -110,15 +125,57 @@ export function ProductForm({
             <ErrorText id="price-error" message={errors.price} />
           </label>
 
-          <label className="flex items-center gap-2.5 md:col-span-2">
+          {!isEdit && (
+            <label className="block space-y-2">
+              <span className="text-sm font-semibold text-slate-700">Tồn kho ban đầu *</span>
+              <input
+                name="stockQuantity"
+                type="number"
+                min="0"
+                step="1"
+                value={values.stockQuantity}
+                aria-invalid={Boolean(errors.stockQuantity)}
+                aria-describedby={errors.stockQuantity ? 'stockQuantity-error' : undefined}
+                onChange={(event) => onChange('stockQuantity', event.target.value)}
+                className={inputClass(Boolean(errors.stockQuantity))}
+              />
+              <ErrorText id="stockQuantity-error" message={errors.stockQuantity} />
+            </label>
+          )}
+
+          <label className="block space-y-2 md:col-span-2">
+            <span className="text-sm font-semibold text-slate-700">Ảnh sản phẩm (đường dẫn https)</span>
             <input
-              type="checkbox"
-              checked={values.active}
-              onChange={(event) => onChange('active', event.target.checked)}
-              className="size-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              name="imageUrl"
+              type="url"
+              value={values.imageUrl}
+              placeholder="https://..."
+              aria-invalid={Boolean(errors.imageUrl)}
+              aria-describedby={errors.imageUrl ? 'imageUrl-error' : undefined}
+              onChange={(event) => onChange('imageUrl', event.target.value)}
+              className={inputClass(Boolean(errors.imageUrl))}
             />
-            <span className="text-sm font-semibold text-slate-700">Đang bán (hiển thị cho Staff tại quầy)</span>
+            <ErrorText id="imageUrl-error" message={errors.imageUrl} />
+            {values.imageUrl.trim().startsWith('https://') && !errors.imageUrl && (
+              <img
+                src={values.imageUrl.trim()}
+                alt="Xem trước ảnh sản phẩm"
+                className="mt-2 h-28 w-28 rounded-xl border border-slate-200 object-cover"
+              />
+            )}
           </label>
+
+          {isEdit && (
+            <label className="flex items-center gap-2.5 md:col-span-2">
+              <input
+                type="checkbox"
+                checked={values.active}
+                onChange={(event) => onChange('active', event.target.checked)}
+                className="size-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="text-sm font-semibold text-slate-700">Đang bán (hiển thị cho Staff tại quầy)</span>
+            </label>
+          )}
         </div>
       </section>
 
