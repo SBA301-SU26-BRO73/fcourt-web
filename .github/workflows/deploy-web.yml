@@ -1,0 +1,62 @@
+name: Deploy web
+
+# Builds the SPA and publishes it to the private S3 bucket behind CloudFront (https://fcourt.donan.site).
+# The AWS side lives in fcourt-infra envs/shared (web-cdn.tf). Repository variables:
+# AWS_WEB_DEPLOY_ROLE_ARN, WEB_BUCKET, WEB_DISTRIBUTION_ID (optional: VITE_GOOGLE_CLIENT_ID).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+
+jobs:
+  deploy:
+    name: build-and-deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Build (same-origin API and WebSocket)
+        env:
+          # Relative /api and wss://<host>/ws-fcourt: CloudFront serves the API on the same domain.
+          VITE_API_URL: /api
+          VITE_WS_URL: ''
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+        run: npm run build
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_WEB_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Upload to S3
+        env:
+          WEB_BUCKET: ${{ vars.WEB_BUCKET }}
+        run: |
+          # Hashed assets first: the old index.html keeps working until the new one is switched in.
+          aws s3 sync dist/assets "s3://$WEB_BUCKET/assets" --delete \
+            --cache-control "public, max-age=31536000, immutable"
+          # Everything else except index.html (favicon, public files).
+          aws s3 sync dist "s3://$WEB_BUCKET" --delete \
+            --exclude "assets/*" --exclude "index.html" \
+            --cache-control "public, max-age=3600"
+          aws s3 cp dist/index.html "s3://$WEB_BUCKET/index.html" \
+            --cache-control "no-cache" --content-type "text/html; charset=utf-8"
+      - name: Invalidate CloudFront
+        env:
+          WEB_DISTRIBUTION_ID: ${{ vars.WEB_DISTRIBUTION_ID }}
+        run: aws cloudfront create-invalidation --distribution-id "$WEB_DISTRIBUTION_ID" --paths "/*"

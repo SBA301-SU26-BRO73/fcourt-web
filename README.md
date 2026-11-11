@@ -58,3 +58,7 @@ Quy ước: endpoint khai báo trong `src/common/constants/api-endpoints.ts` ho�
 ## Git
 
 Nhánh `main` (ổn định) và `dev` (tích hợp). Commit theo dạng `type(scope): message`.
+
+## Deploy (S3 + CloudFront)
+
+`.github/workflows/deploy-web.yml` builds on every push to `main` (and on manual dispatch), assumes the AWS role through GitHub OIDC, syncs `dist/` to the private bucket (`index.html` with `no-cache`, hashed assets immutable) and invalidates CloudFront. The site is `https://fcourt.donan.site`; `/api`, `/ws-fcourt` and `/actuator/health` go through the same CloudFront domain to the API, so the build uses the relative `/api` and a same-origin WebSocket (no `VITE_WS_URL`). Infrastructure is in `fcourt-infra` (`envs/shared/web-cdn.tf`). Repository variables: `AWS_WEB_DEPLOY_ROLE_ARN`, `WEB_BUCKET`, `WEB_DISTRIBUTION_ID`, optional `VITE_GOOGLE_CLIENT_ID`.
