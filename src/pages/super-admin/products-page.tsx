@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Package } from 'lucide-react'
-import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
-import { getPublicBranch } from '@/services/branch/public-branch.api'
+import { listBranches } from '@/services/branch/branch.api'
 import { getSuperAdminProductPage } from '@/services/product/product.api'
 import { getProductErrorMessage } from '@/pages/products/product-error.utils'
 
@@ -14,24 +14,22 @@ const PAGE_SIZE = 20
 
 export function SuperAdminProductsPage() {
   const [page, setPage] = useState(0)
+  const [branchId, setBranchId] = useState<number | undefined>(undefined)
+  const branchesQuery = useQuery({
+    queryKey: ['branches', 'super-admin-list'],
+    queryFn: listBranches,
+    staleTime: 5 * 60_000,
+  })
   const productsQuery = useQuery({
-    queryKey: ['products', 'super-admin-list', page],
-    queryFn: () => getSuperAdminProductPage({ page, size: PAGE_SIZE }),
+    queryKey: ['products', 'super-admin-list', branchId, page],
+    queryFn: () => getSuperAdminProductPage({ branchId, page, size: PAGE_SIZE }),
     placeholderData: keepPreviousData,
   })
 
   const products = productsQuery.data?.content ?? []
   const totalPages = productsQuery.data?.totalPages ?? 0
-  const branchIds = [...new Set(products.map((product) => product.branchId))]
-  const branchQueries = useQueries({
-    queries: branchIds.map((id) => ({
-      queryKey: ['public-branch-name', id],
-      queryFn: () => getPublicBranch(id),
-      staleTime: 5 * 60_000,
-      retry: false,
-    })),
-  })
-  const branchNames = new Map(branchIds.map((id, index) => [id, branchQueries[index]?.data?.name]))
+  const branches = branchesQuery.data ?? []
+  const branchNames = new Map(branches.map((branch) => [branch.id, branch.name]))
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -40,6 +38,30 @@ export function SuperAdminProductsPage() {
         <p className="mt-1 text-sm text-slate-500">
           Toàn bộ sản phẩm bán tại quầy trên mọi chi nhánh, không phân biệt chủ sân.
         </p>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-slate-600" htmlFor="product-branch">Chi nhánh</label>
+        <select
+          id="product-branch"
+          value={branchId ?? ''}
+          disabled={branchesQuery.isPending || branchesQuery.isError}
+          onChange={(event) => {
+            setBranchId(event.target.value ? Number(event.target.value) : undefined)
+            setPage(0)
+          }}
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:opacity-50 sm:w-72"
+        >
+          <option value="">Tất cả chi nhánh</option>
+          {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+        </select>
+        {branchesQuery.isPending && <p className="text-sm text-slate-500">Đang tải chi nhánh...</p>}
+        {branchesQuery.isError && (
+          <p className="text-sm text-red-600">
+            Không thể tải danh sách chi nhánh.{' '}
+            <button type="button" onClick={() => void branchesQuery.refetch()} className="font-semibold underline">Thử lại</button>
+          </p>
+        )}
       </div>
 
       {productsQuery.isPending ? (

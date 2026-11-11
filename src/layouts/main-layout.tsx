@@ -8,7 +8,8 @@ export function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [, setUrlSearchParams] = useSearchParams();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
+  const accountName = user?.fullName?.trim() || user?.email?.trim() || "Tài khoản";
 
   const [globalFilters, setGlobalFilters] =
     useState<BranchFilterRequest>({});
@@ -50,7 +51,7 @@ export function MainLayout() {
             <NotificationBell className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#c0c9bb] bg-[#f3f4f5] text-[#2e7d32] transition-colors hover:bg-[#c8e6c9]" />
             <button type="button" onClick={handleAccountClick} className="flex items-center gap-2 rounded-full border border-[#c0c9bb] bg-[#f3f4f5] px-4 py-2 text-sm font-semibold text-[#2e7d32] transition-colors hover:bg-[#c8e6c9]">
               <span className="material-symbols-outlined">account_circle</span>
-              <span>{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
+              <span>{isLoggedIn ? accountName : "Đăng nhập"}</span>
             </button>
           </div>
         </header>

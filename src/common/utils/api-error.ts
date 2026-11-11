@@ -7,6 +7,7 @@ export interface ProblemDetails {
   title?: string
   status?: number
   detail?: string
+  reason?: string
   instance?: string
   errors?: Array<{ field?: string; message?: string }>
 }
@@ -21,6 +22,7 @@ export class ApiError extends Error {
   readonly status: number
   readonly title?: string
   readonly detail?: string
+  readonly reason?: string
   /** field name -> message, from the `errors[]` array of validation problems. */
   readonly fieldErrors: Record<string, string>
   readonly isNetworkError: boolean
@@ -32,6 +34,7 @@ export class ApiError extends Error {
     message: string
     title?: string
     detail?: string
+    reason?: string
     fieldErrors?: Record<string, string>
     isNetworkError?: boolean
     retryAfterSeconds?: number
@@ -42,6 +45,7 @@ export class ApiError extends Error {
     this.status = init.status
     this.title = init.title
     this.detail = init.detail
+    this.reason = init.reason
     this.fieldErrors = init.fieldErrors ?? {}
     this.isNetworkError = init.isNetworkError ?? false
     this.retryAfterSeconds = init.retryAfterSeconds
@@ -83,12 +87,14 @@ export function toApiError(error: unknown): unknown {
   }
   const detail = typeof problem.detail === 'string' ? problem.detail.trim() : undefined
   const title = typeof problem.title === 'string' ? problem.title.trim() : undefined
+  const reason = typeof problem.reason === 'string' ? problem.reason.trim() : undefined
 
   return new ApiError({
     status: problem.status ?? status,
     message: detail || title || `Yêu cầu thất bại (${status}).`,
     title,
     detail,
+    reason,
     fieldErrors,
     retryAfterSeconds: parseRetryAfter(error.response.headers?.['retry-after']),
     cause: error,

@@ -20,8 +20,8 @@ export interface UserManagementPageResponse<T> {
   number: number
 }
 
-/** GET /super-admin/users body: auth-service UserPage. `page` is zero based, `total` the match count. */
-export interface ApiUserPage {
+/** Spring UserPage, with support for the legacy items/page/total envelope. */
+export type ApiUserPage = UserManagementPageResponse<UserAdminItem> | {
   items: UserAdminItem[]
   page: number
   size: number
@@ -29,6 +29,16 @@ export interface ApiUserPage {
 }
 
 export function toUserManagementPage(body: ApiUserPage): UserManagementPageResponse<UserAdminItem> {
+  if ('content' in body) {
+    return {
+      content: body.content,
+      size: body.size,
+      number: body.number,
+      totalElements: body.totalElements,
+      totalPages: body.totalPages,
+    }
+  }
+
   const size = body.size > 0 ? body.size : 1
   return {
     content: body.items,

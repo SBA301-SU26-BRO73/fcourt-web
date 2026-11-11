@@ -55,7 +55,7 @@ export function canTryCancel(booking: MyBooking) {
 }
 
 export function hasTicket(booking: MyBooking) {
-  return booking.status === 'CONFIRMED' || booking.status === 'CHECKED_IN'
+  return booking.status === 'CONFIRMED' || booking.status === 'CHECKED_IN' || booking.status === 'COMPLETED'
 }
 
 /** A cancelled booking can carry a refund only when the server computed an entitlement. */
