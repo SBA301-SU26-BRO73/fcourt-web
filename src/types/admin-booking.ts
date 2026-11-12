@@ -55,6 +55,8 @@ export interface AdminRefund {
   bankBin: string | null
   bankAccountNumber: string | null
   bankAccountName: string | null
+  customerPhone: string | null
+  bankInfoMissing: boolean
   reason: string | null
   adminNote: string | null
   transferProofUrl: string | null

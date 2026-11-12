@@ -4,13 +4,21 @@ import { usePublicCourtSlots } from '@/hooks/use-public-branches';
 import { getApiErrorMessage } from '@/common/utils/api-error';
 import type { PublicBranchDetail } from '@/types/public-branch';
 import type { CourtView } from '../branch-detail.types';
+import { useAuth } from '@/hooks/use-auth-context';
+import { OwnerBookingNotice } from '@/components/booking/OwnerBookingNotice';
 
 interface BookingPanelProps {
   branch: PublicBranchDetail;
   courts: CourtView[];
 }
 
-export default function BookingPanel({ branch, courts }: BookingPanelProps) {
+export default function BookingPanel(props: BookingPanelProps) {
+  const { user } = useAuth();
+  if (user?.role === 'ADMIN') return <div className="lg:col-span-4"><OwnerBookingNotice /></div>;
+  return <CustomerBookingPanel {...props} />;
+}
+
+function CustomerBookingPanel({ branch, courts }: BookingPanelProps) {
   const navigate = useNavigate();
   const activeCourts = courts;
   const todayStr = formatLocalDate(new Date());

@@ -13,7 +13,8 @@ vi.mock('@/services/booking/booking.api', () => ({
   createBooking: vi.fn(),
   newIdempotencyKey: () => 'key-1',
 }))
-vi.mock('@/hooks/use-auth-context', () => ({ useAuth: () => ({ user: { role: 'CUSTOMER' } }) }))
+const { auth } = vi.hoisted(() => ({ auth: { user: { role: 'CUSTOMER' } } }))
+vi.mock('@/hooks/use-auth-context', () => ({ useAuth: () => auth }))
 
 function Where() {
   const loc = useLocation()
@@ -24,6 +25,8 @@ describe('PaymentPage HoldCheckout under StrictMode', () => {
   afterEach(() => {
     cleanup()
     sessionStorage.clear()
+    auth.user.role = 'CUSTOMER'
+    vi.clearAllMocks()
   })
 
   it('navigates to the booking after the create call resolves', async () => {
@@ -55,5 +58,30 @@ describe('PaymentPage HoldCheckout under StrictMode', () => {
 
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/payment?bookingId=42'))
     expect(createBooking).toHaveBeenCalledTimes(1)
+  })
+
+  it('directs an owner with a stored hold to the staff flow without creating a booking', () => {
+    auth.user.role = 'ADMIN'
+    saveActiveHold({
+      holdToken: 'tok', expiresAt: Date.now() + 600_000, courtId: 1, courtName: 'Court 1', branchId: 1,
+      branchName: 'Branch', date: '2026-12-01', guestPhone: '0912345678',
+      slots: [{ slotId: 5, startTime: '08:00', endTime: '09:00', price: 100000 }],
+    })
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><PaymentPage /></MemoryRouter></QueryClientProvider>)
+    expect(screen.getByText(/tài khoản STAFF tại Quầy/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Quản lý nhân viên' })).toBeTruthy()
+    expect(createBooking).not.toHaveBeenCalled()
+  })
+
+  it.each(['missing', 'expired'])('shows staff guidance for an owner with a %s hold', (holdState) => {
+    auth.user.role = 'ADMIN'
+    if (holdState === 'expired') saveActiveHold({
+      holdToken: 'tok', expiresAt: Date.now() - 60_000, courtId: 1, courtName: 'Court 1', branchId: 1,
+      branchName: 'Branch', date: '2026-12-01', guestPhone: '0912345678',
+      slots: [{ slotId: 5, startTime: '08:00', endTime: '09:00', price: 100000 }],
+    })
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><PaymentPage /></MemoryRouter></QueryClientProvider>)
+    expect(screen.getByText(/tài khoản STAFF tại Quầy/)).toBeTruthy()
+    expect(createBooking).not.toHaveBeenCalled()
   })
 })

@@ -56,7 +56,7 @@ const API_ROUTES: Array<[pattern: string, service: ServiceName]> = [
   ['^/api/(bookings|admin/bookings|public/bookings)', 'booking'],
   ['^/ws-fcourt', 'booking'],
 
-  ['^/api/(payments|refunds|admin/payments|admin/refunds)', 'payment'],
+  ['^/api/(payments|refunds|public/refunds|admin/payments|admin/refunds)', 'payment'],
 
   // pos-retail-service owns the POS paths nested under /api/staff and /api/admin.
   ['^/api/(staff|admin)/pos', 'posRetail'],
@@ -85,6 +85,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     test: {
+      // Keep jsdom workers within the memory available on development machines.
+      maxWorkers: 2,
       environment: 'jsdom',
       environmentOptions: {
         jsdom: {

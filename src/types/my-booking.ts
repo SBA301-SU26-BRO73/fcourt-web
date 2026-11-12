@@ -68,11 +68,13 @@ export interface Refund {
   bookingId: number
   amount: number
   status: RefundStatus
-  bankName: string
-  bankBin: string
-  bankAccountNumber: string
-  bankAccountName: string
-  reason: string
+  bankName: string | null
+  bankBin: string | null
+  bankAccountNumber: string | null
+  bankAccountName: string | null
+  customerPhone: string | null
+  bankInfoMissing: boolean
+  reason: string | null
   adminNote: string | null
   transferProofUrl: string | null
   createdAt: string

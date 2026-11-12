@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from '@/hooks/use-auth-context';
 
 export interface DetailedBranchCardProps {
   id: string;
@@ -12,6 +13,7 @@ export interface DetailedBranchCardProps {
 
 export default function DetailedBranchCard({ id, title, address, tags, imageUrl, courtTypes }: DetailedBranchCardProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [imageFailed, setImageFailed] = useState(false);
 
   return (
@@ -53,7 +55,7 @@ export default function DetailedBranchCard({ id, title, address, tags, imageUrl,
             onClick={(event) => { event.stopPropagation(); navigate(`/branches/${id}`); }}
             className="w-full rounded-xl bg-[#2e7d32] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#256b29] active:scale-[0.99]"
           >
-            Đặt sân ngay
+            {user?.role === 'ADMIN' ? 'Xem chi tiết sân' : 'Đặt sân ngay'}
           </button>
         </div>
       </div>

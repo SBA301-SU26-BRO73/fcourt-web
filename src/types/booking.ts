@@ -144,6 +144,8 @@ export interface RefundRequestResponse {
 export interface GuestBooking {
   id: number
   bookingCode: string
+  branchId: number | null
+  refundAmount: number | null
   branchName: string
   branchAddress: string | null
   courtName: string

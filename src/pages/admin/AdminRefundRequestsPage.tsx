@@ -36,13 +36,16 @@ export function AdminRefundRequestsPage() {
   const refunds = query.data ?? []
   const hasNext = refunds.length === PAGE_SIZE
 
-  const handleApprove = (refund: AdminRefund) =>
+  const handleApprove = (refund: AdminRefund) => {
+    if (refund.bankInfoMissing) return
     approveMutation.mutate(refund.id, {
       onSuccess: () => toast.success('Đã duyệt yêu cầu hoàn tiền, hãy chuyển khoản và tải chứng từ'),
       onError: (error) => toast.error(getApiErrorMessage(error, 'Không thể duyệt yêu cầu hoàn tiền')),
     })
+  }
 
   const handleComplete = (refund: AdminRefund) => {
+    if (refund.bankInfoMissing) return
     const proofImage = proofFiles[refund.id]
     if (!proofImage) {
       toast.error('Vui lòng tải ảnh chứng từ hoàn tiền trước khi xác nhận')
@@ -221,6 +224,12 @@ function RefundRow({
       </td>
       <td className="px-5 py-4 align-top font-bold text-emerald-700">{currency.format(refund.amount)}</td>
       <td className="px-5 py-4 align-top">
+        {refund.bankInfoMissing && (
+          <div className="mb-2 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
+            Chưa có thông tin ngân hàng
+          </div>
+        )}
+        {refund.customerPhone && <div className="mb-2 text-xs text-slate-600">SĐT khách: {refund.customerPhone}</div>}
         <div className="font-semibold text-slate-900">{refund.bankName}</div>
         <div className="mt-1 font-mono text-xs text-slate-600">{refund.bankAccountNumber}</div>
         <div className="mt-1 text-xs text-slate-500">{refund.bankAccountName}</div>
@@ -231,7 +240,7 @@ function RefundRow({
           {!approved && (
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || refund.bankInfoMissing}
               onClick={onApprove}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -253,7 +262,7 @@ function RefundRow({
               </label>
               <button
                 type="button"
-                disabled={busy || !proofFile}
+                disabled={busy || !proofFile || refund.bankInfoMissing}
                 onClick={onComplete}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
