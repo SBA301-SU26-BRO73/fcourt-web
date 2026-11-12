@@ -31,6 +31,7 @@ import { releaseHold } from '@/services/hold/hold.api';
 import { formatCountdown } from '@/utils/hold-countdown';
 import { saveGuestBookingToken, loadGuestBookingToken } from '@/utils/guest-booking-storage';
 import { clearActiveHold, loadActiveHold, withIdempotencyKey } from '@/utils/hold-storage';
+import { OWNER_BOOKING_MESSAGE } from '@/components/booking/OwnerBookingNotice';
 
 export function PaymentPage() {
   const [searchParams] = useSearchParams();
@@ -64,7 +65,7 @@ function HoldCheckout() {
   const createBooking = useCreateBooking();
   const startedRef = useRef(false);
 
-  const stage = resolveHoldCheckoutStage({
+  const stage = user?.role === 'ADMIN' ? 'wrong-role' : resolveHoldCheckoutStage({
     hasHold: hold !== null,
     expired: isExpired,
     role: user?.role ?? null,
@@ -106,6 +107,19 @@ function HoldCheckout() {
     void queryClient.invalidateQueries({ queryKey: ['public-courts', 'slots'] });
     navigate('/slot-booking');
   };
+
+  if (user?.role === 'ADMIN') {
+    return (
+      <PaymentMessage
+        title="Đặt sân cho khách tại quầy"
+        message={OWNER_BOOKING_MESSAGE}
+        actions={[
+          { label: 'Quản lý nhân viên', onClick: () => navigate('/admin/staff') },
+          ...(hold ? [{ label: 'Hủy giữ chỗ', onClick: chooseAgain, primary: false }] : []),
+        ]}
+      />
+    );
+  }
 
   switch (stage) {
     case 'empty':

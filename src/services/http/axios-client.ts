@@ -117,7 +117,7 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config as RetriableRequestConfig | undefined
     const status = error.response?.status
 
-    if (status !== 401 || !originalRequest || isAuthEndpoint(originalRequest.url)) {
+    if (status !== 401 || !originalRequest || isAuthEndpoint(originalRequest.url) || originalRequest.url?.startsWith('/public/')) {
       return Promise.reject(toApiError(error))
     }
 

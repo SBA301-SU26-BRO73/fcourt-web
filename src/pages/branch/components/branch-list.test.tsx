@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import BranchList from './branch-list'
+vi.mock('@/hooks/use-auth-context', () => ({ useAuth: () => ({ user: null }) }))
 
 const useSearch = vi.fn()
 vi.mock('@/hooks/use-public-branches', () => ({

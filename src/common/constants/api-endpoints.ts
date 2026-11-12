@@ -211,6 +211,8 @@ export const API_ENDPOINTS = {
     readAll: joinEndpoint('/notifications/me/read-all'),
   },
   refunds: {
+    guestRequest: joinEndpoint('/public/refunds'),
+    guestLookup: joinEndpoint('/public/refunds/lookup'),
     request: joinEndpoint('/refunds/request'),
     byBooking: (bookingId: Id) => joinEndpoint('/refunds/booking', bookingId),
     pending: joinEndpoint(API_PREFIXES.adminRefunds, 'pending'),
