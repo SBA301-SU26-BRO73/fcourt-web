@@ -1,7 +1,7 @@
 /**
  * Paths are relative to VITE_API_URL (which ends with `/api`). Each path matches the
  * route in the microservice backend; TODO(Fx) marks calls whose contract still has to
- * be reworked in that work item of docs/api-gap-report.md (section 3.3).
+ * be reworked in that work item of docs/api/api-gap-report.md (section 3.3).
  */
 export const API_PREFIXES = {
   auth: '/auth',

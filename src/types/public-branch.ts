@@ -1,4 +1,4 @@
-/** Shapes of the public (anonymous) discovery endpoints, see docs/api-gap-report.md F1. */
+/** Shapes of the public (anonymous) discovery endpoints, see docs/api/api-gap-report.md F1. */
 
 export interface PublicBranchSummary {
   id: number
