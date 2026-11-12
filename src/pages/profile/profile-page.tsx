@@ -155,7 +155,7 @@ export function ProfilePage() {
     ev.preventDefault()
     const e: Record<string, string> = {}
     if (!pw.current) e.current = 'Vui lòng nhập mật khẩu hiện tại'
-    if (pw.next.length < 6) e.next = 'Mật khẩu mới phải từ 6 ký tự'
+    if (pw.next.length < 8) e.next = 'Mật khẩu tối thiểu 8 ký tự'
     if (pw.confirm !== pw.next) e.confirm = 'Xác nhận mật khẩu không khớp'
     if (Object.keys(e).length) { setPwErrs(e); return }
 
@@ -352,7 +352,7 @@ export function ProfilePage() {
                 <PasswordInput value={pw.current} onChange={(e) => setPwField('current', e.target.value)} error={pwErrs.current} placeholder="Nhập mật khẩu hiện tại" />
               </Field>
               <Field label="Mật khẩu mới" error={pwErrs.next}>
-                <PasswordInput value={pw.next} onChange={(e) => setPwField('next', e.target.value)} error={pwErrs.next} placeholder="Tối thiểu 6 ký tự" />
+                <PasswordInput value={pw.next} onChange={(e) => setPwField('next', e.target.value)} error={pwErrs.next} placeholder="Tối thiểu 8 ký tự" />
               </Field>
               <Field label="Xác nhận mật khẩu mới" error={pwErrs.confirm}>
                 <PasswordInput value={pw.confirm} onChange={(e) => setPwField('confirm', e.target.value)} error={pwErrs.confirm} placeholder="Nhập lại mật khẩu mới" />

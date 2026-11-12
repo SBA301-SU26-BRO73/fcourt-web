@@ -40,7 +40,7 @@ export function RegisterCustomerPage() {
     if (!f.email.trim()) e.email = 'Vui lòng nhập email'
     else if (!validators.email(f.email)) e.email = 'Email không đúng định dạng'
     if (!f.password) e.password = 'Vui lòng nhập mật khẩu'
-    else if (f.password.length < 6) e.password = 'Mật khẩu tối thiểu 6 ký tự'
+    else if (f.password.length < 8) e.password = 'Mật khẩu tối thiểu 8 ký tự'
     if (f.password !== f.confirm) e.confirm = 'Mật khẩu xác nhận không khớp'
     if (!f.agree) e.agree = 'Bạn cần đồng ý với điều khoản'
     return e
@@ -135,7 +135,7 @@ export function RegisterCustomerPage() {
               <PasswordInput
                 value={f.password}
                 onChange={(e) => set('password', e.target.value)}
-                placeholder="Tối thiểu 6 ký tự"
+                placeholder="Tối thiểu 8 ký tự"
                 error={errs.password}
                 autoComplete="new-password"
               />
