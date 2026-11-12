@@ -6,7 +6,9 @@ import { isApiError } from '@/common/utils/api-error'
 import { StatusBadge } from '@/components/admin/StatusBadge'
 import { CheckinQrCard } from '@/components/booking/CheckinQrCard'
 import { GuestCancelDialog } from '@/components/booking/GuestCancelDialog'
+import { GuestRefundSection } from '@/components/booking/GuestRefundSection'
 import type { GuestBooking } from '@/types/booking'
+import { useCountdown } from '@/hooks/use-countdown'
 
 /** Message for a failed lookup: 404 never says whether the code or the phone was wrong; 429 says when to retry. */
 export function lookupErrorMessage(error: unknown) {
@@ -49,14 +51,21 @@ export function BookingLookupPage() {
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [retryAt, setRetryAt] = useState<number | null>(null)
+  const { isExpired } = useCountdown(retryAt)
+  const coolingDown = retryAt !== null && !isExpired
+
+  function recordRateLimit(err: unknown) {
+    if (isApiError(err) && err.status === 429) setRetryAt(Date.now() + (err.retryAfterSeconds ?? 60) * 1000)
+  }
 
   async function handleCancel(reason: string) {
-    if (cancelling) return
+    if (cancelling || coolingDown) return
     setCancelError(null)
     setCancelling(true)
     try {
       const result = await cancelGuestBooking(lookedUp.code, lookedUp.phone, reason)
-      setBooking((current) => (current ? { ...current, status: 'CANCELLED', checkInCode: null, qrImageUrl: null } : current))
+      setBooking((current) => (current ? { ...current, status: 'CANCELLED', refundAmount: result.refundAmount, checkInCode: null, qrImageUrl: null } : current))
       setCancelOpen(false)
       setNotice(
         result.refundAmount && result.refundAmount > 0
@@ -64,6 +73,7 @@ export function BookingLookupPage() {
           : 'Đã hủy đơn đặt sân.',
       )
     } catch (err) {
+      recordRateLimit(err)
       setCancelError(cancelErrorMessage(err))
     } finally {
       setCancelling(false)
@@ -72,7 +82,7 @@ export function BookingLookupPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (loading) return
+    if (loading || coolingDown) return
     setError(null)
     setNotice(null)
     setBooking(null)
@@ -81,6 +91,7 @@ export function BookingLookupPage() {
       setBooking(await lookupGuestBooking(bookingCode, phone))
       setLookedUp({ code: bookingCode, phone })
     } catch (err) {
+      recordRateLimit(err)
       setError(lookupErrorMessage(err))
     } finally {
       setLoading(false)
@@ -120,7 +131,7 @@ export function BookingLookupPage() {
         </label>
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || coolingDown}
           className="mt-1 flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
         >
           <Search size={15} />
@@ -182,11 +193,14 @@ export function BookingLookupPage() {
             bookingCode={booking.bookingCode}
             courtName={booking.courtName}
             paid={booking.status === 'CONFIRMED' || booking.status === 'AWAITING_CONFIRMATION'}
-            submitting={cancelling}
+            submitting={cancelling || coolingDown}
             error={cancelError}
             onClose={() => setCancelOpen(false)}
             onConfirm={handleCancel}
           />
+          {booking.status === 'CANCELLED' && (booking.refundAmount ?? 0) > 0 && (
+            <GuestRefundSection key={`${lookedUp.code}:${lookedUp.phone}`} identity={{ bookingCode: lookedUp.code, phone: lookedUp.phone }} amount={booking.refundAmount!} onRateLimited={setRetryAt} />
+          )}
         </div>
       )}
     </div>

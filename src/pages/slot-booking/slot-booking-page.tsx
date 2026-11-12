@@ -29,8 +29,15 @@ import { findUnpaidBooking } from '@/services/booking/unpaid-booking';
 import type { MyBooking } from '@/types/my-booking';
 import type { ActiveHold } from '@/types/hold';
 import type { CourtSlot } from '@/types/public-branch';
+import { OwnerBookingNotice } from '@/components/booking/OwnerBookingNotice';
 
 export default function SlotBookingPage() {
+  const { user } = useAuth();
+  if (user?.role === 'ADMIN') return <div className="mx-auto max-w-3xl px-6 py-10"><OwnerBookingNotice /></div>;
+  return <CustomerSlotBookingPage />;
+}
+
+function CustomerSlotBookingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();

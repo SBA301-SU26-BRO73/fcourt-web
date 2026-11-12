@@ -5,7 +5,8 @@ import { ApiError } from '@/common/utils/api-error'
 import type { TokenResponse } from '@/types/auth'
 import { tokenStorage } from '@/utils/token'
 
-import { axiosClient } from './axios-client'
+import { axiosClient, SKIP_AUTH_HEADER } from './axios-client'
+import { lookupGuestRefund, requestGuestRefund } from '@/services/refund/guest-refund.api'
 
 const storageMocks = vi.hoisted(() => ({
   clear: vi.fn(),
@@ -101,6 +102,41 @@ describe('axiosClient interceptors', () => {
 
     expect(adapter).toHaveBeenCalledTimes(1)
     expect(adapter.mock.calls[0][0].headers.Authorization).toBe('Bearer access-token')
+  })
+
+  it.each(['/public/refunds', '/public/refunds/lookup'])('keeps %s anonymous and does not refresh or redirect on 401', async (url) => {
+    mockedStorage.getAccessToken.mockReturnValue('owner-access-token')
+    mockedStorage.getRefreshToken.mockReturnValue('owner-refresh-token')
+    const refreshPost = vi.spyOn(axios, 'post')
+    const adapter = vi.fn(async (config: InternalAxiosRequestConfig) => Promise.reject(unauthorized(config)))
+    axiosClient.defaults.adapter = adapter
+
+    await expect(axiosClient.post(url, {}, { headers: { [SKIP_AUTH_HEADER]: 'true' } })).rejects.toMatchObject({ status: 401 })
+
+    expect(adapter).toHaveBeenCalledTimes(1)
+    expect(adapter.mock.calls[0][0].headers.Authorization).toBeUndefined()
+    expect(adapter.mock.calls[0][0].headers[SKIP_AUTH_HEADER]).toBeUndefined()
+    expect(refreshPost).not.toHaveBeenCalled()
+    expect(mockedStorage.clear).not.toHaveBeenCalled()
+    expect(window.location.href).toBe('http://localhost/current')
+  })
+
+  it('keeps public refunds independent of an existing login session', async () => {
+    mockedStorage.getAccessToken.mockReturnValue('access-token')
+    mockedStorage.getRefreshToken.mockReturnValue('refresh-token')
+    const refreshPost = vi.spyOn(axios, 'post')
+    const adapter = vi.fn(async (config: InternalAxiosRequestConfig) => Promise.reject(unauthorized(config)))
+    axiosClient.defaults.adapter = adapter
+    const identity = { bookingCode: 'FC12345678', phone: '0912345678' }
+    await expect(lookupGuestRefund(identity)).rejects.toMatchObject({ status: 401 })
+    await expect(requestGuestRefund({ ...identity, bankName: 'VCB', accountNumber: '123456', accountHolder: 'AB' })).rejects.toMatchObject({ status: 401 })
+    for (const [config] of adapter.mock.calls) {
+      expect(config.headers.Authorization).toBeUndefined()
+      expect(config.headers['X-Skip-Auth']).toBeUndefined()
+    }
+    expect(refreshPost).not.toHaveBeenCalled()
+    expect(mockedStorage.clear).not.toHaveBeenCalled()
+    expect(window.location.href).toBe('http://localhost/current')
   })
 
   it('refreshes once and retries the original request with new access token', async () => {
