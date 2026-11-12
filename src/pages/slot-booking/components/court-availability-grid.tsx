@@ -65,10 +65,11 @@ export default function CourtAvailabilityGrid({
   };
   const customDisplay = getCustomButtonDisplay();
 
-  // Peak times helper
-  const isPeakHour = (time: string) => {
-    return ['09:00', '09:30', '10:00', '10:30'].includes(time);
-  };
+  const daySlots = courts.flatMap((court) => courtSchedules[court.id] ?? []);
+  const lowestPrice = daySlots.reduce((lowest, slot) => Math.min(lowest, slot.price), Infinity);
+  const peakTimes = new Set(
+    daySlots.filter((slot) => slot.price > lowestPrice).map((slot) => slot.startTime.slice(0, 5)),
+  );
 
   // Check if a slot is selected
   const isSelected = (courtId: number, slotId: number | undefined) =>
@@ -151,7 +152,7 @@ export default function CourtAvailabilityGrid({
 
               {/* Time Headers */}
               {timeSlots.map((time) => {
-                const peak = isPeakHour(time);
+                const peak = peakTimes.has(time);
                 return (
                   <div
                     key={time}

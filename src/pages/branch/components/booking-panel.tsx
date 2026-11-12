@@ -139,7 +139,7 @@ function CustomerBookingPanel({ branch, courts }: BookingPanelProps) {
               >
                 Đặt sân
               </button>
-              <p className="text-center font-label-sm text-label-sm text-on-surface-variant">Có thể hủy trước tối thiểu 1 giờ</p>
+              <p className="text-center font-label-sm text-label-sm text-on-surface-variant">Có thể hủy trước tối thiểu 12 giờ</p>
             </div>
           </div>
   

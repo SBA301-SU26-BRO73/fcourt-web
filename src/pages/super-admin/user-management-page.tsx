@@ -9,37 +9,40 @@ import type { UserRole } from '@/types/auth'
 type ManagedRole = Extract<UserRole, 'CUSTOMER' | 'ADMIN' | 'STAFF'>
 
 const ROLE_OPTIONS: Array<{ value: ManagedRole | ''; label: string }> = [
-  { value: '', label: 'All roles' },
-  { value: 'CUSTOMER', label: 'Customers' },
-  { value: 'ADMIN', label: 'Court owners' },
-  { value: 'STAFF', label: 'Staff' },
+  { value: '', label: 'Tất cả vai trò' },
+  { value: 'CUSTOMER', label: 'Khách hàng' },
+  { value: 'ADMIN', label: 'Chủ sân' },
+  { value: 'STAFF', label: 'Nhân viên' },
 ]
 
 const STATUS_OPTIONS: Array<{ value: UserStatus | ''; label: string }> = [
-  { value: '', label: 'All statuses' },
-  { value: 'ACTIVE', label: 'Active' },
-  { value: 'LOCKED', label: 'Locked' },
-  { value: 'PENDING_APPROVAL', label: 'Pending approval' },
-  { value: 'INACTIVE', label: 'Inactive' },
-  { value: 'REJECTED', label: 'Rejected' },
+  { value: '', label: 'Tất cả trạng thái' },
+  { value: 'ACTIVE', label: 'Đang hoạt động' },
+  { value: 'LOCKED', label: 'Đã khóa' },
+  { value: 'PENDING_APPROVAL', label: 'Chờ duyệt' },
+  { value: 'INACTIVE', label: 'Ngừng hoạt động' },
+  { value: 'REJECTED', label: 'Đã từ chối' },
 ]
 
 function statusMeta(status: UserStatus) {
   const map: Record<UserStatus, { label: string; cls: string }> = {
-    ACTIVE: { label: 'Active', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
-    LOCKED: { label: 'Locked', cls: 'bg-slate-100 text-slate-600 ring-slate-200' },
-    PENDING_APPROVAL: { label: 'Pending', cls: 'bg-amber-50 text-amber-700 ring-amber-100' },
-    INACTIVE: { label: 'Inactive', cls: 'bg-red-50 text-red-700 ring-red-100' },
-    REJECTED: { label: 'Rejected', cls: 'bg-red-50 text-red-700 ring-red-100' },
+    ACTIVE: { label: 'Đang hoạt động', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
+    LOCKED: { label: 'Đã khóa', cls: 'bg-slate-100 text-slate-600 ring-slate-200' },
+    PENDING_APPROVAL: { label: 'Chờ duyệt', cls: 'bg-amber-50 text-amber-700 ring-amber-100' },
+    INACTIVE: { label: 'Ngừng hoạt động', cls: 'bg-red-50 text-red-700 ring-red-100' },
+    REJECTED: { label: 'Đã từ chối', cls: 'bg-red-50 text-red-700 ring-red-100' },
   }
   return map[status]
 }
 
 function roleLabel(role: UserRole) {
-  if (role === 'ADMIN') return 'Court owner'
-  if (role === 'CUSTOMER') return 'Customer'
-  if (role === 'STAFF') return 'Staff'
-  return role
+  const labels: Record<UserRole, string> = {
+    ADMIN: 'Chủ sân',
+    CUSTOMER: 'Khách hàng',
+    STAFF: 'Nhân viên',
+    SUPER_ADMIN: 'Quản trị viên hệ thống',
+  }
+  return labels[role]
 }
 
 function StatusBadge({ status }: { status: UserStatus }) {
@@ -89,7 +92,7 @@ function LockDialog({
             <div className="grid h-11 w-11 place-items-center rounded-2xl bg-red-50 text-red-600">
               <LockKeyhole className="h-5 w-5" />
             </div>
-            <h2 className="mt-4 text-lg font-extrabold text-slate-900">Lock Account</h2>
+            <h2 className="mt-4 text-lg font-extrabold text-slate-900">Khóa tài khoản</h2>
             <p className="mt-1 text-sm font-medium text-slate-500">{user.fullName || user.email}</p>
           </div>
           <button
@@ -97,24 +100,24 @@ function LockDialog({
             onClick={onClose}
             disabled={busy}
             className="grid h-9 w-9 place-items-center rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-700"
-            aria-label="Close"
+            aria-label="Đóng"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <label className="mt-5 block">
-          <span className="text-sm font-bold text-slate-700">Lock reason</span>
+          <span className="text-sm font-bold text-slate-700">Lý do khóa</span>
           <textarea
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             className="mt-2 h-28 w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-100"
             maxLength={500}
-            placeholder="Enter the reason for locking this account..."
+            placeholder="Nhập lý do khóa tài khoản này..."
           />
         </label>
         <div className="mt-2 flex justify-between text-[12px] font-medium text-slate-400">
-          <span>Reason is required</span>
+          <span>Vui lòng nhập lý do</span>
           <span>{trimmed.length}/500</span>
         </div>
 
@@ -125,7 +128,7 @@ function LockDialog({
             disabled={busy}
             className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
           >
-            Cancel
+            Hủy
           </button>
           <button
             type="button"
@@ -133,7 +136,7 @@ function LockDialog({
             disabled={busy || trimmed.length === 0}
             className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {busy ? 'Locking...' : 'Confirm Lock'}
+            {busy ? 'Đang khóa...' : 'Xác nhận khóa'}
           </button>
         </div>
       </div>
@@ -187,18 +190,18 @@ export function UserManagementPage() {
       { id: lockingUser.id, reason },
       {
         onSuccess: () => {
-          showToast('Account locked')
+          showToast('Đã khóa tài khoản')
           setLockingUser(null)
         },
-        onError: (error) => toastApiError(error, 'Unable to lock this account.'),
+        onError: (error) => toastApiError(error, 'Không thể khóa tài khoản này.'),
       },
     )
   }
 
   function handleUnlock(user: UserAdminItem) {
     unlockMutation.mutate(user.id, {
-      onSuccess: () => showToast('Account unlocked'),
-      onError: (error) => toastApiError(error, 'Unable to unlock this account.'),
+      onSuccess: () => showToast('Đã mở khóa tài khoản'),
+      onError: (error) => toastApiError(error, 'Không thể mở khóa tài khoản này.'),
     })
   }
 
@@ -217,12 +220,12 @@ export function UserManagementPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-slate-400">
-              Account Management
+              Quản lý tài khoản
             </p>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">System Users</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Người dùng hệ thống</h1>
           </div>
           <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm ring-1 ring-slate-100">
-            <div className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Total Results</div>
+            <div className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Tổng kết quả</div>
             <div className="text-2xl font-extrabold text-slate-900">{totalElements}</div>
           </div>
         </div>
@@ -235,7 +238,7 @@ export function UserManagementPage() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
-                placeholder="Search by name, email, or phone"
+                placeholder="Tìm theo tên, email hoặc số điện thoại"
               />
             </label>
             <select
@@ -266,29 +269,29 @@ export function UserManagementPage() {
         <div className="overflow-hidden rounded-[20px] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.05)] ring-1 ring-slate-100">
           {query.isLoading ? (
             <div className="grid place-items-center px-6 py-16 text-sm font-semibold text-slate-500">
-              Loading accounts...
+              Đang tải tài khoản...
             </div>
           ) : query.isError ? (
             <div className="grid place-items-center px-6 py-16 text-sm font-semibold text-red-600">
-              Unable to load accounts.
+              Không thể tải danh sách tài khoản.
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="grid place-items-center px-6 py-16 text-center">
               <div className="grid h-14 w-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
                 <Users className="h-7 w-7" />
               </div>
-              <div className="mt-4 text-sm font-bold text-slate-700">No matching accounts found.</div>
+              <div className="mt-4 text-sm font-bold text-slate-700">Không tìm thấy tài khoản phù hợp.</div>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[860px] text-left text-sm">
                 <thead>
                   <tr className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400">
-                    <th className="px-6 py-4 font-bold">Account</th>
-                    <th className="px-6 py-4 font-bold">Contact</th>
-                    <th className="px-6 py-4 font-bold">Role</th>
-                    <th className="px-6 py-4 font-bold">Status</th>
-                    <th className="px-6 py-4 text-right font-bold">Actions</th>
+                    <th className="px-6 py-4 font-bold">Tài khoản</th>
+                    <th className="px-6 py-4 font-bold">Liên hệ</th>
+                    <th className="px-6 py-4 font-bold">Vai trò</th>
+                    <th className="px-6 py-4 font-bold">Trạng thái</th>
+                    <th className="px-6 py-4 text-right font-bold">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -300,7 +303,7 @@ export function UserManagementPage() {
                           <div className="min-w-0">
                             <div className="truncate font-extrabold text-slate-900">{user.fullName || user.email}</div>
                             <div className="mt-1 truncate text-[12px] font-medium text-slate-400">
-                              Created {new Date(user.createdAt).toLocaleDateString('en-US')}
+                              Ngày tạo {new Date(user.createdAt).toLocaleDateString('vi-VN')}
                             </div>
                           </div>
                         </div>
@@ -312,7 +315,7 @@ export function UserManagementPage() {
                         </div>
                         <div className="mt-1 flex items-center gap-2 text-[12px] font-medium text-slate-400">
                           <Phone className="h-3.5 w-3.5" />
-                          {user.phone || 'No phone number'}
+                          {user.phone || 'Chưa có số điện thoại'}
                         </div>
                       </td>
                       <td className="px-6 py-4 font-bold text-slate-700">{roleLabel(user.role)}</td>
@@ -329,7 +332,7 @@ export function UserManagementPage() {
                               className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2 text-[12px] font-extrabold text-white transition hover:bg-emerald-700 disabled:opacity-60"
                             >
                               <UnlockKeyhole className="h-4 w-4" />
-                              Unlock
+                              Mở khóa
                             </button>
                           ) : (
                             <button
@@ -339,7 +342,7 @@ export function UserManagementPage() {
                               className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-3.5 py-2 text-[12px] font-extrabold text-red-700 ring-1 ring-red-100 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <LockKeyhole className="h-4 w-4" />
-                              Lock
+                              Khóa
                             </button>
                           )}
                         </div>
@@ -354,7 +357,7 @@ export function UserManagementPage() {
 
         <div className="flex items-center justify-between">
           <div className="text-sm font-semibold text-slate-400">
-            Page {totalPages === 0 ? 0 : page + 1} / {totalPages}
+            Trang {totalPages === 0 ? 0 : page + 1} / {totalPages}
           </div>
           <div className="flex gap-2">
             <button
@@ -363,7 +366,7 @@ export function UserManagementPage() {
               onClick={() => setPage((value) => Math.max(0, value - 1))}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Previous
+              Trước
             </button>
             <button
               type="button"
@@ -371,7 +374,7 @@ export function UserManagementPage() {
               onClick={() => setPage((value) => value + 1)}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Next
+              Sau
             </button>
           </div>
         </div>
