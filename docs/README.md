@@ -1,8 +1,9 @@
-# fcourt-web docs
+# Tài liệu fcourt-web
 
-| Folder | Content |
+| Thư mục | Nội dung |
 |---|---|
-| [api/](api/) | [API gap report](api/api-gap-report.md): differences between the old web (monolith backend) and the new microservice backend, with the frontend work items (F0 to F14). Written in Vietnamese. |
-| [report/](report/) | Local-only report deliverables (DOCX/PDF are git-ignored). See [report/README.md](report/README.md). |
+| [api/](api/) | [API gap report](api/api-gap-report.md): khác biệt giữa web cũ (backend monolith) và backend microservice mới, cùng các hạng mục công việc frontend (F0 đến F14). Viết bằng tiếng Việt. |
+| [architecture/](architecture/) | Hình ảnh kiến trúc hệ thống FCourt dùng trong README (`images/`). |
+| [report/](report/) | Sản phẩm báo cáo chỉ lưu local (DOCX/PDF bị git-ignore). Xem [report/README.md](report/README.md). |
 
-The main project README is [../README.md](../README.md).
+README chính của dự án là [../README.md](../README.md).

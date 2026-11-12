@@ -1,105 +1,109 @@
 # fcourt-web
 
-Web frontend of FCourt, a sports court booking system. It is a single-page app for four roles: customers (browse branches, hold slots, book and pay, manage bookings), court owners (branches, courts, pricing, vouchers, dashboard), staff (counter operations, products) and super admins (users, subscription plans, platform dashboard).
+![Kiến trúc hệ thống FCourt](docs/architecture/images/arch-3-1-microservices.png)
+
+*Kiến trúc hệ thống FCourt*
+
+Web frontend của FCourt, hệ thống đặt sân thể thao. Đây là ứng dụng single-page cho bốn vai trò: khách hàng (xem chi nhánh, giữ chỗ, đặt sân và thanh toán, quản lý đơn đặt), chủ sân (chi nhánh, sân, bảng giá, voucher, dashboard), nhân viên (thao tác tại quầy, sản phẩm) và super admin (người dùng, gói đăng ký, dashboard toàn nền tảng).
 
 Production: https://fcourt.donan.site (S3 + CloudFront).
 
-## Role in the FCourt system
+## Vai trò trong hệ thống FCourt
 
-| Repo | Responsibility |
+| Repo | Trách nhiệm |
 |---|---|
-| **fcourt-web** (this repo) | React SPA, calls the backend through same-origin `/api` and `/ws-fcourt` |
-| `fcourt-backend` | Spring Boot microservices (auth, facility, booking, payment, notification, ...) |
-| `fcourt-flutter` | Android app on the same backend |
-| `fcourt-gitops` | Argo CD manifests that deploy the backend to EKS |
-| `fcourt-infra` | Terraform for AWS (VPC, EKS, ECR, S3, CloudFront, Route 53, ACM, ...) |
+| **fcourt-web** (repo này) | React SPA, gọi backend qua `/api` và `/ws-fcourt` cùng origin |
+| `fcourt-backend` | Các microservice Spring Boot (auth, facility, booking, payment, notification, ...) |
+| `fcourt-flutter` | Ứng dụng Android dùng chung backend |
+| `fcourt-gitops` | Manifest Argo CD triển khai backend lên EKS |
+| `fcourt-infra` | Terraform cho AWS (VPC, EKS, ECR, S3, CloudFront, Route 53, ACM, ...) |
 
-In production CloudFront serves this SPA from a private S3 bucket and routes `/api/*` and `/ws-fcourt` to the backend on the same domain, so the browser never makes cross-origin calls. The AWS side is defined in `fcourt-infra` (`envs/shared`, `web-cdn.tf`).
+Ở production, CloudFront phục vụ SPA này từ một S3 bucket private và định tuyến `/api/*` và `/ws-fcourt` tới backend trên cùng domain, nên trình duyệt không bao giờ gọi cross-origin. Phần AWS được định nghĩa trong `fcourt-infra` (`envs/shared`, `web-cdn.tf`).
 
-The repo was split from the `frontend/` folder of the old monorepo (`group-project-sba301_fcourt`) with `git subtree split`. The old UI ran on a monolith backend; the API differences are tracked in [docs/api/api-gap-report.md](docs/api/api-gap-report.md).
+Repo được tách từ thư mục `frontend/` của monorepo cũ (`group-project-sba301_fcourt`) bằng `git subtree split`. UI cũ chạy trên backend monolith; các khác biệt về API được theo dõi trong [docs/api/api-gap-report.md](docs/api/api-gap-report.md).
 
-## Tech stack
+## Công nghệ
 
-React 19, TypeScript, Vite, Tailwind CSS v4, React Router, TanStack Query, Axios, STOMP over WebSocket (`@stomp/stompjs`), Vitest + Testing Library, ESLint. Production image: nginx. Path alias `@/` points to `src`.
+React 19, TypeScript, Vite, Tailwind CSS v4, React Router, TanStack Query, Axios, STOMP over WebSocket (`@stomp/stompjs`), Vitest + Testing Library, ESLint. Image production: nginx. Path alias `@/` trỏ tới `src`.
 
-## Project structure
+## Cấu trúc dự án
 
 ```text
 fcourt-web
 |- src
 |  |- app           # router, providers, query client
 |  |- common        # config (env.ts), constants (api-endpoints.ts), helpers
-|  |- components    # reusable UI (incl. notifications bell)
+|  |- components    # UI dùng lại (gồm notifications bell)
 |  |- context       # React context (staff session, ...)
-|  |- hooks         # custom hooks wrapping query/state
-|  |- layouts       # page-level layouts per role
-|  |- pages         # route pages (admin, auth, booking, staff, super-admin, ...)
-|  |- services      # axios client (services/http) and API modules
-|  |- types         # shared types
-|  |- utils         # helpers, token storage
-|- public           # static files
-|- docs             # documentation, see docs/README.md
+|  |- hooks         # custom hook bọc query/state
+|  |- layouts       # layout cấp trang theo từng vai trò
+|  |- pages         # các trang theo route (admin, auth, booking, staff, super-admin, ...)
+|  |- services      # axios client (services/http) và các module API
+|  |- types         # type dùng chung
+|  |- utils         # helper, lưu token
+|- public           # file tĩnh
+|- docs             # tài liệu, xem docs/README.md
 |- .github/workflows
 |  |- ci.yml        # lint, build, test
-|  |- deploy-web.yml# S3 + CloudFront deploy (runs on main)
-|- Dockerfile, nginx.conf   # container image (nginx, proxies /api to API_UPSTREAM)
-|- vite.config.ts   # build, Vitest, dev proxy to the services
+|  |- deploy-web.yml# deploy S3 + CloudFront (chạy trên main)
+|- Dockerfile, nginx.conf   # container image (nginx, proxy /api tới API_UPSTREAM)
+|- vite.config.ts   # build, Vitest, dev proxy tới các service
 ```
 
-Convention: endpoints are declared in `src/common/constants/api-endpoints.ts` or in the `services/*` modules, never hard-coded in pages.
+Quy ước: endpoint được khai báo trong `src/common/constants/api-endpoints.ts` hoặc trong các module `services/*`, không hard-code trong page.
 
-## Prerequisites
+## Yêu cầu
 
-Node.js 20 (`.nvmrc`) and npm. A running backend is needed for real data: either the services on localhost (ports 8081 to 8092) or a remote host (see `DEV_BACKEND_HOST`).
+Node.js 20 (`.nvmrc`) và npm. Cần backend đang chạy để có dữ liệu thật: hoặc các service trên localhost (cổng 8081 đến 8092), hoặc một host từ xa (xem `DEV_BACKEND_HOST`).
 
-## Setup, run, test, build
+## Cài đặt, chạy, test, build
 
 ```bash
-cp .env.example .env     # adjust values if needed
+cp .env.example .env     # chỉnh giá trị nếu cần
 npm ci
 npm run dev              # http://localhost:5173
 ```
 
-| Command | Purpose |
+| Lệnh | Mục đích |
 |---|---|
-| `npm run dev` | Vite dev server; proxies each `/api/...` prefix to the owning service port (see `vite.config.ts`) |
-| `npm run build` | `tsc -b && vite build`, output in `dist/` |
-| `npm run preview` | Serve the built `dist/` locally |
+| `npm run dev` | Vite dev server; proxy từng prefix `/api/...` tới cổng của service tương ứng (xem `vite.config.ts`) |
+| `npm run build` | `tsc -b && vite build`, output trong `dist/` |
+| `npm run preview` | Chạy `dist/` đã build ở local |
 | `npm run lint` | ESLint |
 | `npm test` | Vitest (`vitest run`) |
 
-Container image (optional): `docker build -t fcourt-web .` then run it with `API_UPSTREAM` pointing at the gateway/ALB origin.
+Container image (tùy chọn): `docker build -t fcourt-web .` rồi chạy với `API_UPSTREAM` trỏ tới origin của gateway/ALB.
 
-## Configuration
+## Cấu hình
 
-Copy `.env.example` to `.env`. `.env` and `.env.local` are git-ignored; only `.env.example` is committed.
+Sao chép `.env.example` thành `.env`. `.env` và `.env.local` bị git-ignore; chỉ `.env.example` được commit.
 
-| Variable | Meaning |
+| Biến | Ý nghĩa |
 |---|---|
-| `VITE_API_URL` | API base URL, default `/api` (same origin). Must end with `/api`. |
-| `VITE_WS_URL` | STOMP WebSocket URL for realtime slot updates. Empty means same origin `/ws-fcourt`. |
-| `VITE_GOOGLE_CLIENT_ID` | OAuth Web client ID for Google sign-in. Empty hides the Google button. It must match the client the auth service verifies (`AUTH_GOOGLE_CLIENT_ID`), and the web origin must be listed in the client's authorized JavaScript origins. |
-| `DEV_BACKEND_HOST` | Dev only: host of the backend services, default `localhost`. |
-| `API_UPSTREAM` | Container only: origin of the gateway/ALB, default `http://gateway:8080`. |
-| `NGINX_RESOLVER` | Container only: DNS resolver used by nginx, default `127.0.0.11`. |
+| `VITE_API_URL` | API base URL, mặc định `/api` (cùng origin). Phải kết thúc bằng `/api`. |
+| `VITE_WS_URL` | URL STOMP WebSocket cho cập nhật slot realtime. Để trống nghĩa là cùng origin `/ws-fcourt`. |
+| `VITE_GOOGLE_CLIENT_ID` | OAuth Web client ID cho đăng nhập Google. Để trống sẽ ẩn nút Google. Phải khớp với client mà auth service xác thực (`AUTH_GOOGLE_CLIENT_ID`), và origin của web phải nằm trong authorized JavaScript origins của client. |
+| `DEV_BACKEND_HOST` | Chỉ dùng khi dev: host của các backend service, mặc định `localhost`. |
+| `API_UPSTREAM` | Chỉ dùng cho container: origin của gateway/ALB, mặc định `http://gateway:8080`. |
+| `NGINX_RESOLVER` | Chỉ dùng cho container: DNS resolver mà nginx sử dụng, mặc định `127.0.0.11`. |
 
-The password-reset link in emails points to the web route `/reset-password?token=...`; set `NOTIFICATION_RESET_PASSWORD_URL` of the notification service to `<web origin>/reset-password`.
+Link đặt lại mật khẩu trong email trỏ tới route web `/reset-password?token=...`; hãy đặt `NOTIFICATION_RESET_PASSWORD_URL` của notification service thành `<web origin>/reset-password`.
 
-## CI/CD and deployment
+## CI/CD và triển khai
 
-- `ci.yml` runs on every pull request and on pushes to `dev` and `main`: `npm ci`, `npm run lint`, `npm run build`, `npm test`.
-- `deploy-web.yml` runs on push to `main` (and manually). It builds with `VITE_API_URL=/api`, assumes an AWS role through OIDC, syncs `dist/` to the S3 bucket (hashed assets first, `index.html` last with `no-cache`) and invalidates CloudFront.
-- Repository variables used by the deploy: `AWS_WEB_DEPLOY_ROLE_ARN`, `WEB_BUCKET`, `WEB_DISTRIBUTION_ID`, optional `VITE_GOOGLE_CLIENT_ID`.
+- `ci.yml` chạy trên mọi pull request và khi push lên `dev` và `main`: `npm ci`, `npm run lint`, `npm run build`, `npm test`.
+- `deploy-web.yml` chạy khi push lên `main` (và chạy thủ công). Workflow build với `VITE_API_URL=/api`, assume một AWS role qua OIDC, sync `dist/` lên S3 bucket (asset có hash trước, `index.html` sau cùng với `no-cache`) và invalidate CloudFront.
+- Repository variables dùng khi deploy: `AWS_WEB_DEPLOY_ROLE_ARN`, `WEB_BUCKET`, `WEB_DISTRIBUTION_ID`, tùy chọn `VITE_GOOGLE_CLIENT_ID`.
 
-Release flow: open a pull request from `dev` to `main` titled `merge: release vX.Y.Z`. Merging it triggers `deploy-web`.
+Quy trình release: mở pull request từ `dev` sang `main` với tiêu đề `merge: release vX.Y.Z`. Merge PR này sẽ kích hoạt `deploy-web`.
 
-## Testing
+## Kiểm thử
 
-Unit and component tests use Vitest with jsdom (`npm test`). CI runs lint, build and test on every PR. End-to-end test runs against the full system are recorded in the project docs, not in this repo.
+Unit test và component test dùng Vitest với jsdom (`npm test`). CI chạy lint, build và test trên mọi PR. Kết quả chạy end-to-end trên toàn hệ thống được ghi trong tài liệu của dự án, không nằm trong repo này.
 
-## Contributing
+## Đóng góp
 
-- Branches: `main` (stable, deployed) and `dev` (integration). Create feature branches from `dev` using a prefix such as `feat/`, `fix/`, `docs/`, `ci/`.
-- Commit messages and PR titles are in English, in the form `type(scope): message` (for example `fix(web): ...`). Squash merge uses the PR title.
-- Open the pull request into `dev`; wait for CI to pass. Releases go `dev` to `main` as described above.
-- Never commit secrets or `.env` files.
+- Branch: `main` (ổn định, được deploy) và `dev` (tích hợp). Tạo feature branch từ `dev` với prefix như `feat/`, `fix/`, `docs/`, `ci/`.
+- Commit message và tiêu đề PR viết bằng tiếng Anh, theo dạng `type(scope): message` (ví dụ `fix(web): ...`). Squash merge dùng tiêu đề PR.
+- Mở pull request vào `dev`; chờ CI pass. Release đi từ `dev` sang `main` như mô tả ở trên.
+- Không bao giờ commit secret hoặc file `.env`.

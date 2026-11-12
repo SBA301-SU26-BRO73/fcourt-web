@@ -1,5 +1,5 @@
-# Report
+# Báo cáo
 
-Folder for project report deliverables (DOCX, PDF) about the web frontend.
+Thư mục chứa các sản phẩm báo cáo của dự án (DOCX, PDF) về web frontend.
 
-Binary files in this folder are ignored by git (see `.gitignore`); only this README and `.gitkeep` are tracked. Keep the report sources or generated files locally or in the team's shared storage.
+File nhị phân trong thư mục này bị git bỏ qua (xem `.gitignore`); chỉ README này và `.gitkeep` được theo dõi. Hãy giữ mã nguồn báo cáo hoặc file đã sinh ở local hoặc trong kho lưu trữ chung của nhóm.
