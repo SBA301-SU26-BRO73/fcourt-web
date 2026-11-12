@@ -1,4 +1,4 @@
-/** slot-hold-engine contract (HoldRequest / HoldResponse records), see docs/api-gap-report.md F2. */
+/** slot-hold-engine contract (HoldRequest / HoldResponse records), see docs/api/api-gap-report.md F2. */
 
 export interface HoldSlotsRequest {
   courtId: number
